@@ -1,19 +1,19 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "reasonix-desktop",
+  "name": "reasonix-wails",
   "outputfilename": "reasonix-desktop",
   "frontend:install": "pnpm install --config.confirmModulesPurge=false",
   "frontend:build": "pnpm build",
   "frontend:dev:watcher": "pnpm dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "esengine"
+    "name": "keeyangyy"
   },
   "info": {
-    "companyName": "Reasonix",
-    "productName": "Reasonix",
+    "companyName": "Reasonix Wails",
+    "productName": "Reasonix Wails",
     "productVersion": "0.0.0",
     "copyright": "Copyright © 2026 Reasonix Contributors",
-    "comments": "Reasonix desktop — a Wails shell around the Go kernel."
+    "comments": "Reasonix Wails — a Wails shell around the Reasonix Go kernel, independently maintained."
   }
 }

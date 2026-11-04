@@ -27,9 +27,9 @@ func trayMenuLabels(locale string) trayLabels {
 	if locale == "zh" {
 		return trayLabels{
 			openTitle:   "打开",
-			openTooltip: "打开 Reasonix 窗口",
+			openTooltip: "打开 Reasonix Wails 窗口",
 			quitTitle:   "退出",
-			quitTooltip: "退出 Reasonix",
+			quitTooltip: "退出 Reasonix Wails",
 		}
 	}
 	return trayLabels{

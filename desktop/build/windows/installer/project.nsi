@@ -17,9 +17,9 @@
 ##      InstallLocation (HKCU\...\Uninstall\InstallLocation). When upgrading from
 ##      a build that did not write InstallLocation yet, .onInit falls back to the
 ##      old DisplayIcon path before using the default. Without this, every release
-##      forces the user back to %LOCALAPPDATA%\Programs\Reasonix even if they had
-##      moved the install to a different drive (e.g. D:\Tools\Reasonix); the
-##      auto-updater would overwrite the wrong dir, leaving the old install
+##      forces the user back to %LOCALAPPDATA%\Programs\Reasonix-Wails even if they
+##      had moved the install to a different drive (e.g. D:\Tools\Reasonix-Wails);
+##      the auto-updater would overwrite the wrong dir, leaving the old install
 ##      orphaned.
 ##
 ## Everything else mirrors Wails' generated default. Defines below override the
@@ -34,6 +34,7 @@
 ## Include the wails tools (auto-generated; provides INFO_* defines and the
 ## wails.* macros used below).
 ####
+!define UNINST_KEY_NAME "Reasonix Wails"
 !include "wails_tools.nsh"
 !include "FileFunc.nsh"
 !include "LogicLib.nsh"
@@ -104,7 +105,10 @@ LangString reasonixUpdateSubtitle ${LANG_TRADCHINESE} "正在安裝已驗證的�
 
 Name "${INFO_PRODUCTNAME}"
 OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
-!define REASONIX_DEFAULT_INSTALLDIR "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
+## The install root is spelled out instead of derived from INFO_PRODUCTNAME:
+## the product name contains a space ("Reasonix Wails"), which breaks several
+## NSIS and shell paths. Keep this directory stable across releases.
+!define REASONIX_DEFAULT_INSTALLDIR "$LOCALAPPDATA\Programs\Reasonix-Wails"
 !define REASONIX_UPDATE_HELPER "reasonix-update-helper.exe"
 !define REASONIX_GUARD "reasonix-guard.exe"
 !define REASONIX_LAUNCHER "reasonix-launcher.exe"
@@ -229,49 +233,15 @@ reasonix_update_mode_done:
 reasonix_stage_mode_done:
 
    ; InstallDirRegKey leaves $INSTDIR empty when the InstallLocation value is
-   ; missing. Older installers still wrote DisplayIcon, so use its parent folder
-   ; as a compatibility bridge before falling back to the per-user default.
+   ; missing. Older installers of this product still wrote DisplayIcon, so use
+   ; its parent folder as a compatibility bridge before falling back to the
+   ; per-user default. Upstream Reasonix keys are deliberately NOT consulted:
+   ; a new install must never be redirected into the old product's directory.
    StrCmp $INSTDIR "" 0 done
    ClearErrors
    ReadRegStr $0 HKCU "${UNINST_KEY}" "DisplayIcon"
-   IfErrors legacy_location
-   StrCmp $0 "" legacy_location
-   ${GetParent} "$0" $INSTDIR
-   StrCmp $INSTDIR "" legacy_location done
-
-legacy_location:
-   ; Tauri 0.53 used a different uninstall key and may have stored the selected
-   ; directory with surrounding quotes (for example "D:\Reasonix"). Reuse it
-   ; only while its uninstaller still exists so a stale registry value cannot
-   ; redirect the repair installer into an unrelated directory.
-   ClearErrors
-   ReadRegStr $0 HKCU "${REASONIX_LEGACY_UNINST_KEY}" "InstallLocation"
-   IfErrors legacy_uninstaller
-   StrCmp $0 "" legacy_uninstaller
-   StrCpy $1 $0 1
-   StrCmp $1 "$\"" 0 legacy_location_ready
-   StrCpy $1 $0 1 -1
-   StrCmp $1 "$\"" 0 legacy_location_ready
-   StrCpy $0 $0 -1 1
-
-legacy_location_ready:
-   IfFileExists "$0\uninstall.exe" 0 legacy_uninstaller
-   StrCpy $INSTDIR $0
-   Goto done
-
-legacy_uninstaller:
-   ClearErrors
-   ReadRegStr $0 HKCU "${REASONIX_LEGACY_UNINST_KEY}" "UninstallString"
    IfErrors fallback
    StrCmp $0 "" fallback
-   StrCpy $1 $0 1
-   StrCmp $1 "$\"" 0 legacy_uninstaller_ready
-   StrCpy $1 $0 1 -1
-   StrCmp $1 "$\"" 0 legacy_uninstaller_ready
-   StrCpy $0 $0 -1 1
-
-legacy_uninstaller_ready:
-   IfFileExists "$0" 0 fallback
    ${GetParent} "$0" $INSTDIR
    StrCmp $INSTDIR "" fallback done
 

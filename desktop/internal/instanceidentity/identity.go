@@ -13,7 +13,11 @@ import (
 	"reasonix/internal/pathidentity"
 )
 
-const Prefix = "com.reasonix.desktop"
+// Prefix namespaces this product's single-instance lock, tray identity and
+// update handoff. It must stay distinct from upstream Reasonix
+// ("com.reasonix.desktop") so both installations can run at the same time,
+// even when they share the same data home.
+const Prefix = "com.reasonix.wails"
 const UpdateEnvironmentKey = "REASONIX_UPDATE_INSTANCE_ID"
 
 var trayNamespace = uuid.MustParse("af8b2b6e-cf17-43b9-afb9-b0bf2695d8ac")

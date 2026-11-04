@@ -232,7 +232,7 @@ func shortcutCandidates(installRoot string) ([]string, error) {
 		return nil
 	}
 
-	add(filepath.Join(installRoot, "Reasonix.lnk"))
+	add(filepath.Join(installRoot, productShortcutName))
 	var resultErr error
 	resultErr = errors.Join(resultErr, addReasonixLinks(installRoot))
 	for _, folderID := range []*windows.KNOWNFOLDERID{windows.FOLDERID_Desktop, windows.FOLDERID_Programs} {
@@ -241,7 +241,7 @@ func shortcutCandidates(installRoot string) ([]string, error) {
 			resultErr = errors.Join(resultErr, err)
 			continue
 		}
-		add(filepath.Join(folder, "Reasonix.lnk"))
+		add(filepath.Join(folder, productShortcutName))
 	}
 	roaming, err := knownFolderPath(windows.FOLDERID_RoamingAppData, windows.KF_FLAG_DEFAULT)
 	if err != nil {
@@ -255,8 +255,13 @@ func shortcutCandidates(installRoot string) ([]string, error) {
 
 func reasonixShortcutName(path string) bool {
 	name := filepath.Base(strings.TrimSpace(path))
-	return strings.EqualFold(filepath.Ext(name), ".lnk") &&
-		strings.HasPrefix(strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name))), "reasonix")
+	if !strings.EqualFold(filepath.Ext(name), ".lnk") {
+		return false
+	}
+	base := strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name)))
+	// Only claim this product's shortcuts. A bare "Reasonix.lnk" belongs to the
+	// upstream installation and must never be rewritten by this build.
+	return strings.HasPrefix(base, "reasonix wails") || strings.HasPrefix(base, "reasonix-wails")
 }
 
 func repairOwnedShortcut(path, installRoot string) (bool, error) {

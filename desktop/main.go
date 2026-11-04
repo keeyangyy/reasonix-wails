@@ -55,8 +55,29 @@ var macSelfUpdate = "false"
 const (
 	disableWebview2GPUEnv       = "REASONIX_DISABLE_WEBVIEW2_GPU"
 	legacyDisableWebview2GPUEnv = "REASONIX_DESKTOP_DISABLE_WEBVIEW2_GPU"
+	webviewDataDirEnv            = "REASONIX_WEBVIEW_DATA_DIR"
+	webviewDataDirName           = "reasonix-wails"
 	linuxDRIRenderNodeGlob      = "/dev/dri/renderD*"
 )
+
+// desktopWebviewUserDataPath returns the product-private WebView2 profile
+// directory. Keeping it out of the shared data home means the new identity
+// never writes the upstream profile concurrently, and it survives switching
+// between installed and portable builds.
+func desktopWebviewUserDataPath() string {
+	if dir := strings.TrimSpace(os.Getenv(webviewDataDirEnv)); dir != "" {
+		return dir
+	}
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
+		return ""
+	}
+	dir := filepath.Join(base, webviewDataDirName, "WebView2")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	return dir
+}
 
 func macSelfUpdateAllowed() bool {
 	switch strings.ToLower(strings.TrimSpace(macSelfUpdate)) {
@@ -127,7 +148,7 @@ func main() {
 	}
 
 	app := NewApp()
-	title := "Reasonix"
+	title := "Reasonix Wails"
 	singleInstance := singleInstanceLock(app)
 	appMenu := app.createAppMenu()
 	dragAndDrop := &options.DragAndDrop{EnableFileDrop: true}
@@ -221,6 +242,12 @@ func main() {
 			Theme:                windows.SystemDefault,
 			ZoomFactor:           zoomFactor,
 			WebviewGpuIsDisabled: windowsWebview2GPUDisabled(),
+			// Keep WebView2 profile data (localStorage, IndexedDB, cache) in a
+			// product-private directory. The previous build inherited the
+			// upstream `%APPDATA%\reasonix-desktop.exe` profile, so this both
+			// isolates the new identity and prevents two installs from writing
+			// the same profile concurrently.
+			WebviewUserDataPath: desktopWebviewUserDataPath(),
 		},
 		Linux: &linux.Options{
 			ProgramName: "Reasonix",

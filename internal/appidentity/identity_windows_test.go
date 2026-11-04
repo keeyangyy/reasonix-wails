@@ -39,9 +39,10 @@ func TestReasonixShortcutName(t *testing.T) {
 		name string
 		want bool
 	}{
-		{"Reasonix.lnk", true},
-		{"reasonix launcher.LNK", true},
-		{"Reasonix (2).lnk", true},
+		{"Reasonix Wails.lnk", true},
+		{"reasonix-wails launcher.LNK", true},
+		{"Reasonix Wails (2).lnk", true},
+		{"Reasonix.lnk", false},
 		{"Other.lnk", false},
 		{"Reasonix.exe", false},
 	}
