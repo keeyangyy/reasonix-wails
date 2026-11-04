@@ -2,199 +2,122 @@
   <img src="docs/logo-ghost-wave-effect.svg" alt="Reasonix" width="360"/>
 </p>
 
+<h1 align="center">Reasonix Wails</h1>
+
+<p align="center">
+  <strong>Reasonix 1.x 的 Wails 桌面分支，独立维护。</strong>
+</p>
+
+<p align="center">
+  在本机运行的编码 Agent：读代码、改文件、跑命令和测试。<br />
+  只提供 Windows 桌面应用，不提供 CLI、TUI、浏览器版或 ACP 接入。
+</p>
+
 <p align="center">
   <a href="./README.md">English</a>
   &nbsp;·&nbsp;
   <strong>简体中文</strong>
   &nbsp;·&nbsp;
-  <a href="./docs/GUIDE.zh-CN.md">指南</a>
+  <a href="./docs/GUIDE.zh-CN.md">使用指南</a>
   &nbsp;·&nbsp;
-  <a href="./docs/ACP.zh-CN.md">ACP</a>
+  <a href="./docs/planning/IMPLEMENTATION_PLAN.md">实施计划</a>
   &nbsp;·&nbsp;
-  <a href="./docs/EXTENSIONS.zh-CN.md">扩展开发</a>
-  &nbsp;·&nbsp;
-  <a href="./docs/SPEC.zh-CN.md">规格</a>
-  &nbsp;·&nbsp;
-  <a href="https://esengine.github.io/DeepSeek-Reasonix/">上游官网</a>
-  &nbsp;·&nbsp;
-  <a href="https://discord.gg/XF78rEME2D">上游社区</a>
+  <a href="https://github.com/keeyangyy/reasonix-wails/issues">反馈</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/keeyangyy/DeepSeek-Reasonix/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/keeyangyy/DeepSeek-Reasonix/ci.yml?branch=wails-mine&style=flat-square&label=ci&labelColor=161b22&logo=githubactions&logoColor=white" alt="CI"/></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/keeyangyy/DeepSeek-Reasonix.svg?style=flat-square&color=8b949e&labelColor=161b22" alt="license"/></a>
-  <a href="https://github.com/keeyangyy/DeepSeek-Reasonix/stargazers"><img src="https://img.shields.io/github/stars/keeyangyy/DeepSeek-Reasonix.svg?style=flat-square&color=dbab09&labelColor=161b22&logo=github&logoColor=white" alt="GitHub stars"/></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/keeyangyy/reasonix-wails.svg?style=flat-square&color=8b949e&labelColor=161b22" alt="license"/></a>
 </p>
 
-<br/>
+---
 
-<p align="center"><strong>开源 · MIT · 单个 Go 二进制</strong></p>
-<h3 align="center">可以一直开着跑的编码 Agent。</h3>
-<p align="center">一套本地引擎,四个入口——终端、桌面端、浏览器,或通过 ACP 接入你的编辑器。计划模式、权限、工作区沙箱与逐轮 checkpoint,让长时间自治运行始终可读、可撤销。</p>
+## 这是什么
 
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/ab2f3878-e224-4931-8254-060e7695cfb9" controls preload="metadata" width="560"></video>
-</div>
+Reasonix Wails 是 **Reasonix 1.x（`main-v2`）的桌面分支**。上游 2.x 转向 Electron，本项目继续维护 1.x 的 Go + Wails + WebView2 桌面形态，并长期跟进自己的功能与修复。
 
-<br/>
+它和上游的关系：
 
-> **独立维护的定制版本**
->
-> 本版本从上游 DeepSeek-Reasonix v1.38.2 分出，保留 Wails 桌面端，未引入 Electron。
-> 当前主要维护 Wails 桌面端（`desktop/`）及其共享 Go 核心，版本号继续沿用 1.38.x 序列，
-> 并选择性吸收上游 1.38 线的修复；不承诺跟随上游后续版本，也不保证与官方版互相兼容。
->
-> 本仓库不是 Reasonix 官方发行版本，发布渠道、功能取舍和问题处理均可能与上游不同。
-> 桌面端仅发布 Windows amd64；更新从本仓库的 `wails-latest` 通道获取，不会自动更新为上游版本。
->
-> 原项目及贡献者的版权声明予以保留，代码遵循 MIT 许可证。上游项目：
-> <https://github.com/esengine/DeepSeek-Reasonix>
+| | 上游 1.x | 上游 2.x（Studio） | 本项目 |
+| --- | --- | --- | --- |
+| 桌面技术 | Wails | Electron | **Wails** |
+| 主要入口 | CLI + 桌面 | 桌面 | **仅桌面** |
+| 维护状态 | 不再扩展 | 活跃开发 | 独立维护 |
+| 发布渠道 | 上游 Releases | 上游 Releases | **本仓库 Releases** |
 
-<br/>
+本项目不是 Reasonix 官方发行版，功能和发布节奏由本仓库独立决定。原项目的版权、MIT 许可和贡献者署名均予保留。
 
-## 特性
+## 能做什么
 
-- **配置驱动**：provider、agent、启用的工具、插件全部在 `reasonix.toml` 中声明，
-  内核无硬编码模型。
-- **多模型 · 可组合**：DeepSeek 作为预设内置；任何 OpenAI 兼容
-  端点都只是一条配置。可选让两个模型协同（执行器 + 规划器），各自独立、缓存稳定的 session。
-- **插件驱动**：MCP server 提供工具、提示词和资源；Extension Protocol v1
-  Sidecar 还可以拦截运行时事件、提供 Provider 与结构化 UI，并通过版本化插件包分发。
-- **缓存友好的上下文维护**：启动时注入稳定的环境摘要；旧工具输出会先 snip/prune，
-  再进入摘要 compaction；内置工具 schema 合约有文档和回归测试保护。
-- **零摩擦分发**：`CGO_ENABLED=0` 单二进制；一条命令交叉编译到六个目标平台。
-  产物是完全自包含的静态二进制——目标机器上除二进制本身外无需安装任何东西。
-
-## 安装
-
-本定制版提供两条安装路径：直接下载本仓库发布的 Windows 桌面安装包，或从源码构建。
-上游的 npm、Homebrew 和官网下载渠道不适用于本版本。
-
-### 路径 A：Windows 桌面端
-
-前往[本仓库 Releases](https://github.com/keeyangyy/DeepSeek-Reasonix/releases)下载最新安装包：
-
-| 平台 | 安装包 | 架构 |
+| 写代码 | 保持可控 | 扩展工作流 |
 | --- | --- | --- |
-| Windows | 安装器 `Reasonix-windows-amd64-installer.exe` 或便携包 `Reasonix-windows-amd64-portable.zip` | x64 |
+| 读仓库、改文件、跑命令和测试，查看改动与检查结果 | 先看计划再执行、逐项审批工具权限、按轮次回退文件改动 | 接入 MCP 工具、加载 Skills、使用兼容的插件与扩展 |
 
-安装包未做 Authenticode 签名，首次运行可能触发 Windows SmartScreen 提示；
-应用内更新包使用本仓库的 minisign 公钥校验。
+更具体地说：
 
-### 路径 B：从源码构建
+- **模型与提供商**：DeepSeek 预设，任意 OpenAI 兼容端点，自定义 API 与模型切换。
+- **会话体验**：多标签并行、流式输出、Inbox / Steer、历史搜索、Todo、检查点与回退、会话导出（Markdown / JSON / PDF / PNG）。
+- **上下文与记忆**：上下文预算与压缩、长期记忆与检索、本地历史索引。
+- **本地工具**：Windows 终端（PowerShell / CMD / Bash）、Git Worktree、LSP、文件引用与附件、图片理解、`web_search` / `web_fetch`。
+- **扩展与自动化**：MCP、Extension Protocol Sidecar、兼容 Reasonix / Codex / Claude 的插件格式、Hooks、Slash Commands、IM Bot、Heartbeat。
+- **桌面体验**：系统托盘、通知、快捷键、主题、字体与缩放、简繁英、WebView2 故障检测与恢复。
 
-先克隆本仓库：
+## 下载与安装
 
-```sh
-git clone https://github.com/keeyangyy/DeepSeek-Reasonix.git
-cd DeepSeek-Reasonix
-```
+**目前还没有正式发行版。** 首个版本计划在独立化改造完成后发布，届时通过
+[本仓库 Releases](https://github.com/keeyangyy/reasonix-wails/releases) 提供：
 
-#### CLI
+- NSIS 安装程序（per-user，无需管理员权限）
+- 版本化便携 ZIP
 
-CLI 构建需要 **Go 1.26+**。模块固定了 `toolchain` 指令；
-保持 `GOTOOLCHAIN=auto` 让 Go 自动下载固定的工具链，或自行安装。
+安装身份与上游 Reasonix、旧版 Wails 客户端分开：独立安装目录、卸载项、快捷方式和单实例锁，可以并存。**不会自动迁移或覆盖旧安装。**
 
-```sh
-make build      # -> bin/reasonix(.exe)
-make cross      # -> dist/（darwin|linux|windows × amd64|arm64）
-```
+> 首个版本计划使用 `0.1.0`，更新源指向本仓库，不会自动更新成上游版本。
 
-#### 桌面端
+## 从源码构建
 
-桌面端基于 **Wails v2**（WebView2），不使用 Electron。构建额外需要：
-
-- **Node 24+ 和 pnpm 10**（`npm install -g pnpm@10`）用于前端
-- **Wails CLI**，与共享的 `.wails-version` 固定版本一致
+需要 **Go 1.26+**、**Node 24+**、**pnpm 10**、**Wails v2 CLI**（版本与 `.wails-version` 一致）。
 
 ```sh
+git clone git@github.com:keeyangyy/reasonix-wails.git
+cd reasonix-wails
 make wails-install
 cd desktop
 wails build
 ```
 
-平台相关的 WebView 依赖和 Linux 构建标签见
-[桌面端构建指南](desktop/README.md#prerequisites)。
-
-> VS Code 扩展属于上游生态，依赖上游 CLI；本版本不提供该扩展的配套发布。
-
-## 快速开始
-
-### CLI / TUI
+前端单独构建：
 
 ```sh
-reasonix setup                      # 配置 provider 和模型
-reasonix                            # 启动交互式会话
-reasonix run "把 main.go 里的 TODO 实现掉"
+cd desktop/frontend
+pnpm install
+pnpm build
 ```
 
-需要项目指令时，可在交互式会话中运行 `/init`。
+## 数据与隐私
 
-### 桌面端
-
-从[本仓库 Releases](https://github.com/keeyangyy/DeepSeek-Reasonix/releases)下载对应安装包，
-安装并启动 Reasonix，然后在应用内配置 provider 和模型即可使用。
-
-> 本版本与官方版默认共用 `%APPDATA%\reasonix` 数据目录和单实例锁。如需两者共存，
-> 请为其中一个设置独立的 `REASONIX_HOME`，避免配置、会话和单实例互相干扰。
-
-> 桌面端匿名启动统计与崩溃报告目前仍发送到上游 `crash.reasonix.io`，可在设置中关闭。
-> CLI 的 `reasonix upgrade` 目前仍指向上游 release 源，不建议在本版本中使用。
-
-CLI 进阶用法和详细配置见 **[CLI 命令参考](./docs/CLI.zh-CN.md)**、
-**[指南](./docs/GUIDE.zh-CN.md)** 和
-**[配置路径](./docs/CONFIG_PATHS.zh-CN.md)**。
+- Agent 在本机运行。你配置的模型服务商只会收到请求所需的上下文。
+- 配置、会话和记忆默认存放在 `%APPDATA%\reasonix`，与 Reasonix Studio 共用；本项目不会在未确认兼容性前改写这些数据。
+- **当前源码仍保留了上游的崩溃上报与匿名统计端点（`crash.reasonix.io`）**，可在设置中关闭。独立化改造会移除自动上报，改为本地脱敏诊断 + 手动导出。
+- 独立安装身份、数据隔离与兼容性验证仍在进行中，细节见[实施计划](./docs/planning/IMPLEMENTATION_PLAN.md)。
 
 ## 文档
 
-- **开始使用：** [指南](./docs/GUIDE.zh-CN.md) ·
-  [CLI 命令参考](./docs/CLI.zh-CN.md) · [配置路径](./docs/CONFIG_PATHS.zh-CN.md) ·
-  [ACP 编辑器接入](./docs/ACP.zh-CN.md)
-- **功能与排障：** [子智能体 Profile](./docs/SUBAGENT_PROFILES.zh-CN.md) ·
-  [Context Engine v2](./docs/SESSION_MEMORY_RETRIEVAL.zh-CN.md) ·
-  [能力诊断](./docs/CAPABILITY_DIAGNOSTICS.zh-CN.md) ·
-  [恢复与安全模式](./docs/RECOVERY.zh-CN.md) ·
-  [机器人使用指南](./docs/BOT_GUIDE.zh-CN.md) ·
-  [Checkpoints 与 rewind](./docs/CHECKPOINTS.zh-CN.md)
-- **工程与迁移：** [规格](./docs/SPEC.zh-CN.md) ·
-  [任务合约与暂停策略](./docs/TASK_CONTRACT.zh-CN.md) ·
-  [工具合约](./docs/TOOL_CONTRACT.zh-CN.md) ·
-  [从 0.x 迁移](./docs/MIGRATING.zh-CN.md)
-- **扩展开发：** [扩展概览](./docs/EXTENSIONS.zh-CN.md) ·
-  [插件包与 Manifest v1](./docs/PLUGIN_PACKAGES.zh-CN.md) ·
-  [Extension Protocol](./docs/EXTENSION_PROTOCOL.zh-CN.md) ·
-  [Go SDK 与 starter](./sdk/go/README.md)
+- [使用指南](./docs/GUIDE.zh-CN.md)
+- [配置路径](./docs/CONFIG_PATHS.zh-CN.md)
+- [Checkpoints 与回退](./docs/CHECKPOINTS.zh-CN.md)
+- [能力诊断](./docs/CAPABILITY_DIAGNOSTICS.zh-CN.md)
+- [机器人使用指南](./docs/BOT_GUIDE.zh-CN.md)
+- [扩展与插件](./docs/EXTENSIONS.zh-CN.md)
+- [基线审计](./docs/BASELINE_AUDIT.md) · [决策记录](./docs/planning/DECISIONS.md) · [实施计划](./docs/planning/IMPLEMENTATION_PLAN.md)
+
+文档以仓库内 `docs/` 为唯一维护源。
 
 ## 致谢
 
-下面这些朋友的工作塑造了 Reasonix 今天的样子 —— 以下按 commit 数统计的是上游项目的前 20 名贡献者。
-完整贡献者列表见
-[上游 GitHub](https://github.com/esengine/DeepSeek-Reasonix/graphs/contributors?all=1)。
+本项目基于 [esengine/DeepSeek-Reasonix](https://github.com/esengine/DeepSeek-Reasonix) 的 1.x 代码，感谢原作者和所有上游贡献者。完整的贡献者名单见[上游仓库](https://github.com/esengine/DeepSeek-Reasonix/graphs/contributors?all=1)。
 
-<!-- reasonix-top-contributors:start -->
-| Contributor | Contributor | Contributor | Contributor |
-| --- | --- | --- | --- |
-| [**SivanCola**](https://github.com/SivanCola) | [**esengine**](https://github.com/esengine) | [**ttmouse**](https://github.com/ttmouse) | [**lifu963**](https://github.com/lifu963) |
-| **reasonix** | [**HUQIANTAO**](https://github.com/HUQIANTAO) | [**GTC2080**](https://github.com/GTC2080) | [**light-front-theory**](https://github.com/light-front-theory) |
-| **merge-order-check** | [**Li-Charles-One**](https://github.com/Li-Charles-One) | [**eghrhegpe**](https://github.com/eghrhegpe) | **wufengfan** |
-| [**CVEngineer66**](https://github.com/CVEngineer66) | [**dependabot\[bot\]**](https://github.com/apps/dependabot) | [**lanshi17**](https://github.com/lanshi17) | [**SuMuxi66**](https://github.com/SuMuxi66) |
-| [**CnsMaple**](https://github.com/CnsMaple) | [**cyq1017**](https://github.com/cyq1017) | [**JesonChou**](https://github.com/JesonChou) | [**XTLine**](https://github.com/XTLine) |
-<!-- reasonix-top-contributors:end -->
+也感谢 [Bernardxu123](https://github.com/Bernardxu123) 设计的项目图标。
 
-特别感谢 [**Bernardxu123**](https://github.com/Bernardxu123) 设计的项目 logo 和开场视频。
+## 许可证
 
-<p align="center">
-  <a href="https://github.com/esengine/DeepSeek-Reasonix/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=esengine/DeepSeek-Reasonix&max=100&columns=12" alt="esengine/DeepSeek-Reasonix 贡献者" width="860"/>
-  </a>
-</p>
-
-<br/>
-
----
-
-<p align="center">
-  <sub>MIT —— 见 <a href="./LICENSE">LICENSE</a></sub>
-  <br/>
-  <sub>基于 <a href="https://github.com/esengine/DeepSeek-Reasonix/graphs/contributors">esengine/DeepSeek-Reasonix</a> 的成果，由本仓库独立维护</sub>
-</p>
+MIT，见 [LICENSE](./LICENSE)。原项目版权声明保留。
