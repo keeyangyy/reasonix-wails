@@ -27,7 +27,9 @@ import (
 // or base URLs; custom provider/model identifiers are normalized into bounded
 // buckets. Gated on config desktop.metrics (default on), dev-skipped.
 
-var metricsEndpoint = "https://crash.reasonix.io/v1/metrics"
+// metricsEndpoint is intentionally empty: this build never uploads anonymous
+// usage metrics to the upstream service. See crashEndpoint for the policy.
+var metricsEndpoint = ""
 
 const metricsPendingFile = "metrics-pending.json"
 const metricsPostTimeout = 8 * time.Second
@@ -673,6 +675,9 @@ func (a *App) flushMetrics() {
 }
 
 func (a *App) postMetrics(p metricsPayload) bool {
+	if metricsEndpoint == "" {
+		return true
+	}
 	body, err := json.Marshal(p)
 	if err != nil {
 		return false

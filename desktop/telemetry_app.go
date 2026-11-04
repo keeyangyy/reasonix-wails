@@ -22,7 +22,8 @@ import (
 // random install id, version, and OS facts — never conversation, key, or file data.
 // Gated on config desktop.telemetry (default on) and skipped entirely in dev builds.
 
-var pingEndpoint = "https://crash.reasonix.io/v1/ping"
+// pingEndpoint is intentionally empty: no startup ping leaves this machine.
+var pingEndpoint = ""
 
 var installIDPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
@@ -104,6 +105,9 @@ func (a *App) sendStartupPing() {
 }
 
 func postStartupPing(ctx context.Context, c *http.Client, endpoint string, p startupPing) error {
+	if endpoint == "" {
+		return nil
+	}
 	body, err := json.Marshal(p)
 	if err != nil {
 		return err
