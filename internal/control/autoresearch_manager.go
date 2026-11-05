@@ -5,10 +5,8 @@ package control
 // task. New Goal runs never create, update, list, or expose those archives.
 
 import (
-	"log/slog"
 	"strings"
 
-	"reasonix/internal/autoresearch"
 	"reasonix/internal/evidence"
 )
 
@@ -22,54 +20,23 @@ type legacyResearchSetup struct {
 	explicit    bool
 }
 
-type legacyResearchArchive struct {
-	store *autoresearch.Store
-}
+type legacyResearchArchive struct{}
 
-// prepare reads an explicitly referenced legacy task. It has no create path
-// and never mutates the archive, even when validation fails.
+// prepare rejects references to the removed legacy research archive. The
+// archive format is no longer read; user data on disk is left untouched.
 func (m legacyResearchArchive) prepare(goal string) legacyResearchSetup {
-	taskID, found, parseErr := autoresearch.ExplicitTaskID(goal)
-	if !found {
+	if !strings.Contains(strings.ToLower(goal), "autoresearch") {
 		return legacyResearchSetup{}
 	}
-	if parseErr != nil {
-		return legacyResearchSetup{explicit: true, blockReason: parseErr.Error()}
-	}
-	if m.store == nil {
-		return legacyResearchSetup{
-			explicit:    true,
-			taskID:      taskID,
-			blockReason: "legacy research archive is unavailable for this workspace",
-		}
-	}
-	original, err := m.loadGoalText(taskID)
-	if err != nil {
-		slog.Warn("controller: resume legacy autoresearch task", "err", err)
-		return legacyResearchSetup{explicit: true, taskID: taskID, blockReason: err.Error()}
-	}
 	return legacyResearchSetup{
-		goal:     original,
-		taskID:   taskID,
-		notice:   "legacy research archive loaded: " + taskID,
-		explicit: true,
+		explicit:    true,
+		blockReason: "legacy research archives are no longer supported",
 	}
 }
 
-// loadGoalText returns the original objective stored in a historical archive.
-func (m legacyResearchArchive) loadGoalText(taskID string) (string, error) {
-	if m.store == nil {
-		return "", errLegacyArchiveUnavailable
-	}
-	task, err := m.store.LoadTask(taskID)
-	if err != nil {
-		return "", err
-	}
-	goal := strings.TrimSpace(task.Spec.Goal)
-	if goal == "" {
-		return "", errLegacyArchiveMissingGoal
-	}
-	return goal, nil
+// loadGoalText always reports the archive as unavailable.
+func (m legacyResearchArchive) loadGoalText(string) (string, error) {
+	return "", errLegacyArchiveUnavailable
 }
 
 var (

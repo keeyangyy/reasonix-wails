@@ -30,7 +30,6 @@ import (
 	"reasonix/internal/ablation"
 	"reasonix/internal/agent"
 	"reasonix/internal/agentpreset"
-	"reasonix/internal/autoresearch"
 	"reasonix/internal/billing"
 	"reasonix/internal/capability"
 	"reasonix/internal/checkpoint"
@@ -744,7 +743,7 @@ func New(opts Options) *Controller {
 	c.sessionTemp = controllerSessionTemp(opts.SessionTemp)
 	c.sessionTemp.Retain()
 	if strings.TrimSpace(opts.WorkspaceRoot) != "" {
-		c.legacyResearchArchive = legacyResearchArchive{store: autoresearch.NewStore(opts.WorkspaceRoot)}
+		c.legacyResearchArchive = legacyResearchArchive{}
 	}
 	if opts.Extensions != nil {
 		c.extensions = opts.Extensions
