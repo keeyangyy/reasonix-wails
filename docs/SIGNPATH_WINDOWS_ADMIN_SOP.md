@@ -143,7 +143,6 @@ GitHub `upload-artifact` 提交给 SignPath 的产物是 ZIP，因此配置根�
 - `reasonix-guard.exe`
 - `reasonix-launcher.exe`
 - `reasonix-update-helper.exe`
-- `reasonix-cli.exe`
 - `reasonix-uninstall.exe`
 
 参考：

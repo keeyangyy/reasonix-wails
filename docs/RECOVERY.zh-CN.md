@@ -23,11 +23,9 @@ Windows / Linux 使用版本目录：
 InstallRoot/
   reasonix-launcher[.exe]
   Reasonix.exe                 # Windows 便携/开始菜单别名
-  reasonix[-cli.exe]
   current.json
   versions/<version>/
     reasonix-desktop[.exe]
-    reasonix-cli[.exe]
     reasonix-update-helper[.exe]
 ```
 

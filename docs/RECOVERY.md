@@ -25,11 +25,9 @@ Windows and Linux use a versioned install root:
 InstallRoot/
   reasonix-launcher[.exe]
   Reasonix.exe                 # Windows portable / Start Menu alias
-  reasonix[-cli.exe]
   current.json
   versions/<version>/
     reasonix-desktop[.exe]
-    reasonix-cli[.exe]
     reasonix-update-helper[.exe]
 ```
 

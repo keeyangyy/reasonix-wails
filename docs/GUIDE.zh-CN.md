@@ -16,9 +16,7 @@ Provider 模型能力元数据见
 
 - [配置](#配置)
 - [计费与展示币种](./BILLING.zh-CN.md)
-- [CLI 命令参考](./CLI.zh-CN.md)
 - [环境变量](#环境变量)
-- [Web 前端](#web-前端)
 - [配置路径](./CONFIG_PATHS.zh-CN.md)
 - [思考语言](./REASONING_LANGUAGE.zh-CN.md)
 - [任务合约与暂停策略](./TASK_CONTRACT.zh-CN.md)
@@ -54,8 +52,7 @@ default_model = "deepseek-flash"   # 执行器；设 [agent].planner_model 可�
 
 [ui]
 # shortcut_layout = "desktop"      # classic|desktop；兼容旧配置
-# cursor_shape = "bar"             # block|underline|bar；CLI/TUI 输入光标
-show_turn_usage = false             # 隐藏 TUI 每轮 token/费用回执；默认 true
+# show_turn_usage = false           # 隐藏每轮 token/费用回执；默认 true
 
 [agent]
 reasoning_language = "auto"      # 可见思考过程语言：auto|zh|en|off（off 不注入）
@@ -111,11 +108,6 @@ allow = ["Bash(go test:*)"]                  # 从不询问
 # allow_write    = ["/tmp"]    # write_file/edit_file/multi_edit/move_file 额外可写的目录
 # forbid_read    = ["${HOME}/.ssh"]   # agent 不可读取或列出的路径
 
-[serve]
-auth_mode = "none"             # none|token|password；绑定到非 localhost 前请先开启认证
-# token = ""                   # 可选固定 token；token 模式为空时启动时自动生成
-# password_hash = ""           # 用 reasonix serve --hash-password --password '...' 生成
-# behind_proxy = false         # 只在可信反向代理后方设为 true
 
 [[plugins]]
 name    = "example"
@@ -140,142 +132,6 @@ bash allowlist 或信任提示。Plan 与常规模式使用相同的 Permissions
 
 多数日常设置应写在 `config.toml` 或前文提到的 Reasonix 全局 `.env` 中。下面这些变量是进程级高级开关；
 需要在启动 Reasonix 之前设置。项目 `.env` 不是 Reasonix 控制变量的运行时来源。
-
-### CLI 上报统计
-
-CLI 可以向 `https://crash.reasonix.io` 发送每日最多一次的匿名活跃安装 ping，
-以及有界、完全不含内容的事件计数。使用以下用户全局命令配置：
-
-```bash
-reasonix config telemetry          # 查看当前生效模式
-reasonix config telemetry auto     # 默认：仅本机交互式 TTY
-reasonix config telemetry on       # 也允许本机 headless `reasonix run`
-reasonix config telemetry off      # 关闭并删除待发送计数文件
-```
-
-正式版 CLI 第一次在符合条件的交互式终端启动时，会先明确说明数据边界，并在任何
-telemetry 请求之前只询问一次。提示为 `[Y/n]`：直接回车、输入 `y` 或 `yes` 会保存为
-`auto`；输入 `n` 或 `no` 会保存为 `off` 并删除待发送计数。选择保存后不再提示，允许的
-后续上报保持静默。如果偏好设置保存失败，则不会上传任何内容。
-
-在 CI、开发构建中始终关闭；设置 `DO_NOT_TRACK` 或
-`REASONIX_TELEMETRY=0` 也会关闭。`auto` 模式下，重定向、pipe 或其他非交互会话
-不会上报。尚未保存选择时，这些不符合条件的会话既不会提示，也不会上报。授权后的
-网络失败完全静默，不会改变 stdout、stderr 或进程退出码；未发送计数只会保存在有
-数量和时效上限的本地队列中，等待后续启动重试。
-
-ping 包含一个 CLI 专用的随机 128-bit 安装 ID、CLI 版本、OS、架构和 `cli` surface
-标记。计数批次使用同一个 ID 做每日活跃安装去重，只包含固定 bucket，例如 CLI 模式、
-运行配置档、权限/会话模式、turn 延迟、finish reason、cache hit 区间、通用
-Provider/工具错误分类、compaction、恢复计数和归一化界面语言。这个 ID 与桌面端安装
-ID 分离，不是账号、硬件、仓库或 session 标识。
-
-Reasonix 绝不会上传 prompt、回答、reasoning、工具名/参数/输出、路径、仓库/分支、
-session ID、精确 token/费用、Provider/model 名称、base URL 或环境变量。
-
-### CLI 崩溃报告
-
-当未处理的 Go panic 到达 CLI 入口调用栈时，Reasonix 会把脱敏报告保存在
-`<Reasonix home>/cli-crash-reports`。最多保留 10 份，文件权限仅限当前用户读取。
-panic 原文绝不会被序列化；绝对源码路径会变成 `<path>/<file>.go:<line>`，函数参数会被
-移除，并且在本地保存和实际发送前都会再次清理密钥、token、邮箱及长标识符。
-
-崩溃报告绝不会自动上传。使用以下命令审阅和管理：
-
-```bash
-reasonix report                 # 预览最新报告；TTY 中询问后才发送
-reasonix report list            # 列出本地报告
-reasonix report show [ID]       # 仅预览，不发送
-reasonix report send [ID]       # 明确发送；成功后才删除本地副本
-reasonix report delete [ID]     # 不发送，直接删除
-```
-
-通过 pipe 或重定向运行 `reasonix report` 时只会预览，不会询问或发送。CLI telemetry
-设置不会自动发送或自动删除这些
-需要单独审阅的报告。Go 无法恢复 runtime fatal throw、操作系统强制终止，以及未包装
-后台 goroutine 中的 panic，因此这些情况不会生成本地报告。
-
-## Web 前端
-
-本机使用时，`reasonix web` 会启动浏览器 UI，并自动用默认浏览器打开。也可以在 CLI 交互会话中
-执行 `/web`：Reasonix 会保存当前会话、恢复终端，然后打开明确的
-`/sessions/<id>#token=...` 深链。即使会话尚未产生第一轮消息，也会延续已预留的 Session ID，
-同时继续保持“空会话不提前写 transcript”的惰性落盘行为。
-
-```bash
-cd your-project
-reasonix web
-```
-
-如果想启动前台 Web 服务并打印地址、但不自动新开浏览器标签页，可使用
-`reasonix web --no-open`。底层的 `reasonix serve`
-默认不会打开浏览器，继续用于远程开发机、进程托管、tunnel、反向代理和需要认证分享的场景。
-
-`reasonix web` 从 `127.0.0.1:8787` 开始监听；端口占用时会依次尝试 8788、8789……，
-最多递增重试 100 次。它默认启用自动生成的 Token，即使配置中的 `[serve].auth_mode`
-是 `none` 也一样。每个运行实例都会在 `<Reasonix home>/server/instances/` 下写入自己的
-单写者 heartbeat 文件；正常退出时只删除自己的文件，新实例则会惰性清理已确认进程死亡的记录。
-因此多个 Web 实例可以共用同一个 Reasonix home，而不会相互覆盖登记状态。服务保持在前台运行，
-按 Ctrl-C 停止。
-
-显式传入 `reasonix web --auth none` 可以关闭默认 Token，只应在监听地址确定可信时使用。
-`reasonix serve` 则保持向后兼容：默认监听 `127.0.0.1:8787`，认证模式仍由配置决定，空配置为
-`auth_mode = "none"`。如果要绑定到非 loopback 地址、通过 tunnel 暴露，或放到反向代理后面，
-请先开启认证再分享 URL：
-
-```bash
-reasonix serve --auth token
-reasonix serve --addr 0.0.0.0:8787 --auth token
-reasonix serve --auth password --password 'temporary-password'
-```
-
-Token 模式会在终端打印带 `#token=...` 的分享链接；Web 页面会先将 fragment 换成
-HttpOnly Cookie，再启动 API 与 SSE 请求，从而避免 Token 进入请求 URL、浏览器历史、
-Referrer 和访问日志。可通过 `--token` 或 `[serve].token`
-复用固定 token。Password 模式必须在启动时传 `--password`，或在配置里保存 bcrypt hash：
-
-```bash
-reasonix serve --hash-password --password 'strong-password'
-
-# <Reasonix home>/config.toml
-[serve]
-auth_mode = "password" # none|token|password
-password_hash = "$2a$12$..."
-behind_proxy = true    # 仅可信反向代理后方使用
-```
-
-Web UI 提供聊天、工具审批、会话历史、rewind/fork/summarize、模型与 reasoning effort 控件、
-Goal、由 `todo_write` 工具驱动的实时 Todo 面板、扩展发布的 status/card/form/notification
-界面，以及已配置 provider 的余额显示。扩展提供的模型也会进入模型选择器。Serve 可以同时维持
-多个活动会话：新建或恢复其他会话时，正在执行的回合会转入后台而不是被取消，会话列表也会持续显示
-其运行状态。空闲时运行 `/reload` 可在不重启 Serve 的情况下，以失败原子方式重载扩展 Sidecar
-和运行时 generation。临时启动可用 `--model`、`--max-steps` 或 `--resume`；不传
-`--model` 时，`serve` 使用用户全局 `default_model`。
-
-如果当前 Provider 尚未保存 API Key，绑定在回环地址的 Serve 仍会启动，并先显示 Provider
-配置页，而不是在浏览器连接前直接失败。通过 Serve 认证后可在该页输入 Key；Reasonix 会以受限
-权限写入**当前主机**的全局凭据文件，在同一进程内重建 Controller，然后进入正常 Web UI。
-凭据写入接口在非回环监听器上始终禁用。对于 SSH 远程窗口，“当前主机”指经 SSH 隧道访问的
-远端主机；Key 不会从桌面本机自动复制过去。
-
-## 通过 ACP 接入编辑器
-
-`reasonix acp` 把 Reasonix 作为 ACP v1 stdio agent 提供给编辑器和其他 host 客户端。
-独立的 **[ACP 编辑器接入](./ACP.zh-CN.md)** 文档集中说明启动方式、能力协商、会话生命周期、
-彼此独立的模型/工作/协作/审批控制轴、客户端文件与 terminal 能力、MCP server、权限请求，
-以及 Reasonix 的回合中引导扩展。
-
-## 远程 SSH
-
-远程模块让 Reasonix 在远端主机上运行,并通过你自己的 SSH 连接访问它 —— 即 VS Code
-Remote-SSH 式的体验。它在远端主机上引导一个常驻的 headless `reasonix serve`,把本地一个
-回环端口转发过去,再经隧道打开现有的 serve Web 客户端。agent、工具与文件全部原生运行在远端
-主机上,保真度 100%,不经过有损的文件代理。V1 支持 Linux 与 macOS 远端主机。
-
-独立的 **[远程会话系统](./REMOTE_SESSIONS.zh-CN.md)** 文档集中说明主机配置(`config.toml`
-的 `[remote]` 段)、`ssh -G` 解析与别名导入、`reasonix remote` CLI、远端 serve 引导与
-安装阶梯、远程会话生命周期与接管、桌面端远程工作、`remote` 与 `local-proxy` 凭据模式、
-连接故障语义与故障排查。
 
 ## 自定义 OpenAI-compatible provider
 
@@ -393,18 +249,11 @@ Thinking 覆盖选项：
 
 ## 快捷键
 
-这里按使用端来写，因为用户通常是先知道“我现在在桌面端/CLI”，再找对应按键。
-桌面端仍用 `Shift+Tab` 切换 Plan；CLI 则用它在 Ask、Auto、Plan 之间循环。
-桌面端默认用 macOS 的 `Cmd+Y` 或 Windows/Linux 的 `Ctrl+Y` 切换 YOLO；
+桌面端用 `Shift+Tab` 切换 Plan，用 macOS 的 `Cmd+Y` 或 Windows/Linux 的 `Ctrl+Y` 切换 YOLO。
 如果在 Windows/Linux 上改绑了 YOLO，`Ctrl+Y` 会成为输入框的标准重做兼容键。
-桌面端粘贴继续走系统快捷键；CLI 则把终端原生文本粘贴和应用接管的图片粘贴拆成不同快捷键。
+粘贴走系统快捷键。
 
 `[ui].shortcut_layout` 仍被接受以兼容旧配置，但下面的快捷键行为已经跨布局统一。
-
-CLI/TUI 文本输入可通过 `[ui].cursor_shape` 设置光标形状，支持 `underline`、`block`
-和 `bar`。默认值是 `bar`：位置清晰，同时不会在中英混排输入时覆盖 CJK 双宽字符。
-想使用传统终端块状光标可设为 `block`，偏好更弱的下划线光标可设为 `underline`。
-该设置不影响桌面端或 Web 输入框。
 
 ### 桌面端 GUI
 
@@ -456,78 +305,6 @@ CLI/TUI 文本输入可通过 `[ui].cursor_shape` 设置光标形状，支持 `u
 | 计划审批卡片 | `Left` / `Right`、`Enter`、`1`-`3`、`Esc` | 在“修改计划 / 开始执行 / 退出计划”之间移动。默认高亮是“开始执行”。 |
 | Plan 控件 | 切换 Plan 开/关 | 和 `Shift+Tab` 是同一个模式。 |
 | 协作菜单里的 Goal | 启动、查看或清除 Goal | Goal 不进入任何快捷键循环。 |
-
-### CLI / TUI
-
-输入框上下边线使用当前主题强调色，默认光标为细竖线。长草稿会增长到可用的最大高度；
-超过后，在输入框内滚轮只滚动草稿视图，不移动插入光标，在 transcript 区域滚轮仍滚动
-对话。使用 `/theme auto|light|dark` 选择背景模式，也可运行不带参数的 `/theme` 查看
-命名配色，再用 `/theme <style>` 选择强调色。
-
-响应式底栏左侧保留当前 Ask/Auto/Plan 或 YOLO 姿态和交互状态；终端较宽时，模型、推理
-强度作为一组靠右显示，第二行按可用性显示 Git 标识、缓存命中率、上下文占用、
-压缩余量、后台任务和余额。“就绪”只表示输入框空闲，并不是模型健康检查；选择器、审批、
-图片粘贴、shell 模式等活动会替换这个状态。窄终端会按完整信息组移动、换行或压缩。
-标签和展示用的语言跟随 `/language`。
-
-聊天与 transcript：
-
-| 按键或命令 | 作用 | 说明 |
-| --- | --- | --- |
-| `Enter` | 发送当前消息 | turn 运行中输入非空内容时，会排队作为后续反馈。 |
-| `Shift+Enter`、`Alt+Enter` 或 `Ctrl+J` | 插入换行 | 普通 `Enter` 保留给发送/确认。 |
-| 空闲时普通 `Up` / `Down` | 回放更旧或更新的已提交提示词 | turn 运行中同一组按键用于导航排队反馈。 |
-| `PageUp` / `PageDown` | 滚动 transcript | 不受当前聊天状态影响。 |
-| `Ctrl+Home` / `Ctrl+End` | 跳到 transcript 顶部或底部 | 长工具输出后很有用。 |
-| `Ctrl+L` 或 `/cls` | 只清空可见 transcript | LLM 上下文、session 文件、工具、记忆和插件都保持加载；想丢弃对话上下文时用 `/clear`。 |
-| `Esc` | 退出当前最具体的动作 | 可在无回复前撤回刚提交的 turn、取消运行中的 turn，或清空非空输入。 |
-| 空闲且输入为空时双击 `Esc` | 打开 rewind 选择器 | 和 `/rewind` 是同一个入口。 |
-| transcript 文本选择 | 复制 transcript 文本 | 应用内拖选松开后，本地会话通过可验证的系统剪贴板路径写入（macOS `pbcopy`、Linux 可用的 Wayland/X11 工具、Windows 系统剪贴板）；SSH 才回退到 OSC 52，并明确标记为回退而不是宣称原生复制成功。`Ctrl+C`/`Super+C`/`Meta+C` 或右键当前选区可再次复制。 |
-| 输入框文本选择 | 选中、复制或替换草稿文本 | 应用内拖选松开后，会通过与 transcript 相同的可验证剪贴板路径复制；输入或粘贴会替换选区，方向键会收起选区。 |
-| 没有活动选区时右键 | 在本地会话粘贴剪贴板文本 | 本地会话开启鼠标接管时，Reasonix 只读取文本并交给正常的 bracketed-paste 处理。SSH 下远端进程无法读取本机剪贴板，请使用终端粘贴快捷键；`/mouse` 可恢复终端原生右键菜单。存在活动选区时，右键仍优先复制该选区。 |
-| `/mouse` | 切换应用内鼠标接管 | 关闭后由终端处理原生拖选和右键菜单，但会失去应用内选区、滚动条和滚轮。可用 `REASONIX_DISABLE_MOUSE=1` 让每次会话默认关闭。SSH 远程会话默认即关闭，保证原生拖选/复制可用；`REASONIX_DISABLE_MOUSE=0` 可强制全局开启。SSH 下 TUI 还会开启同步输出（mode 2026）避免远端回传时整帧重绘闪烁；如需关闭可设置 `REASONIX_DISABLE_SYNC_OUTPUT=1`。 |
-| `Ctrl+C` | 复制、取消、清空或退出 | 有 transcript 或输入框活动选区时优先复制；否则取消运行中的 turn、清空非空输入，或在空输入下连按两次退出。 |
-| `Ctrl+D` | 退出 TUI | 立即退出。 |
-| 终端的文本粘贴快捷键 | 粘贴文本 | 文本保持终端原生 bracketed-paste 路径：macOS 通常是 `Cmd+V`，Linux 通常是 `Ctrl+Shift+V`，其它环境使用终端自身配置。Reasonix 只消费收到的文本粘贴事件，不会先探测图片。 |
-| macOS/Linux `Ctrl+V`；Windows `Alt+V` | 粘贴剪贴板图片 | 图片粘贴是独立的应用动作。读取期间底栏显示“正在粘贴图片…”，完成后在光标处插入可编辑的 `[image #N]` 标记。 |
-| `/paste-image` | 粘贴剪贴板图片 | 与图片快捷键相同的纯图片命令入口。 |
-| 以 `!` 开头的一行 | 直接运行 shell 命令 | 命令在本地执行，不经过模型。 |
-
-模式与显示：
-
-| 按键或命令 | 作用 | 说明 |
-| --- | --- | --- |
-| `Shift+Tab` | 按 Ask → Auto → Plan → Ask 循环 | YOLO 不进入这个输入模式循环；底部状态栏会显示当前模式。 |
-| `Ctrl+Y` | 切换 YOLO 开/关 | 关闭 YOLO 时会尽量恢复之前的 Ask/Auto 基底。终端若能转发 Command/Super，也可能识别 `Cmd+Y`，但稳定可用的是 `Ctrl+Y`。 |
-| `--yolo`、`--dangerously-skip-permissions` | 启动时进入 YOLO | 和 `Ctrl+Y` 是同一个运行时模式。 |
-| `/theme [auto|light|dark|style]` | 查看或切换 CLI 主题 | 不带参数会列出背景模式和命名配色。选择会保存到用户配置；单次运行可用 `REASONIX_THEME` 和 `REASONIX_THEME_STYLE` 覆盖。 |
-| `Ctrl+O` | 切换详细 reasoning 显示 | 也可通过 `/verbose` 使用。 |
-| `Ctrl+B` | 展开或收起较长 shell 输出 | 较长 shell 输出的提示行也可点击；全屏 TUI 开启鼠标接管时，文本选区由应用内处理。 |
-| `/goal <目标>`、`/goal status`、`/goal pause`、`/goal resume`、`/goal clear` | 启动、查看、暂停、恢复或清除 Goal | Goal 默认持续执行；只有用户显式预算会按数字暂停。 |
-| `/migrate`、`/migrate --from <旧目录>` | 重试旧数据迁移，或从指定 v0.x 来源导入 sessions | Windows v0.52 自定义安装/数据目录用 `--from`；该形式只导入 sessions。详见[配置路径](./CONFIG_PATHS.zh-CN.md)。 |
-
-选择器与审批：
-
-| 上下文 | 按键 | 作用 |
-| --- | --- | --- |
-| 斜杠或 `@` 补全 | `Up` / `Down`、`Ctrl+P` / `Ctrl+N`、`Tab` / `Enter`、`Esc` | 移动、接受或关闭补全菜单。 |
-| 工具审批提示 | `y`/`1`、`a`/`2`、`p`/`3`、`n`/`4`、`Enter`、`Esc`、`Ctrl+C` | 允许一次、本会话允许、持久允许、拒绝、默认允许一次、拒绝，或取消当前 turn。 |
-| Ask 问题卡 | `Up`/`Down` 或 `j`/`k`、`Left`/`Right` 或 `h`/`l`、`Space`、`Enter`、`1`-`9`、`Esc`、`Ctrl+C` | 导航答案/问题标签、切换多选、提交/激活、选择编号选项、关闭，或取消当前 turn。 |
-| Rewind 选择器 | `Up`/`Down` 或 `j`/`k`、`Enter`、`b`、`c`、`d`、`f`、`s`、`u`、`Esc` | 选择 turn，应用 both/conversation/code/fork/summarize 动作，或返回/关闭。 |
-| 模型、provider 或 Resume 选择器 | `Up`/`Down` 或 `Ctrl+P`/`Ctrl+N`；搜索词为空时可用 `j`/`k`；输入文字过滤；`Enter`；`Esc` | 搜索、选择或关闭选择器；开始搜索后 `j`/`k` 会作为查询字符输入；`/provider` 会继续打开该 provider 的模型列表。 |
-| MCP 导入选择器 | `Up`/`Down` 或 `j`/`k`、`Space`、`Enter`、`Esc` / `Ctrl+C` | 移动、勾选服务器、导入勾选服务器，或取消。 |
-| MCP 管理器 | `Up`/`Down` 或 `j`/`k`、`Enter`、`Left`/`Right` 或 `h`/`l`、`r`、数字键、`q` / `Ctrl+C` | 导航服务器列表/详情、刷新、选择动作，或关闭。 |
-| `/clear` 确认 | 方向键或 `j`/`k` / `Tab`、`Enter`、`y`、`n`、`Esc` / `Ctrl+C` | 在 Clear/Cancel 间切换、确认清空，或取消。YOLO 模式下 `/clear` 直接清空，不再询问。 |
-
-模式含义：
-
-| 模式 | 含义 |
-| --- | --- |
-| Ask | writer 兜底审批时询问。 |
-| Auto | 自动放行兜底审批，包括交互式 `remember`/`forget`；显式 `ask` / `deny` 规则仍生效。 |
-| YOLO | 跳过普通工具审批，包括 `remember`/`forget`；`deny`、用户 `ask` 问题和计划批准提示仍会等待。 |
-| Plan | 要求模型先规划——这是 plan-first 工作流，不是全部工具只读。内置 writer 仍遵守当前 Ask/Auto/YOLO 与 Sandbox；已安装 MCP writer、destructive 目标与未信任 reader 在整个规划阶段硬阻断（审批不能放行，退出 Plan 后恢复）；`complete_step` 等显式阶段工具需等到计划批准后。 |
-| Goal | 持续追一个已保存目标，直到完成、阻塞或清除。 |
 
 ## 权限与沙盒
 
@@ -913,9 +690,8 @@ canonical Todo 顺序，并且每一步的工作和证据都必须在对应签�
 
 ## 双模型协同
 
-`reasonix setup` 现在统一管理 provider、模型列表、凭据、连接测试和默认模型；所有修改
-会暂存到“保存并退出”，并同步维护桌面端 provider access。完整用法见
-[CLI 命令参考](./CLI.zh-CN.md#配置供应商)。若要让两个模型协同（执行器 + 规划器，
+provider、模型列表、凭据、连接测试和默认模型都在**设置 → 模型**里管理；修改会暂存到
+“保存并退出”。若要让两个模型协同（执行器 + 规划器，
 各自独立、缓存稳定的 session），向导后手动在 `reasonix.toml` 加一行即可：
 
 ```toml

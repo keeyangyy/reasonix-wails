@@ -16,7 +16,6 @@ Provider model capability metadata is documented in
 
 - [Configuration](#configuration)
 - [Billing and display currency](./BILLING.md)
-- [CLI reference](./CLI.md)
 - [Environment variables](#environment-variables)
 - [Web frontend](#web-frontend)
 - [Configuration paths](./CONFIG_PATHS.md)
@@ -60,8 +59,7 @@ default_model = "deepseek-flash"   # executor; set [agent].planner_model to add 
 
 [ui]
 # shortcut_layout = "desktop"      # classic|desktop; compatibility setting
-# cursor_shape = "bar"             # block|underline|bar; CLI/TUI text cursor
-show_turn_usage = false             # hide per-request token/cost receipts in the TUI; default true
+# show_turn_usage = false           # hide per-request token/cost receipts; default true
 
 [agent]
 reasoning_language = "auto"      # visible reasoning text: auto|zh|en|off (off injects nothing)
@@ -116,11 +114,6 @@ allow = ["Bash(go test:*)"]                  # never prompted
 # allow_write    = ["/tmp"]    # extra dirs write_file/edit_file/multi_edit/move_file may touch
 # forbid_read    = ["${HOME}/.ssh"]   # paths the agent must not read or list
 
-[serve]
-auth_mode = "none"             # none|token|password; use auth before binding beyond localhost
-# token = ""                   # optional fixed token; empty token mode generates one at startup
-# password_hash = ""           # bcrypt hash generated with reasonix serve --hash-password --password '...'
-# behind_proxy = false         # true only behind a trusted reverse proxy
 
 [[plugins]]
 name    = "example"
@@ -150,170 +143,6 @@ Most day-to-day settings belong in `config.toml` or the global Reasonix `.env`
 described above. The variables below are process-level advanced switches; set
 them before launching Reasonix. Project `.env` files are not a runtime source for
 Reasonix control variables.
-
-### CLI telemetry
-
-The CLI can send a once-per-day anonymous active-install ping and bounded,
-content-free event counters to `https://crash.reasonix.io`. Configure the
-user-global policy with:
-
-```bash
-reasonix config telemetry          # print the effective mode
-reasonix config telemetry auto     # default: local interactive TTY only
-reasonix config telemetry on       # also allow local headless `reasonix run`
-reasonix config telemetry off      # disable and delete pending counter files
-```
-
-On the first eligible release-build interactive session, Reasonix explains the
-exact data boundary and asks once before any telemetry request. The prompt is
-`[Y/n]`: pressing Enter, `y`, or `yes` stores `auto`; `n` or `no` stores `off`
-and deletes pending counters. After the choice is saved, enabled reporting is
-silent and the prompt is not shown again. If the preference cannot be saved,
-nothing is uploaded.
-
-Reporting is always disabled in CI, development builds, and when
-`DO_NOT_TRACK` is set or `REASONIX_TELEMETRY=0`. Under `auto`, redirected/piped
-or otherwise non-interactive sessions do not report. When no choice has been
-saved yet, these ineligible sessions neither prompt nor report. Network failures
-after consent are silent and never change stdout, stderr, or the process exit
-code; unsent counters stay in a bounded local queue for a later invocation.
-
-The ping contains a dedicated random 128-bit CLI install ID, CLI version, OS,
-architecture, and the `cli` surface marker. Counter batches use that same ID for
-daily active-install deduplication and contain only fixed buckets such as CLI
-surface, permission/session mode, turn latency, finish reason, cache-hit
-range, generic Provider/tool error class, compaction, recovery counters, and
-normalized UI language. This ID is separate from the desktop install ID and is
-not an account, hardware, repository, or session identifier.
-
-Reasonix never uploads prompts, answers, reasoning, tool names/arguments/output,
-paths, repositories/branches, session IDs, exact token or cost values,
-Provider/model names, base URLs, or environment variables.
-
-### CLI crash reports
-
-An unhandled Go panic that reaches the CLI entrypoint is saved locally as a sanitized report under
-`<Reasonix home>/cli-crash-reports`. Reasonix keeps at most 10 files with owner-only
-permissions. The panic value is never serialized. Absolute source paths become
-`<path>/<file>.go:<line>`, function arguments are removed, and the same secret,
-token, email, and long-identifier scrubbers run both when saving and immediately
-before sending.
-
-Crash reports are never uploaded automatically. Review and manage them with:
-
-```bash
-reasonix report                 # preview newest; prompt before sending on a TTY
-reasonix report list            # list local reports
-reasonix report show [ID]       # preview without sending
-reasonix report send [ID]       # explicit send; delete locally only after success
-reasonix report delete [ID]     # delete without sending
-```
-
-Piped or redirected `reasonix report` calls only preview and never prompt or
-send. The CLI telemetry setting does not auto-send or auto-delete
-these separately reviewed reports. Runtime fatal throws, operating-system kills,
-and panics in unwrapped background goroutines cannot be recovered by Go and do
-not produce this local report.
-
-## Web frontend
-
-For local use, `reasonix web` starts the browser UI and opens it in your default
-browser. Inside an interactive CLI session, `/web` snapshots the current session,
-restores the terminal, and opens an explicit `/sessions/<id>#token=...` deep link.
-Even a never-used session keeps its reserved ID without forcing an empty
-transcript onto disk, so the first Web turn continues the same session identity.
-
-```bash
-cd your-project
-reasonix web
-```
-
-Use `reasonix web --no-open` when you want to start the foreground Web server
-and print its URL without opening a browser tab. The lower-level
-`reasonix serve` command starts the same engine without opening a browser by
-default. It remains the right entry point for remote development boxes,
-supervisors, tunnels, reverse proxies, and shareable authenticated sessions.
-
-`reasonix web` starts at `127.0.0.1:8787`, automatically tries 8788, 8789, and
-so on when a port is busy (up to 100 retries), and defaults to a newly generated
-token even when `[serve].auth_mode` is `none`. Each live process registers a
-single-writer heartbeat file under `<Reasonix home>/server/instances/`; clean
-shutdown removes its own file, while later instances lazily remove records whose
-owner process is confirmed dead. Multiple Web instances can therefore share one
-Reasonix home without overwriting registry state. The process stays attached to
-the terminal; stop it with Ctrl-C.
-
-An explicit `reasonix web --auth none` disables the default token and should be
-used only when the listener is intentionally trusted. `reasonix serve` keeps its
-backward-compatible, config-driven `auth_mode = "none"` default on
-`127.0.0.1:8787`. If you bind Serve outside loopback, expose it through a tunnel,
-or put it behind a reverse proxy, enable authentication before sharing the URL:
-
-```bash
-reasonix serve --auth token
-reasonix serve --addr 0.0.0.0:8787 --auth token
-reasonix serve --auth password --password 'temporary-password'
-```
-
-Token mode prints a share URL with `#token=...`; the Web page exchanges the
-fragment for an HttpOnly cookie before starting API or SSE requests, keeping the
-token out of request URLs, browser history, referrers, and access logs. Pass `--token` or set
-`[serve].token` to reuse a stable token. Password mode requires either
-`--password` at startup or a stored bcrypt hash:
-
-```bash
-reasonix serve --hash-password --password 'strong-password'
-
-# <Reasonix home>/config.toml
-[serve]
-auth_mode = "password" # none|token|password
-password_hash = "$2a$12$..."
-behind_proxy = true    # only behind a trusted reverse proxy
-```
-
-The web UI exposes chat, tool approvals, session history, rewind/fork/summarize,
-model and reasoning-effort controls, Goal, a live todo panel fed by the
-`todo_write` tool, extension status/card/form/notification surfaces, and
-provider balance when configured. Extension-hosted providers appear in the
-model picker. Serve can keep several sessions active at once: creating or
-resuming another session detaches a busy turn instead of cancelling it, and the
-session list continues to report that background activity. Run `/reload` while
-idle to fail-atomically reload extension sidecars and the runtime generation
-without restarting Serve. Use `--model`, `--max-steps`, or `--resume` for
-one-off launches; otherwise `serve` uses the user-global `default_model`.
-
-If the selected Provider has no saved API key, a loopback-bound Serve still
-starts and shows a Provider setup page instead of failing before the browser can
-connect. After authentication, enter the key there; Reasonix writes it to this
-host's global credential file with restricted permissions, rebuilds the active
-controller in the same process, and opens the normal UI. The credential-writing
-endpoint is disabled for non-loopback listeners. For a remote SSH window,
-"this host" means the remote host reached through the SSH tunnel; the key is
-not copied from the desktop machine.
-
-## Editor integrations over ACP
-
-`reasonix acp` exposes Reasonix as an ACP v1 stdio agent for editors and other
-host clients. The dedicated **[ACP editor integration](./ACP.md)** guide covers
-startup, capability negotiation, session lifecycle, independent model/work/
-collaboration/approval controls, client filesystem and terminal capabilities,
-MCP servers, permission requests, and the Reasonix mid-turn steering extension.
-
-## Remote SSH
-
-The remote module runs Reasonix on a remote host and reaches it over your own
-SSH connection — VS Code Remote-SSH style. It bootstraps a persistent headless
-`reasonix serve` on the remote host, forwards a local loopback port to it, and
-opens the existing serve web client through that tunnel. The agent, its tools,
-and its files all live on the remote host at full fidelity; nothing runs through
-a lossy file proxy. V1 supports Linux and macOS remote hosts.
-
-The dedicated **[Remote sessions](./REMOTE_SESSIONS.md)** guide covers host
-configuration (`[remote]` in `config.toml`), SSH-config resolution and import,
-the `reasonix remote` CLI, the remote serve bootstrap and its install ladder,
-the remote session lifecycle and takeover, the desktop remote workspace, the
-`remote` and `local-proxy` credential modes, connection failure semantics, and
-troubleshooting.
 
 ## Custom OpenAI-compatible providers
 
@@ -493,22 +322,12 @@ loading model are documented in [the Chinese desktop hooks guide](./DESKTOP_HOOK
 
 ## Keyboard shortcuts
 
-Shortcuts are documented by client because users usually look for the keys that
-work in the surface they are using. Desktop keeps its Plan toggle, while the CLI
-cycles Ask, Auto, and Plan with `Shift+Tab`. Desktop uses `Cmd+Y` on macOS or
-`Ctrl+Y` elsewhere for YOLO by default. If YOLO is rebound on Windows/Linux,
-`Ctrl+Y` becomes the standard composer redo fallback. Desktop paste stays on the
-platform paste key; in the CLI, terminal-native text paste and
-application-owned image paste use separate shortcuts.
+Desktop toggles Plan with `Shift+Tab` and YOLO with `Cmd+Y` on macOS or `Ctrl+Y`
+elsewhere. If YOLO is rebound on Windows/Linux, `Ctrl+Y` becomes the standard
+composer redo fallback. Paste stays on the platform paste key.
 
 `[ui].shortcut_layout` is still accepted for old configs, but the shortcut
 behavior below is unified across layouts.
-
-For CLI/TUI text input, `[ui].cursor_shape` accepts `underline`, `block`, or
-`bar`. The default is `bar`: it remains easy to locate without covering
-double-width CJK characters in mixed-language input. Set it to `block` for a
-traditional terminal cursor or `underline` for a lower-profile cursor. This
-setting does not change desktop or web text fields.
 
 ### Desktop GUI
 
@@ -565,89 +384,6 @@ Menus and controls:
 | Plan approval card | `Left` / `Right`, `Enter`, `1`-`3`, `Esc` | Move between Revise plan, Start execution, and Exit plan. The default highlighted action is Start execution. |
 | Plan control | Toggles Plan on/off | Same mode as `Shift+Tab`. |
 | Goal item in the collaboration menu | Starts, views, or clears Goal | Goal is not in any keyboard cycle. |
-
-### CLI / TUI
-
-The composer uses theme-coloured top and bottom borders and a slim bar cursor by
-default. Long drafts grow to the available maximum height; once they overflow,
-wheel events inside the composer scroll the draft without moving the insertion
-cursor, while wheel events in the transcript keep scrolling the conversation.
-Use `/theme auto|light|dark` to select the background mode, or `/theme <style>`
-to select one of the named accent palettes shown by bare `/theme`.
-
-The responsive footer keeps the active Ask/Auto/Plan or YOLO posture and current
-interaction state on the left. On wider terminals, model and effort
-stay together on the right; a second row shows available Git identity, cache hit
-rate, context use, compaction headroom, jobs, and balance. `ready` is the idle
-composer state, not a model-health check. Pickers, approvals, image paste, shell
-mode, and other active interactions replace it. Narrow terminals move, wrap, or
-compact whole groups; visible labels follow `/language`.
-
-Chat and transcript shortcuts:
-
-| Key or command | What it does | Notes |
-| --- | --- | --- |
-| `Enter` | Sends the current message | While a turn is running, non-empty input is durably queued as a follow-up before the composer clears. |
-| `Ctrl+Enter` or `/steer <text>` | Adds guidance to the active turn | The guidance is persisted first; if the turn cannot accept it, it remains a normal follow-up. |
-| `Shift+Enter`, `Alt+Enter`, or `Ctrl+J` | Inserts a newline | Plain `Enter` is reserved for send/confirm. |
-| Plain `Up` / `Down` while idle | Recalls older or newer submitted prompts | In a running turn, the same keys navigate queued follow-up feedback. |
-| `PageUp` / `PageDown` | Scrolls the transcript | Works regardless of the current chat state. |
-| `Ctrl+Home` / `Ctrl+End` | Jumps to the top or bottom of the transcript | Useful after long tool output. |
-| `Ctrl+L` or `/cls` | Clears only the visible transcript | The LLM context, session file, tools, memory, and plugins stay loaded. Use `/clear` when you want to discard the conversation context. |
-| `Esc` | Backs out of the current action | It un-sends a just-submitted turn before any reply, cancels a running turn, or clears non-empty input. |
-| Double `Esc` on an empty idle composer | Opens the rewind picker | Same entry point as `/rewind`. |
-| Transcript text selection | Copies transcript text | Releasing an in-app drag writes through the verified native clipboard path in a local session (`pbcopy` on macOS, the available Wayland/X11 tool on Linux, or the Windows clipboard). SSH falls back to OSC 52 and labels the fallback instead of claiming native success. `Ctrl+C`/`Super+C`/`Meta+C` or right-clicking the active selection copies it again. |
-| Composer text selection | Selects, copies, or replaces draft text | Releasing an in-app drag copies the selection through the same verified clipboard path as transcript text. Typing or pasting replaces the selection; arrow keys collapse it. |
-| Right-click with no active selection | Pastes clipboard text locally | In a local session with in-app mouse capture on, Reasonix reads text only and routes it through the normal bracketed-paste handling. Over SSH, use the terminal paste shortcut because the remote process cannot read the local clipboard; `/mouse` restores the terminal's native right-click menu. Right-click with an active selection still copies that selection. |
-| `/mouse` | Toggles in-app mouse capture | Off hands the mouse back to your terminal, restoring its native click-drag selection and right-click context menu, at the cost of in-app drag-select, the transcript scrollbar, and wheel-scroll. Set `REASONIX_DISABLE_MOUSE=1` to start every session with it off. Remote (SSH) sessions start with capture off so native selection works out of the box; `REASONIX_DISABLE_MOUSE=0` forces capture on everywhere. Over SSH the TUI also enables synchronized output (mode 2026) so repaints do not flicker on the round trip; set `REASONIX_DISABLE_SYNC_OUTPUT=1` to opt out. |
-| `Ctrl+C` | Copies, cancels, clears, or quits | Copies an active transcript or composer selection first. Otherwise it cancels a running turn, clears non-empty input, or quits on a second empty-composer press. |
-| `Ctrl+D` | Quits the TUI | Immediate quit. |
-| Your terminal's text-paste shortcut | Pastes text | Text stays on the terminal's bracketed-paste path (`Cmd+V` on macOS, commonly `Ctrl+Shift+V` on Linux, and the terminal's configured shortcut elsewhere). Reasonix consumes the resulting paste event and never probes for an image first. |
-| `Ctrl+V` on macOS/Linux; `Alt+V` on Windows | Pastes a clipboard image | Image paste is a separate application action. The footer shows `Pasting image…` while the clipboard is read, then inserts an editable `[image #N]` token at the cursor. |
-| `/paste-image` | Pastes a clipboard image | Command form of the same image-only action. |
-| A line starting with `!` | Runs a shell command directly | The command runs locally without asking the model. |
-
-`/queue list` shows bounded previews without loading full bodies. Use `/queue
-show|edit|delete|move`, `/queue pause|resume`, and `/queue retry|refresh` to
-inspect or manage pending work. After crash recovery the inbox is paused, so
-review it and run `/queue resume` before dispatch continues. Each item is
-limited to 4 MiB; a session accepts at most 64 items and 64 MiB total.
-
-Mode and display shortcuts:
-
-| Key or command | What it does | Notes |
-| --- | --- | --- |
-| `Shift+Tab` | Cycles Ask → Auto → Plan → Ask | YOLO remains outside this composer-mode cycle; the footer shows the active mode. |
-| `Ctrl+Y` | Toggles YOLO on/off | Turning YOLO off restores the previous Ask/Auto base when known. Terminals that forward Command/Super may also send `Cmd+Y`, but `Ctrl+Y` is the reliable terminal shortcut. |
-| `--yolo`, `--dangerously-skip-permissions` | Starts chat in YOLO | Same runtime mode as `Ctrl+Y`. |
-| `/theme [auto|light|dark|style]` | Shows or switches the CLI theme | Bare `/theme` lists background modes and named accent palettes. The choice is saved to the user config; `REASONIX_THEME` and `REASONIX_THEME_STYLE` can override it for one run. |
-| `Ctrl+O` | Toggles verbose reasoning display | Also available through `/verbose`. |
-| `Ctrl+B` | Expands or collapses long shell output | Long shell-output hint lines can also be clicked in the transcript; text selection is handled in-app while the full-screen TUI has mouse reporting enabled. |
-| `/goal <objective>`, `/goal status`, `/goal pause`, `/goal resume`, `/goal clear` | Starts, checks, pauses, resumes, or clears Goal | A Goal is unbounded unless `[agent].goal_token_budget` is set. |
-| `/migrate`, `/migrate --from <legacy-dir>` | Retries legacy migration or imports sessions from a chosen v0.x source | Use `--from` for custom Windows v0.52 install/data directories; it imports sessions only. See [Configuration paths](./CONFIG_PATHS.md). |
-
-Picker and approval shortcuts:
-
-| Context | Keys | What they do |
-| --- | --- | --- |
-| Slash or `@` completion | `Up` / `Down`, `Ctrl+P` / `Ctrl+N`, `Tab` / `Enter`, `Esc` | Move, accept, or close the completion menu. |
-| Tool approval prompt | `y`/`1`, `a`/`2`, `p`/`3`, `n`/`4`, `Enter`, `Esc`, `Ctrl+C` | Allow once, allow for session, persist allow, deny, accept default allow once, deny, or cancel the turn. |
-| Ask question card | `Up`/`Down` or `j`/`k`, `Left`/`Right` or `h`/`l`, `Space`, `Enter`, `1`-`9`, `Esc`, `Ctrl+C` | Navigate answers/tabs, toggle multi-select answers, submit/activate, pick numbered options, dismiss, or cancel the turn. |
-| Rewind picker | `Up`/`Down` or `j`/`k`, `Enter`, `b`, `c`, `d`, `f`, `s`, `u`, `Esc` | Choose a turn, apply both/conversation/code/fork/summarize actions, or go back/close. |
-| Model, provider, or resume picker | `Up`/`Down` or `Ctrl+P`/`Ctrl+N`; `j`/`k` while search is empty; type to filter; `Enter`; `Esc` | Search, select an item, or close the picker. Once search input starts, `j`/`k` become query text. `/provider` opens that provider's model list. |
-| MCP import picker | `Up`/`Down` or `j`/`k`, `Space`, `Enter`, `Esc` / `Ctrl+C` | Move, select servers, import selected servers, or cancel. |
-| MCP manager | `Up`/`Down` or `j`/`k`, `Enter`, `Left`/`Right` or `h`/`l`, `r`, number keys, `q` / `Ctrl+C` | Navigate server lists/details, refresh, choose actions, or close. |
-| `/clear` confirmation | Arrow keys or `j`/`k` / `Tab`, `Enter`, `y`, `n`, `Esc` / `Ctrl+C` | Toggle Clear/Cancel, confirm clear, or cancel. In YOLO mode `/clear` clears immediately without asking. |
-
-Mode meanings:
-
-| Mode | Meaning |
-| --- | --- |
-| Ask | Prompts for fallback writer approvals. |
-| Auto | Auto-allows fallback approvals, including interactive `remember`/`forget`; explicit `ask` / `deny` rules still apply. |
-| YOLO | Skips ordinary tool approval prompts, including `remember`/`forget`; `deny`, user `ask` questions, and plan approval prompts still wait. |
-| Plan | Directs the model to plan first — a plan-first workflow, not an all-tools read-only mode. Built-in writers still follow the active Ask/Auto/YOLO rules and Sandbox; installed MCP writers, destructive targets, and readers from unauthorized servers are hard-blocked for the whole planning phase (approval cannot release them; they return once Plan exits), and explicit phase-only tools such as `complete_step` wait until approval. |
-| Goal | Pursues a saved objective until complete, blocked, or cleared. |
 
 ## Permissions & sandbox
 
@@ -1180,9 +916,8 @@ time, descend into folders) plus MCP resources.
 
 ## Two-model collaboration
 
-`reasonix setup` manages providers, model lists, credentials, connection tests,
-and the default model. It stages changes until Save and exit, and synchronizes
-provider access with the desktop app. See the [CLI reference](./CLI.md#configure-providers).
+Providers, model lists, credentials, connection tests and the default model are
+managed under **Settings → Models**; changes stage until Save and exit.
 Running two models together (executor + planner, separate cache-stable sessions)
 is a one-line edit afterwards — set `planner_model` to any other enabled provider:
 
