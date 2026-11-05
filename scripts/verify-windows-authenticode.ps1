@@ -14,7 +14,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $expectedPayload = @(
-    "reasonix-desktop.exe",
+    "reasonix-wails.exe",
     "reasonix-guard.exe",
     "reasonix-launcher.exe",
     "reasonix-update-helper.exe",
@@ -82,13 +82,13 @@ try {
         $portableSources = @(
             [pscustomobject]@{ Portable = "reasonix-launcher.exe"; Payload = "reasonix-launcher.exe" },
             [pscustomobject]@{ Portable = "Reasonix.exe"; Payload = "reasonix-launcher.exe" },
-            [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-desktop.exe"); Payload = "reasonix-desktop.exe" },
+            [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-wails.exe"); Payload = "reasonix-wails.exe" },
             [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-update-helper.exe"); Payload = "reasonix-update-helper.exe" }
         )
     }
     else {
         $portableSources = @(
-            [pscustomobject]@{ Portable = "reasonix-desktop.exe"; Payload = "reasonix-desktop.exe" },
+            [pscustomobject]@{ Portable = "reasonix-wails.exe"; Payload = "reasonix-wails.exe" },
             [pscustomobject]@{ Portable = "reasonix-guard.exe"; Payload = "reasonix-guard.exe" },
             [pscustomobject]@{ Portable = "reasonix-launcher.exe"; Payload = "reasonix-launcher.exe" },
             [pscustomobject]@{ Portable = "Reasonix.exe"; Payload = "reasonix-launcher.exe" },

@@ -30,7 +30,7 @@ func TestVerifyWindowsPortableVersionedLayout(t *testing.T) {
 	if err := os.MkdirAll(ver, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"} {
+	for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe"} {
 		writePortableFixture(t, ver, name, name)
 	}
 	if err := os.WriteFile(filepath.Join(good, "current.json"), []byte(`{
@@ -48,7 +48,7 @@ func TestVerifyWindowsPortableVersionedLayout(t *testing.T) {
 	// Flat Guard layout must be rejected.
 	flat := t.TempDir()
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-guard.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
@@ -115,7 +115,7 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		`dpkg-deb --field "$deb_path" Package | grep -x 'reasonix-desktop'`,
+		`dpkg-deb --field "$deb_path" Package | grep -x 'reasonix-wails'`,
 		`usr/lib/reasonix/reasonix-update-helper`,
 		`usr/share/polkit-1/actions/io.reasonix.desktop.update.policy`,
 	} {

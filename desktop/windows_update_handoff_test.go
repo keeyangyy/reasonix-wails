@@ -26,7 +26,7 @@ func TestWindowsUpdateHandoffArgsCarryParentInstallAndRelaunch(t *testing.T) {
 		`C:\Users\Jane Doe\AppData\Local\Reasonix\updates\Reasonix-windows-amd64-installer.exe`,
 		strings.Repeat("a", 64),
 		`D:\Tools\Reasonix App`,
-		`D:\Tools\Reasonix App\reasonix-desktop.exe`,
+		`D:\Tools\Reasonix App\reasonix-wails.exe`,
 		"v1.6.0",
 		"2026-07-29T00:00:00Z",
 		"transaction-1",
@@ -39,7 +39,7 @@ func TestWindowsUpdateHandoffArgsCarryParentInstallAndRelaunch(t *testing.T) {
 		"--created-at", "2026-07-29T00:00:00Z",
 		"--transaction-id", "transaction-1",
 		"--install-dir", `D:\Tools\Reasonix App`,
-		"--relaunch", `D:\Tools\Reasonix App\reasonix-desktop.exe`,
+		"--relaunch", `D:\Tools\Reasonix App\reasonix-wails.exe`,
 	}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("args = %#v, want %#v", got, want)

@@ -20,7 +20,7 @@ import (
 //	  Reasonix.exe              (launcher alias when present or portable)
 //	  current.json
 //	  versions/<version>/
-//	    reasonix-desktop.exe
+//	    reasonix-wails.exe
 //	    reasonix-update-helper.exe
 //
 // Any failure before the current.json pointer swap leaves the previous active
@@ -46,7 +46,7 @@ func activateVersionedWindowsFromStaging(claimed *repair.UpdateTransaction, stag
 	}
 	stagingDir = filepath.Clean(strings.TrimSpace(stagingDir))
 
-	desktopSrc := filepath.Join(stagingDir, "reasonix-desktop.exe")
+	desktopSrc := filepath.Join(stagingDir, "reasonix-wails.exe")
 	helperSrc := filepath.Join(stagingDir, "reasonix-update-helper.exe")
 	launcherSrc := filepath.Join(stagingDir, "reasonix-launcher.exe")
 	for _, path := range []string{desktopSrc, helperSrc, launcherSrc} {
@@ -68,7 +68,7 @@ func activateVersionedWindowsFromStaging(claimed *repair.UpdateTransaction, stag
 		Version:     version,
 		RequestID:   requestID,
 		Members: []installlayout.Member{
-			{Name: "reasonix-desktop.exe", Path: desktopSrc, Mode: 0o700},
+			{Name: "reasonix-wails.exe", Path: desktopSrc, Mode: 0o700},
 			{Name: "reasonix-update-helper.exe", Path: helperSrc, Mode: 0o700},
 		},
 		RootMembers: []installlayout.Member{
@@ -83,7 +83,7 @@ func activateVersionedWindowsFromStaging(claimed *repair.UpdateTransaction, stag
 	// Remove flat release-unit leftovers so the install root is the thin layout.
 	// Do not remove the launcher/CLI/alias we just wrote.
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-guard.exe",
 		"reasonix-update-helper.exe", // helper lives only under versions/
 	} {
@@ -99,7 +99,7 @@ func activateVersionedWindowsFromStaging(claimed *repair.UpdateTransaction, stag
 // complete enough for versioned-v1 activation.
 func preferVersionedWindowsActivation(stagingDir string) bool {
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 	} {

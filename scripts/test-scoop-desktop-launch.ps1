@@ -7,7 +7,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scoopVersion = "v0.5.3"
-$appName = "reasonix-desktop"
+$appName = "reasonix-wails"
 $appVersion = "0.0.0-ci"
 $activeVersion = "v$appVersion"
 $shortcutName = "Reasonix Desktop"
@@ -74,7 +74,7 @@ try {
     }
 
     $fixtureSource = Join-Path $fixtureRoot "desktop-fixture.go"
-    $desktopPath = Join-Path $packageRoot "versions\$activeVersion\reasonix-desktop.exe"
+    $desktopPath = Join-Path $packageRoot "versions\$activeVersion\reasonix-wails.exe"
     Write-Utf8NoBom -Path $fixtureSource -Content @'
 package main
 
@@ -197,7 +197,7 @@ func main() {
 
     $launch = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
     $versionPath = Join-Path $scoopRoot "apps\$appName\$appVersion"
-    $expectedDesktop = Join-Path $versionPath "versions\$activeVersion\reasonix-desktop.exe"
+    $expectedDesktop = Join-Path $versionPath "versions\$activeVersion\reasonix-wails.exe"
     if (![string]::Equals($launch.executable, $expectedDesktop, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unexpected desktop executable. Expected '$expectedDesktop', got '$($launch.executable)'."
     }

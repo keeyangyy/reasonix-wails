@@ -38,7 +38,7 @@ const (
 )
 
 const (
-	packageName   = "reasonix-desktop"
+	packageName   = "reasonix-wails"
 	dpkgDebPath   = "/usr/bin/dpkg-deb"
 	dpkgQueryPath = "/usr/bin/dpkg-query"
 	dpkgPath      = "/usr/bin/dpkg"

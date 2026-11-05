@@ -20,7 +20,7 @@ const (
 
 	linuxUpdateHelperPath = "/usr/lib/reasonix/reasonix-update-helper"
 	linuxPkexecPath       = "/usr/bin/pkexec"
-	linuxDebPackageName   = "reasonix-desktop"
+	linuxDebPackageName   = "reasonix-wails"
 )
 
 // installProfile is the runtime install classification used by evaluate and install.

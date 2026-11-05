@@ -25,9 +25,9 @@ done
 # Exactly one active version directory under versions/v*.
 version_dirs=()
 if [ -d "$staging/versions" ]; then
-	while IFS= read -r -d '' d; do
+	while IFS= read -r d; do
 		version_dirs+=("$d")
-	done < <(find "$staging/versions" -mindepth 1 -maxdepth 1 -type d -name 'v*' -print0 2>/dev/null || true)
+	done < <(ls -1d "$staging/versions"/v* 2>/dev/null || true)
 fi
 if [ "${#version_dirs[@]}" -lt 1 ]; then
 	echo "Windows portable versions/ tree is missing an active version directory" >&2
@@ -48,7 +48,7 @@ if [ -z "$active_dir" ]; then
 	active_dir=""
 	for d in "${version_dirs[@]}"; do
 		base=$(basename "$d")
-		if [ -f "$d/reasonix-desktop.exe" ] && [ -f "$d/reasonix-update-helper.exe" ]; then
+		if [ -f "$d/reasonix-wails.exe" ] && [ -f "$d/reasonix-update-helper.exe" ]; then
 			active_dir="versions/$base"
 			break
 		fi
@@ -63,7 +63,7 @@ version_path="$staging/$active_dir"
 	echo "Windows portable activeDir does not exist: $active_dir" >&2
 	exit 1
 }
-for name in reasonix-desktop.exe reasonix-update-helper.exe; do
+for name in reasonix-wails.exe reasonix-update-helper.exe; do
 	[ -f "$version_path/$name" ] || {
 		echo "Windows portable version member is missing: $active_dir/$name" >&2
 		exit 1
@@ -71,8 +71,8 @@ for name in reasonix-desktop.exe reasonix-update-helper.exe; do
 done
 
 # Guard must not persist in a normal portable layout.
-if [ -e "$staging/reasonix-guard.exe" ] || [ -e "$staging/reasonix-desktop.exe" ]; then
-	echo "Windows portable must not ship flat reasonix-guard.exe or reasonix-desktop.exe at InstallRoot" >&2
+if [ -e "$staging/reasonix-guard.exe" ] || [ -e "$staging/reasonix-wails.exe" ]; then
+	echo "Windows portable must not ship flat reasonix-guard.exe or reasonix-wails.exe at InstallRoot" >&2
 	exit 1
 fi
 

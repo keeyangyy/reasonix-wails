@@ -35,7 +35,7 @@ func fileUpdateInstallReceiptsForTest(t *testing.T, tx *UpdateTransaction) []Fil
 func TestFileUpdateRollbackRestoresPreviousBinary(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -66,7 +66,7 @@ func TestFileUpdateRollbackRestoresPreviousBinary(t *testing.T) {
 
 func TestReconcilePendingFileUpdateCancelsPreparedReleaseUnit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -107,7 +107,7 @@ func TestReconcilePendingFileUpdateCancelsPreparedReleaseUnit(t *testing.T) {
 // (#7391, #7416).
 func TestReconcilePendingFileUpdateQuarantinesForeignTarget(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -155,7 +155,7 @@ func TestReconcilePendingFileUpdateQuarantinesForeignTarget(t *testing.T) {
 // first) do not dead-end forever on the marker (#7391, #7416).
 func TestPrepareFileUpdateQuarantinesForeignTarget(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -170,7 +170,7 @@ func TestPrepareFileUpdateQuarantinesForeignTarget(t *testing.T) {
 	// directory from the first transaction's target.
 	newLauncherDir := t.TempDir()
 	repairExecutable = func() (string, error) { return filepath.Join(newLauncherDir, "reasonix-guard"), nil }
-	newTarget := filepath.Join(newLauncherDir, "reasonix-desktop")
+	newTarget := filepath.Join(newLauncherDir, "reasonix-wails")
 	if err := os.WriteFile(newTarget, []byte("old2"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestPrepareFileUpdateQuarantinesForeignTarget(t *testing.T) {
 
 func TestReconcileForeignQuarantineRejectsMarkerReplacement(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -225,7 +225,7 @@ func TestReconcileForeignQuarantineRejectsMarkerReplacement(t *testing.T) {
 
 func TestSelfDescribingInvalidTransactionRemainsBlocked(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -256,7 +256,7 @@ func TestSelfDescribingInvalidTransactionRemainsBlocked(t *testing.T) {
 
 func TestReconcilePendingFileUpdateLeavesBoundProbationaryReleaseUnit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -307,7 +307,7 @@ func TestUpdateVersionsEqualNormalizesLeadingV(t *testing.T) {
 
 func TestReconcilePendingFileUpdateCommitsStaleProbationaryReleaseUnit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -349,7 +349,7 @@ func TestReconcilePendingFileUpdateCommitsStaleProbationaryReleaseUnit(t *testin
 
 func TestAbandonPendingUpdateCommitsProbationaryReleaseUnit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -385,7 +385,7 @@ func TestAbandonPendingUpdateCommitsProbationaryReleaseUnit(t *testing.T) {
 
 func TestAbandonPendingUpdateForceRetiresWhenBackupDigestBroken(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -435,7 +435,7 @@ func TestAbandonPendingUpdateForceRetiresWhenBackupDigestBroken(t *testing.T) {
 
 func TestReconcilePendingFileUpdateRollsBackPublishedReleaseUnit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -952,7 +952,7 @@ func TestRollbackPendingUpdateRejectsUnexpectedVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(dir, "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -985,7 +985,7 @@ func TestRollbackPendingUpdateFailsClosedWhenStateLockIsUnavailable(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1027,7 +1027,7 @@ func TestFileUpdateRollbackRestoresReleaseUnit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1083,7 +1083,7 @@ func TestCancelPendingUpdateRemovesReleaseUnitBackups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1117,7 +1117,7 @@ func TestPrepareFileUpdatePreservesExistingPendingTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1169,7 +1169,7 @@ func TestExactUpdateTransitionsIgnoreLaterSameVersionTransaction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1202,7 +1202,7 @@ func TestExactUpdateTransitionsIgnoreLaterSameVersionTransaction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1244,7 +1244,7 @@ func TestExactUpdateTransitionsIgnoreLaterSameVersionTransaction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1286,7 +1286,7 @@ func TestUpdateTransitionsRecheckPendingAfterTargetLock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1334,7 +1334,7 @@ func TestUpdateTransitionsRecheckPendingAfterTargetLock(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1379,7 +1379,7 @@ func TestGenericUpdateTransitionsBindPendingBeforeWaitingForLock(t *testing.T) {
 	t.Run("rollback", func(t *testing.T) {
 		t.Setenv("REASONIX_HOME", t.TempDir())
 		dir := t.TempDir()
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1418,7 +1418,7 @@ func TestGenericUpdateTransitionsBindPendingBeforeWaitingForLock(t *testing.T) {
 	t.Run("healthy", func(t *testing.T) {
 		t.Setenv("REASONIX_HOME", t.TempDir())
 		dir := t.TempDir()
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1459,7 +1459,7 @@ func TestGenericUpdateTransitionsBindPendingBeforeWaitingForLock(t *testing.T) {
 	t.Run("cancel", func(t *testing.T) {
 		t.Setenv("REASONIX_HOME", t.TempDir())
 		dir := t.TempDir()
-		target := filepath.Join(dir, "reasonix-desktop")
+		target := filepath.Join(dir, "reasonix-wails")
 		guard := filepath.Join(dir, "reasonix-guard")
 		originalExecutable := repairExecutable
 		repairExecutable = func() (string, error) { return guard, nil }
@@ -1499,7 +1499,7 @@ func TestCancelPendingFileUpdateRejectsLiveDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1536,7 +1536,7 @@ func TestRecoverFailedInstallRejectsStaleSameVersionIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1586,7 +1586,7 @@ func TestMarkUpdateHealthyExactRejectsRewrittenTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1623,7 +1623,7 @@ func TestRecoverFailedInstallRejectsRewrittenExactTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1670,7 +1670,7 @@ func TestClearUpdateApplyFailureExactPreservesDifferentTransactionMarker(t *test
 		ToVersion:     "v2",
 		Platform:      "windows/amd64",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(t.TempDir(), "reasonix-desktop"),
+		TargetPath:    filepath.Join(t.TempDir(), "reasonix-wails"),
 		CreatedAt:     "2026-07-29T00:00:00Z",
 	}
 	second := *first
@@ -1704,7 +1704,7 @@ func TestRecoverFailedInstallRollsBackAndClearsMarker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1755,7 +1755,7 @@ func TestRecoverFailedInstallAfterInstalledSidecarCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1866,7 +1866,7 @@ func TestRecoverFailedInstallIgnoresMarkerForAnotherVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1902,7 +1902,7 @@ func TestRecoverFailedInstallIgnoresMarkerForAnotherVersion(t *testing.T) {
 func TestMarkUpdateApplyFailedPreservesNewMarkerAfterPendingReplacement(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -1966,7 +1966,7 @@ func TestRecoverFailedInstallRejectsLegacyMarkerRegardlessVersionAndTime(t *test
 			if err != nil {
 				t.Fatal(err)
 			}
-			target := filepath.Join(dir, "reasonix-desktop")
+			target := filepath.Join(dir, "reasonix-wails")
 			guard := filepath.Join(dir, "reasonix-guard")
 			originalExecutable := repairExecutable
 			repairExecutable = func() (string, error) { return guard, nil }
@@ -2019,7 +2019,7 @@ func TestRecoverFailedInstallRejectsLegacyMarkerRegardlessVersionAndTime(t *test
 func TestHealthyUpdateRemovesBackup(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -2053,7 +2053,7 @@ func TestHealthyUpdateRemovesBackup(t *testing.T) {
 func TestMarkUpdateHealthyRejectsFileTransactionWithoutInstalledBinding(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2088,7 +2088,7 @@ func TestRecordClaimedFileUpdateInstalledBindsCompleteReleaseUnit(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2165,7 +2165,7 @@ func TestRecordClaimedFileUpdateInstalledBindsOptionalMissingSibling(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	optionalCLI := filepath.Join(dir, "reasonix")
 	originalExecutable := repairExecutable
@@ -2208,7 +2208,7 @@ func TestReadPendingUpdateRejectsPartialInstalledReleaseUnitState(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2235,7 +2235,7 @@ func TestReadPendingUpdateRejectsPartialInstalledReleaseUnitState(t *testing.T) 
 func TestHealthyFileUpdateRejectsBackupDrift(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -2321,7 +2321,7 @@ func TestMarkUpdateHealthyPreservesPendingRecreatedDuringCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2366,7 +2366,7 @@ func TestMarkUpdateHealthyPreservesBackupRecreatedDuringCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2413,7 +2413,7 @@ func TestFileUpdateRollbackCompensatesOnPartialFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	added := filepath.Join(dir, "reasonix-update-helper.exe")
 	originalExecutable := repairExecutable
@@ -2497,7 +2497,7 @@ func TestFileUpdateRollbackRejectsStageChangedDuringPublish(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2539,7 +2539,7 @@ func TestFileUpdateRollbackPreservesAsideReplacedBeforeCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2582,7 +2582,7 @@ func TestFileUpdateRollbackCompensationPreservesRecreatedTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2636,7 +2636,7 @@ func TestFileUpdateRollbackRetryPreservesRetainedNewBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2712,7 +2712,7 @@ func TestFileUpdateRollbackRechecksWholeReleaseUnitBeforeCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2775,7 +2775,7 @@ func TestRollbackPendingUpdateStateRechecksLiveUnitAfterStaging(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2823,7 +2823,7 @@ func TestRollbackPendingUpdateStateRejectsDriftInsideRetainRename(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2872,7 +2872,7 @@ func TestRollbackPendingUpdateStatePreservesRecreateBeforeStagePublish(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -2988,7 +2988,7 @@ func TestRollbackReportsPendingCleanupFailureAndRemainsRetryable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3037,7 +3037,7 @@ func TestFileUpdateRollbackStageFailureLeavesInstallUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3091,7 +3091,7 @@ func TestPrepareFileUpdateDoesNotOverwriteLegacyBackupName(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3103,7 +3103,7 @@ func TestPrepareFileUpdateDoesNotOverwriteLegacyBackupName(t *testing.T) {
 	if err := os.MkdirAll(backupDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	legacyBackup := filepath.Join(backupDir, "reasonix-desktop.previous")
+	legacyBackup := filepath.Join(backupDir, "reasonix-wails.previous")
 	if err := os.WriteFile(legacyBackup, []byte("unowned"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -3127,7 +3127,7 @@ func TestFileUpdateRollbackBypassesAndPreservesCrashedStage(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3165,7 +3165,7 @@ func TestRecordClaimedFileUpdateInstalledKeepsPendingPublicDuringSidecarCommit(t
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3218,7 +3218,7 @@ func TestMarkUpdateHealthyRechecksReleaseUnitAfterPendingDisplacement(t *testing
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3270,7 +3270,7 @@ func TestMarkUpdateHealthyRechecksReleaseUnitAfterPendingDisplacement(t *testing
 func TestMarkUpdateHealthyFailsClosedWhenPendingDisappearsBeforeCommit(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3309,7 +3309,7 @@ func TestFileUpdateRollbackRechecksReleaseUnitAfterPendingDisplacement(t *testin
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3350,7 +3350,7 @@ func TestFileUpdateRollbackRechecksReleaseUnitAfterPendingDisplacement(t *testin
 func TestRollbackPendingUpdateDirectRejectsDriftWhileWaitingForTargetLock(t *testing.T) {
 	t.Setenv("REASONIX_HOME", t.TempDir())
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3440,7 +3440,7 @@ func TestFileUpdateRollbackPreservesLiveNodeWithoutInstalledOwnership(t *testing
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3472,7 +3472,7 @@ func TestPublishClaimedFileUpdateMemberUsesCompareAndPublish(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3508,7 +3508,7 @@ func TestRecordClaimedFileUpdateInstalledRejectsDriftAfterPublish(t *testing.T) 
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3544,7 +3544,7 @@ func TestRecordClaimedFileUpdateInstalledRequiresCompletePublishReceipts(t *test
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3581,7 +3581,7 @@ func TestPublishClaimedFileUpdateMemberPreservesConcurrentRecreate(t *testing.T)
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3622,7 +3622,7 @@ func TestPublishClaimedFileUpdateMemberRestoresPreparedFileWhenStageSwapped(t *t
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3638,7 +3638,7 @@ func TestPublishClaimedFileUpdateMemberRestoresPreparedFileWhenStageSwapped(t *t
 	originalHook := fileUpdateAfterRetain
 	var hookErr error
 	fileUpdateAfterRetain = func(_, _ string) {
-		stages, err := filepath.Glob(filepath.Join(dir, ".reasonix-desktop.reasonix-update-stage-*"))
+		stages, err := filepath.Glob(filepath.Join(dir, ".reasonix-wails.reasonix-update-stage-*"))
 		if err != nil {
 			hookErr = err
 			return
@@ -3656,7 +3656,7 @@ func TestPublishClaimedFileUpdateMemberRestoresPreparedFileWhenStageSwapped(t *t
 	t.Cleanup(func() { fileUpdateAfterRetain = originalHook })
 
 	err = PublishClaimedFileUpdateMember(claimed, target, []byte("new"), 0o700)
-	if err == nil || !strings.Contains(err.Error(), "installed reasonix-desktop changed") {
+	if err == nil || !strings.Contains(err.Error(), "installed reasonix-wails changed") {
 		t.Fatalf("stage-swapped member publish = %v", err)
 	}
 	if hookErr != nil {
@@ -3688,7 +3688,7 @@ func TestPublishClaimedFileUpdateMemberRejectsSameContentStageSymlink(t *testing
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -3708,7 +3708,7 @@ func TestPublishClaimedFileUpdateMemberRejectsSameContentStageSymlink(t *testing
 	originalHook := fileUpdateAfterRetain
 	var hookErr error
 	fileUpdateAfterRetain = func(_, _ string) {
-		stages, err := filepath.Glob(filepath.Join(dir, ".reasonix-desktop.reasonix-update-stage-*"))
+		stages, err := filepath.Glob(filepath.Join(dir, ".reasonix-wails.reasonix-update-stage-*"))
 		if err != nil {
 			hookErr = err
 			return
@@ -3729,7 +3729,7 @@ func TestPublishClaimedFileUpdateMemberRejectsSameContentStageSymlink(t *testing
 	if hookErr != nil {
 		t.Skipf("replace staged update with symlink: %v", hookErr)
 	}
-	if err == nil || !strings.Contains(err.Error(), "installed reasonix-desktop changed") {
+	if err == nil || !strings.Contains(err.Error(), "installed reasonix-wails changed") {
 		t.Fatalf("symlink-swapped member publish = %v", err)
 	}
 	if got, err := os.ReadFile(target); err != nil || string(got) != "old" {
@@ -3754,7 +3754,7 @@ func TestFileUpdateRollbackCleansInstalledNodeBoundToTransaction(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }

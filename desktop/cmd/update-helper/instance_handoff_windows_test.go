@@ -23,8 +23,8 @@ func stubDesktopHandoff(t *testing.T) {
 }
 func TestDesktopHandoffConfirmsOnlyTargetInstance(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
-	target := filepath.Join(root, "reasonix-desktop.exe")
-	old := filepath.Join(t.TempDir(), "reasonix-desktop.exe")
+	target := filepath.Join(root, "reasonix-wails.exe")
+	old := filepath.Join(t.TempDir(), "reasonix-wails.exe")
 	for _, p := range []string{target, old} {
 		if err := os.WriteFile(p, []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
@@ -92,7 +92,7 @@ func TestPublishedRelaunchDoesNotReportSuccessWhenOldOwnerWins(t *testing.T) {
 	originalStart := startRelaunchFn
 	t.Cleanup(func() { startRelaunchFn = originalStart })
 	root := t.TempDir()
-	target := filepath.Join(root, "reasonix-desktop.exe")
+	target := filepath.Join(root, "reasonix-wails.exe")
 	if err := os.WriteFile(target, []byte("target"), 0700); err != nil {
 		t.Fatal(err)
 	}

@@ -62,7 +62,7 @@ func TestPrepareUpdateRecoversFromUnusablePendingTransaction(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("REASONIX_HOME", home)
-			target := filepath.Join(t.TempDir(), "reasonix-desktop")
+			target := filepath.Join(t.TempDir(), "reasonix-wails")
 			originalExecutable := repairExecutable
 			repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 			t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -93,7 +93,7 @@ func TestPrepareUpdateRecoversFromUnusablePendingTransaction(t *testing.T) {
 func TestPrepareUpdateStillRefusesOverRecoverableTransaction(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(filepath.Dir(target), "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
@@ -170,7 +170,7 @@ func TestSelfDescribingTransactionIsNotTreatedAsDebris(t *testing.T) {
 		Platform:      "test",
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 		TargetKind:    "file",
-		TargetPath:    filepath.Join("elsewhere", "reasonix-desktop"),
+		TargetPath:    filepath.Join("elsewhere", "reasonix-wails"),
 	})
 	if err != nil {
 		t.Fatal(err)

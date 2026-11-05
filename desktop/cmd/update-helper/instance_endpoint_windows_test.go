@@ -81,8 +81,8 @@ func TestNativeEndpointIsolationAndHandoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(root, "reasonix-desktop.exe")
-	old := filepath.Join(root, "versions", "old", "reasonix-desktop.exe")
+	target := filepath.Join(root, "reasonix-wails.exe")
+	old := filepath.Join(root, "versions", "old", "reasonix-wails.exe")
 	if err := os.MkdirAll(filepath.Dir(old), 0700); err != nil {
 		t.Fatal(err)
 	}

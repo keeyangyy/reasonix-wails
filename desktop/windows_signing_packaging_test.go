@@ -201,8 +201,8 @@ func TestWindowsReleaseSignsPayloadBeforeRepackaging(t *testing.T) {
 		"Expand-Archive",
 		`Get-ChildItem -LiteralPath $extractRoot -Recurse -File -Filter "*.exe"`,
 		`$activeDir.Replace("\", "/") -ne "versions/$activeVersion"`,
-		`Portable = (Join-Path $activeDir "reasonix-desktop.exe")`,
-		`Portable = "reasonix-desktop.exe"`,
+		`Portable = (Join-Path $activeDir "reasonix-wails.exe")`,
+		`Portable = "reasonix-wails.exe"`,
 		"Portable archive must contain exactly",
 		"Get-FileHash -Algorithm SHA256",
 	} {
@@ -249,7 +249,7 @@ func TestWindowsPackagerRejectsMissingOrPartialRequiredPayloadManifest(t *testin
 		t.Run(tc.name, func(t *testing.T) {
 			payload := t.TempDir()
 			for _, name := range []string{
-				"reasonix-desktop.exe",
+				"reasonix-wails.exe",
 				"reasonix-guard.exe",
 				"reasonix-launcher.exe",
 				"reasonix-update-helper.exe",
@@ -281,7 +281,7 @@ func TestWindowsPackagerRejectsMissingOrPartialRequiredPayloadManifest(t *testin
 
 func TestSignPathConfigurationsCoverExactWindowsPayload(t *testing.T) {
 	expected := map[string]bool{
-		"reasonix-desktop.exe":       true,
+		"reasonix-wails.exe":       true,
 		"reasonix-guard.exe":         true,
 		"reasonix-launcher.exe":      true,
 		"reasonix-update-helper.exe": true,

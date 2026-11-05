@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	macBundleID         = "com.wails.reasonix-desktop"
+	macBundleID         = "com.wails.reasonix-wails"
 	macUpdateHandoffArg = "--reasonix-mac-update-handoff"
 	macHandoffReadyFD   = 3
 	macHandoffProceedFD = 4

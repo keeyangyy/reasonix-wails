@@ -20,7 +20,7 @@ const managedProviderComment = "# managed by the Reasonix desktop credential pro
 
 // managedProviderNamePrefix is the provider-name prefix every desktop proxy
 // provider carries (desktop/cred_proxy.go credentialProxyProviderName + "-").
-const managedProviderNamePrefix = "reasonix-desktop-proxy-"
+const managedProviderNamePrefix = "reasonix-wails-proxy-"
 
 // tomlAssignmentString parses trimmed as a TOML `key = "value"` line and
 // returns the unquoted string value. Whitespace around the equals sign and an

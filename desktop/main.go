@@ -1,4 +1,4 @@
-// Command reasonix-desktop is the Wails shell around the Reasonix kernel: a native
+// Command reasonix-wails is the Wails shell around the Reasonix kernel: a native
 // window hosting a webview frontend, with the Go-side control.Controller bound
 // directly to the UI (no HTTP hop — bindings in, runtime events out). It lives in
 // a nested module (reasonix/desktop) so the CGO/WebKit desktop build never touches
@@ -244,7 +244,7 @@ func main() {
 			WebviewGpuIsDisabled: windowsWebview2GPUDisabled(),
 			// Keep WebView2 profile data (localStorage, IndexedDB, cache) in a
 			// product-private directory. The previous build inherited the
-			// upstream `%APPDATA%\reasonix-desktop.exe` profile, so this both
+			// upstream `%APPDATA%\reasonix-wails.exe` profile, so this both
 			// isolates the new identity and prevents two installs from writing
 			// the same profile concurrently.
 			WebviewUserDataPath: desktopWebviewUserDataPath(),

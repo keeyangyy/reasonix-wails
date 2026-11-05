@@ -1,6 +1,6 @@
 // Command reasonix-launcher is the permanent thin desktop entry point for the
 // versioned install layout (v1.20+). It reads InstallRoot/current.json, starts
-// the active reasonix-desktop binary, and exits. It never counts crashes,
+// the active reasonix-wails binary, and exits. It never counts crashes,
 // chooses previous versions, or enters a product safe mode.
 //
 // Migration compatibility: old shortcuts may still pass "launch", "--detach",

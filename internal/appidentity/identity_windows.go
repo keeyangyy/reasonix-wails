@@ -300,7 +300,7 @@ func ownedShortcutTarget(target, installRoot string) bool {
 	for _, candidate := range []string{
 		filepath.Join(installRoot, "reasonix-launcher.exe"),
 		filepath.Join(installRoot, "Reasonix.exe"),
-		filepath.Join(installRoot, "reasonix-desktop.exe"),
+		filepath.Join(installRoot, "reasonix-wails.exe"),
 	} {
 		if sameWindowsPathOrFile(target, candidate) {
 			return true
@@ -310,13 +310,13 @@ func ownedShortcutTarget(target, installRoot string) bool {
 	if err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		parts := strings.Split(rel, string(filepath.Separator))
 		if len(parts) == 3 && strings.EqualFold(parts[0], "versions") &&
-			strings.EqualFold(parts[2], "reasonix-desktop.exe") {
+			strings.EqualFold(parts[2], "reasonix-wails.exe") {
 			return true
 		}
 	}
 	versionDir := filepath.Dir(target)
 	versionsDir := filepath.Dir(versionDir)
-	return strings.EqualFold(filepath.Base(target), "reasonix-desktop.exe") &&
+	return strings.EqualFold(filepath.Base(target), "reasonix-wails.exe") &&
 		strings.EqualFold(filepath.Base(versionsDir), "versions") &&
 		sameWindowsFile(filepath.Dir(versionsDir), installRoot)
 }

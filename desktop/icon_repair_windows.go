@@ -138,7 +138,7 @@ func repairWindowsShortcut(shortcutPath, launcher string) (bool, error) {
 		return false, nil
 	}
 	if repointTarget {
-		// A version-scoped target points into versions/<v>/reasonix-desktop.exe,
+		// A version-scoped target points into versions/<v>/reasonix-wails.exe,
 		// which the updater deletes when it switches or prunes versions. Repoint
 		// it at the stable launcher so the shortcut survives updates.
 		result, err := oleutil.PutProperty(shortcut, "TargetPath", launcher)
@@ -182,7 +182,7 @@ func reasonixWindowsShortcutTarget(target, launcher string) bool {
 	for _, owned := range []string{
 		launcher,
 		filepath.Join(root, "Reasonix.exe"),
-		filepath.Join(root, "reasonix-desktop.exe"),
+		filepath.Join(root, "reasonix-wails.exe"),
 	} {
 		if strings.EqualFold(target, owned) {
 			return true
@@ -192,7 +192,7 @@ func reasonixWindowsShortcutTarget(target, launcher string) bool {
 }
 
 // reasonixWindowsVersionedTarget reports whether target points into this
-// install's versions/<version>/reasonix-desktop.exe, a version-scoped path
+// install's versions/<version>/reasonix-wails.exe, a version-scoped path
 // that the updater deletes when it switches or prunes versions. Such targets
 // dangle after an update, so repair must repoint them at the stable launcher.
 func reasonixWindowsVersionedTarget(target, launcher string) bool {
@@ -203,7 +203,7 @@ func reasonixWindowsVersionedTarget(target, launcher string) bool {
 	}
 	parts := strings.Split(rel, string(filepath.Separator))
 	return len(parts) == 3 && strings.EqualFold(parts[0], "versions") &&
-		strings.EqualFold(parts[2], "reasonix-desktop.exe")
+		strings.EqualFold(parts[2], "reasonix-wails.exe")
 }
 
 // repairWindowsShortcutPlan decides which owned-shortcut properties need
@@ -222,7 +222,7 @@ func repairWindowsShortcutPlan(target, iconLocation, launcher string, versionedL
 // disappeared. A valid current.json is the commit point, so a leftover flat
 // binary is not a live flat install when best-effort cleanup could not remove it.
 func reasonixWindowsFlatDesktopTarget(target, launcher string, versionedLayout bool) bool {
-	flat := filepath.Join(filepath.Dir(filepath.Clean(strings.TrimSpace(launcher))), "reasonix-desktop.exe")
+	flat := filepath.Join(filepath.Dir(filepath.Clean(strings.TrimSpace(launcher))), "reasonix-wails.exe")
 	if !strings.EqualFold(filepath.Clean(strings.TrimSpace(target)), flat) {
 		return false
 	}
@@ -251,13 +251,13 @@ func reasonixWindowsStaleIcon(iconLocation, launcher string, versionedLayout boo
 	}
 	parts := strings.Split(rel, string(filepath.Separator))
 	if len(parts) == 3 && strings.EqualFold(parts[0], "versions") &&
-		strings.EqualFold(parts[2], "reasonix-desktop.exe") {
+		strings.EqualFold(parts[2], "reasonix-wails.exe") {
 		return true
 	}
 	// Legacy root-level icon: stale once the versioned layout is committed, even
 	// if best-effort cleanup left the old binary behind. Without current.json,
 	// require the file to be gone so a live flat install keeps its working icon.
-	if len(parts) == 1 && strings.EqualFold(parts[0], "reasonix-desktop.exe") {
+	if len(parts) == 1 && strings.EqualFold(parts[0], "reasonix-wails.exe") {
 		if versionedLayout {
 			return true
 		}

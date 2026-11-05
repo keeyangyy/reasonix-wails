@@ -130,7 +130,7 @@ func TestActivateInstallerStagingPublishesVersionAndRootEntries(t *testing.T) {
 	if got, err := os.ReadFile(activeDesktop); err != nil || string(got) != "new-"+installlayout.DesktopBinaryName() {
 		t.Fatalf("active desktop=%q err=%v", got, err)
 	}
-	for _, name := range []string{installlayout.LauncherBinaryName(), installlayout.CLIBinaryName()} {
+	for _, name := range []string{installlayout.LauncherBinaryName()} {
 		if info, err := os.Lstat(filepath.Join(root, name)); err != nil || !info.Mode().IsRegular() {
 			t.Fatalf("root entry %s missing or invalid: %v", name, err)
 		}

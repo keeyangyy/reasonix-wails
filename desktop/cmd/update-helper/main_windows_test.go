@@ -95,7 +95,7 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 	stubDesktopHandoff(t)
 	installDir := t.TempDir()
 	seed := t.TempDir()
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"} {
+	for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe"} {
 		if err := os.WriteFile(filepath.Join(seed, name), []byte("old-"+name), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -105,10 +105,10 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 		Version:     "v1.20.0",
 		RequestID:   "seed-windows-helper",
 		Members: []installlayout.Member{
-			{Name: "reasonix-desktop.exe", Path: filepath.Join(seed, "reasonix-desktop.exe")},
+			{Name: "reasonix-wails.exe", Path: filepath.Join(seed, "reasonix-wails.exe")},
 			{Name: "reasonix-update-helper.exe", Path: filepath.Join(seed, "reasonix-update-helper.exe")},
 		},
-		RequiredNames: []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"},
+		RequiredNames: []string{"reasonix-wails.exe", "reasonix-update-helper.exe"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 		return true, nil
 	}
 	runInstallerFn = func(_ string, staging string) error {
-		for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+		for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 			if err := os.WriteFile(filepath.Join(staging, name), []byte("new-"+name), 0o700); err != nil {
 				return err
 			}
@@ -187,7 +187,7 @@ func TestRunVersionedUpdateRelaunchesLauncherNotOldDesktop(t *testing.T) {
 	stubDesktopHandoff(t)
 	installDir := t.TempDir()
 	seed := t.TempDir()
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+	for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 		if err := os.WriteFile(filepath.Join(seed, name), []byte("old-"+name), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestRunVersionedUpdateRelaunchesLauncherNotOldDesktop(t *testing.T) {
 		SchemaVersion: 1,
 		ToVersion:     "v1.24.0",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		CreatedAt:     "2026-01-01T00:00:00Z",
 	}, seed); err != nil {
 		t.Fatal(err)
@@ -226,7 +226,7 @@ func TestRunVersionedUpdateRelaunchesLauncherNotOldDesktop(t *testing.T) {
 	claimInstallerExecutionFn = func(string, string) (func(), error) { return func() {}, nil }
 	reconcileWindowsUninstallRegistrationFn = func(string, string) (bool, error) { return true, nil }
 	runInstallerFn = func(_ string, staging string) error {
-		for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+		for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 			if err := os.WriteFile(filepath.Join(staging, name), []byte("new-"+name), 0o700); err != nil {
 				return err
 			}
@@ -289,7 +289,7 @@ func TestRelaunchPublishedInstallBlockedOwnerPreventsRelaunch(t *testing.T) {
 	}
 	if code := relaunchPublishedInstall(
 		log.New(io.Discard, "", 0),
-		filepath.Join(t.TempDir(), "reasonix-desktop.exe"),
+		filepath.Join(t.TempDir(), "reasonix-wails.exe"),
 		t.TempDir(),
 		"relaunch",
 	); code != 1 {
@@ -362,7 +362,7 @@ func TestRunHoldsReleaseUnitLockAcrossInstallerHandoff(t *testing.T) {
 		"--installer", filepath.Join(installDir, "installer.exe"),
 		"--installer-sha256", testInstallerSHA256,
 		"--install-dir", installDir,
-		"--relaunch", filepath.Join(installDir, "reasonix-desktop.exe"),
+		"--relaunch", filepath.Join(installDir, "reasonix-wails.exe"),
 		"--to-version", pending.ToVersion,
 		"--created-at", pending.CreatedAt,
 		"--transaction-id", repair.UpdateTransactionID(pending),
@@ -373,7 +373,7 @@ func TestRunHoldsReleaseUnitLockAcrossInstallerHandoff(t *testing.T) {
 		pending.ToVersion,
 		pending.CreatedAt,
 		repair.UpdateTransactionID(pending),
-		filepath.Join(installDir, "reasonix-desktop.exe"),
+		filepath.Join(installDir, "reasonix-wails.exe"),
 		strings.Join(windowsReleaseUnitPaths(installDir), "\x00"),
 	}, "\x01")
 	if len(events) != 10 || events[0] != "wait" || events[1] != wantClaim ||
@@ -444,7 +444,7 @@ func TestRunRelaunchesWhenLegacyPendingCannotBeClaimed(t *testing.T) {
 	waitForProcessExitFn = func(uint32, time.Duration) error { return nil }
 	relaunched := false
 	startRelaunchFn = func(path, dir string) error {
-		relaunched = path == filepath.Join(installDir, "reasonix-desktop.exe") && dir == installDir
+		relaunched = path == filepath.Join(installDir, "reasonix-wails.exe") && dir == installDir
 		return nil
 	}
 	claimPendingFileUpdateFn = func(string, string, string, string, []string, time.Duration) (*repair.UpdateTransaction, func(), error) {
@@ -456,7 +456,7 @@ func TestRunRelaunchesWhenLegacyPendingCannotBeClaimed(t *testing.T) {
 		"--installer", filepath.Join(installDir, "installer.exe"),
 		"--installer-sha256", testInstallerSHA256,
 		"--install-dir", installDir,
-		"--relaunch", filepath.Join(installDir, "reasonix-desktop.exe"),
+		"--relaunch", filepath.Join(installDir, "reasonix-wails.exe"),
 		"--to-version", "v2",
 		"--created-at", "2026-08-02T00:00:00Z",
 		"--transaction-id", strings.Repeat("a", 64),
@@ -508,7 +508,7 @@ func TestRunCancelsTransactionWhenStagedExtractionFails(t *testing.T) {
 		"--installer", filepath.Join(installDir, "installer.exe"),
 		"--installer-sha256", testInstallerSHA256,
 		"--install-dir", installDir,
-		"--relaunch", filepath.Join(installDir, "reasonix-desktop.exe"),
+		"--relaunch", filepath.Join(installDir, "reasonix-wails.exe"),
 		"--to-version", "v2",
 		"--created-at", claimed.CreatedAt,
 		"--transaction-id", transactionID,
@@ -573,7 +573,7 @@ func TestRunTreatsInstalledReleaseUnitRecordingFailureAsApplyFailure(t *testing.
 		"--installer", filepath.Join(installDir, "installer.exe"),
 		"--installer-sha256", testInstallerSHA256,
 		"--install-dir", installDir,
-		"--relaunch", filepath.Join(installDir, "reasonix-desktop.exe"),
+		"--relaunch", filepath.Join(installDir, "reasonix-wails.exe"),
 		"--to-version", "v2",
 		"--created-at", claimed.CreatedAt,
 		"--transaction-id", transactionID,
@@ -634,7 +634,7 @@ func TestRunRelaunchesWhenStagingIdentityCannotBeBound(t *testing.T) {
 		"--installer", filepath.Join(installDir, "installer.exe"),
 		"--installer-sha256", testInstallerSHA256,
 		"--install-dir", installDir,
-		"--relaunch", filepath.Join(installDir, "reasonix-desktop.exe"),
+		"--relaunch", filepath.Join(installDir, "reasonix-wails.exe"),
 		"--to-version", claimed.ToVersion,
 		"--created-at", claimed.CreatedAt,
 		"--transaction-id", repair.UpdateTransactionID(claimed),

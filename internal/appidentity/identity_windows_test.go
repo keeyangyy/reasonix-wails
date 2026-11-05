@@ -22,8 +22,8 @@ func TestOwnedShortcutTargetCoversStableAndVersionedEntries(t *testing.T) {
 	}{
 		{filepath.Join(root, "reasonix-launcher.exe"), true},
 		{filepath.Join(root, "Reasonix.exe"), true},
-		{filepath.Join(root, "reasonix-desktop.exe"), true},
-		{filepath.Join(root, "versions", "v1.20.0", "reasonix-desktop.exe"), true},
+		{filepath.Join(root, "reasonix-wails.exe"), true},
+		{filepath.Join(root, "versions", "v1.20.0", "reasonix-wails.exe"), true},
 		{filepath.Join(root, "versions", "v1.20.0", "reasonix-cli.exe"), false},
 		{filepath.Join(`D:\Apps`, "Reasonix", "reasonix-launcher.exe"), false},
 	}
@@ -59,14 +59,14 @@ func TestOwnedShortcutTargetAcceptsVersionedDesktopThroughJunction(t *testing.T)
 	if err := os.MkdirAll(versionDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(versionDir, "reasonix-desktop.exe"), []byte("desktop"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(versionDir, "reasonix-wails.exe"), []byte("desktop"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	junction := filepath.Join(t.TempDir(), "current")
 	if output, err := exec.Command("cmd", "/c", "mklink", "/J", junction, root).CombinedOutput(); err != nil {
 		t.Fatalf("create directory junction: %v: %s", err, output)
 	}
-	target := filepath.Join(junction, "versions", "v1.20.0", "reasonix-desktop.exe")
+	target := filepath.Join(junction, "versions", "v1.20.0", "reasonix-wails.exe")
 	if !ownedShortcutTarget(target, root) {
 		t.Fatalf("junction target %q was not recognised under %q", target, root)
 	}
@@ -120,7 +120,7 @@ func TestRepairOwnedShortcutPersistsAppUserModelID(t *testing.T) {
 func TestRepairOwnedShortcutLeavesSeparateReasonix053InstallUntouched(t *testing.T) {
 	currentRoot := t.TempDir()
 	legacyRoot := t.TempDir()
-	legacyTarget := filepath.Join(legacyRoot, "reasonix-desktop.exe")
+	legacyTarget := filepath.Join(legacyRoot, "reasonix-wails.exe")
 	if err := os.WriteFile(legacyTarget, []byte("legacy tauri desktop"), 0o600); err != nil {
 		t.Fatal(err)
 	}

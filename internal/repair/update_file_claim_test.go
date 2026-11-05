@@ -16,7 +16,7 @@ func prepareTestFileUpdateClaim(t *testing.T) (*UpdateTransaction, string, []str
 		t.Fatal(err)
 	}
 	paths := []string{
-		filepath.Join(dir, "reasonix-desktop"),
+		filepath.Join(dir, "reasonix-wails"),
 		filepath.Join(dir, "reasonix-guard"),
 		filepath.Join(dir, "reasonix"),
 	}
@@ -126,7 +126,7 @@ func TestClaimPendingFileUpdateRejectsPreparedMissingFileAppearing(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	added := filepath.Join(dir, "reasonix-update-helper.exe")
 	for _, path := range []string{target, guard} {

@@ -45,7 +45,7 @@ fi
 work_dir="$(mktemp -d)"
 cleanup() {
 	case "$work_dir" in
-	*/tmp.* | */reasonix-desktop-release.*) rm -rf -- "$work_dir" ;;
+	*/tmp.* | */reasonix-wails-release.*) rm -rf -- "$work_dir" ;;
 	*) echo "refusing to clean unexpected Desktop release temp directory: $work_dir" >&2 ;;
 	esac
 }

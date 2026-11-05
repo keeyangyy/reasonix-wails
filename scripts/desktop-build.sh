@@ -35,7 +35,7 @@ fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APPNAME="Reasonix"            # wails.json productName -> Reasonix.app
-BINNAME="reasonix-desktop"    # wails.json outputfilename -> Windows binary name
+BINNAME="reasonix-wails"    # wails.json outputfilename -> Windows binary name
 GUARDNAME="reasonix-guard"
 LAUNCHERNAME="reasonix-launcher"
 windows_resource_tool_dir=""

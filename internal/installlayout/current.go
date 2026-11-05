@@ -246,9 +246,9 @@ func cleanInstallRoot(installRoot string) (string, error) {
 // DesktopBinaryName is the platform-specific desktop executable base name.
 func DesktopBinaryName() string {
 	if runtime.GOOS == "windows" {
-		return "reasonix-desktop.exe"
+		return "reasonix-wails.exe"
 	}
-	return "reasonix-desktop"
+	return "reasonix-wails"
 }
 
 // CLIBinaryName is the platform-specific CLI executable base name inside a

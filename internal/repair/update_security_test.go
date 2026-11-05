@@ -13,8 +13,8 @@ func TestPendingUpdateRejectsTargetOutsideGuardInstall(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	guardDir := t.TempDir()
-	target := filepath.Join(t.TempDir(), "reasonix-desktop")
-	backup := filepath.Join(home, "repair", "updates", "reasonix-desktop.previous")
+	target := filepath.Join(t.TempDir(), "reasonix-wails")
+	backup := filepath.Join(home, "repair", "updates", "reasonix-wails.previous")
 	if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestInstalledUpdateStateRejectsSymlinkedParentEscape(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -100,8 +100,8 @@ func TestPendingUpdateRejectsUnexpectedReleaseFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
-	backup := filepath.Join(home, "repair", "updates", "reasonix-desktop.previous")
+	target := filepath.Join(dir, "reasonix-wails")
+	backup := filepath.Join(home, "repair", "updates", "reasonix-wails.previous")
 	if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestPendingUpdateRejectsBackupSymlinkEscape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	guard := filepath.Join(dir, "reasonix-guard")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return guard, nil }
@@ -171,7 +171,7 @@ func TestPendingUpdateRejectsBackupSymlinkEscape(t *testing.T) {
 	if _, err := PrepareFileUpdate("v1", "v2", target); err == nil {
 		t.Fatal("prepare update wrote a backup through a symlink outside the repair directory")
 	}
-	backup := filepath.Join(repairDir, "updates", "reasonix-desktop.previous")
+	backup := filepath.Join(repairDir, "updates", "reasonix-wails.previous")
 	if err := os.WriteFile(backup, []byte("old"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestPrepareFileUpdateRejectsSymlinkReleaseFile(t *testing.T) {
 	if err := os.WriteFile(outside, []byte("outside"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	if err := os.Symlink(outside, target); err != nil {
 		t.Fatal(err)
 	}
@@ -270,8 +270,8 @@ func TestPendingUpdateAcceptsMissingReleaseSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
-	backup := filepath.Join(home, "repair", "updates", "reasonix-desktop.previous")
+	target := filepath.Join(dir, "reasonix-wails")
+	backup := filepath.Join(home, "repair", "updates", "reasonix-wails.previous")
 	if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestPendingUpdateAcceptsWindowsReleaseUnit(t *testing.T) {
 	t.Cleanup(func() { repairExecutable = originalExecutable })
 
 	names := []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-guard.exe",
 		"reasonix-launcher.exe",
 		"reasonix-update-helper.exe",
@@ -358,7 +358,7 @@ func TestPendingUpdateAcceptsLinuxReleaseUnit(t *testing.T) {
 	repairExecutable = func() (string, error) { return filepath.Join(dir, "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })
 
-	names := []string{"reasonix-desktop", "reasonix-guard", "reasonix"}
+	names := []string{"reasonix-wails", "reasonix-guard", "reasonix"}
 	paths := make([]string, 0, len(names))
 	for _, name := range names {
 		path := filepath.Join(dir, name)
@@ -386,8 +386,8 @@ func TestPendingUpdateRejectsHashlessOrPrimaryLessTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	target := filepath.Join(dir, "reasonix-desktop")
-	backup := filepath.Join(home, "repair", "updates", "reasonix-desktop.previous")
+	target := filepath.Join(dir, "reasonix-wails")
+	backup := filepath.Join(home, "repair", "updates", "reasonix-wails.previous")
 	if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +509,7 @@ func TestPendingUpdateRejectsIncompleteOrInconsistentIdentity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			target := filepath.Join(dir, "reasonix-desktop")
+			target := filepath.Join(dir, "reasonix-wails")
 			guard := filepath.Join(dir, "reasonix-guard")
 			originalExecutable := repairExecutable
 			repairExecutable = func() (string, error) { return guard, nil }

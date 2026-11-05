@@ -135,8 +135,8 @@ func TestStopAndServeAliveCommands(t *testing.T) {
 	if strings.Count(stop, "ours") < 3 {
 		t.Fatalf("StopCommand must revalidate ownership during TERM/KILL wait: %s", stop)
 	}
-	withModel := ServeAliveCommand(99, paths, "--model reasonix-desktop-proxy")
-	for _, want := range []string{`R0='--model reasonix-desktop-proxy'`, `"$R0"*`} {
+	withModel := ServeAliveCommand(99, paths, "--model reasonix-wails-proxy")
+	for _, want := range []string{`R0='--model reasonix-wails-proxy'`, `"$R0"*`} {
 		if !strings.Contains(withModel, want) {
 			t.Errorf("ServeAliveCommand(requireArgs) missing %q: %s", want, withModel)
 		}
@@ -240,7 +240,7 @@ const staleAlignedProxyConfig = `# Reasonix configuration.
 default_model = "deepseek/deepseek-v4-flash"
 
 [[providers]]
-name        = "reasonix-desktop-proxy-bc965691ed1e10b8"
+name        = "reasonix-wails-proxy-bc965691ed1e10b8"
 kind        = "openai"
 base_url    = "http://127.0.0.1:46407"
 model       = "deepseek-v4-pro"
@@ -248,7 +248,7 @@ api_key_env = "REASONIX_PROXY_TOKEN_BC965691ED1E10B8"
 
 [[providers]]
 # managed by the Reasonix desktop credential proxy — safe to delete
-name = "reasonix-desktop-proxy-bc965691ed1e10b8"
+name = "reasonix-wails-proxy-bc965691ed1e10b8"
 kind = "openai"
 base_url = "http://127.0.0.1:41333"
 model = "deepseek-v4-pro"
@@ -262,7 +262,7 @@ api_key_env = "MY_KEY"
 `
 
 func TestProviderBlockIndexFindsAlignedBlock(t *testing.T) {
-	if idx := providerBlockIndex(staleAlignedProxyConfig, "reasonix-desktop-proxy-bc965691ed1e10b8"); idx < 0 {
+	if idx := providerBlockIndex(staleAlignedProxyConfig, "reasonix-wails-proxy-bc965691ed1e10b8"); idx < 0 {
 		t.Fatal("aligned provider block not found")
 	}
 	if idx := providerBlockIndex(staleAlignedProxyConfig, "mine"); idx < 0 {
@@ -274,17 +274,17 @@ func TestProviderBlockIndexFindsAlignedBlock(t *testing.T) {
 }
 
 func TestDropDuplicateProviderBlocks(t *testing.T) {
-	deduped, changed := dropDuplicateProviderBlocks(staleAlignedProxyConfig, "reasonix-desktop-proxy-bc965691ed1e10b8")
+	deduped, changed := dropDuplicateProviderBlocks(staleAlignedProxyConfig, "reasonix-wails-proxy-bc965691ed1e10b8")
 	if !changed {
 		t.Fatal("duplicate blocks were not dropped")
 	}
-	if got := strings.Count(deduped, `"reasonix-desktop-proxy-bc965691ed1e10b8"`); got != 1 {
+	if got := strings.Count(deduped, `"reasonix-wails-proxy-bc965691ed1e10b8"`); got != 1 {
 		t.Fatalf("want exactly one provider block, got %d:\n%s", got, deduped)
 	}
 	if !strings.Contains(deduped, `name = "mine"`) {
 		t.Fatalf("unrelated provider block lost:\n%s", deduped)
 	}
-	if unchanged, changed := dropDuplicateProviderBlocks(deduped, "reasonix-desktop-proxy-bc965691ed1e10b8"); changed {
+	if unchanged, changed := dropDuplicateProviderBlocks(deduped, "reasonix-wails-proxy-bc965691ed1e10b8"); changed {
 		t.Fatalf("second dedup rewrote an already-clean config:\n%s", unchanged)
 	}
 }

@@ -1002,7 +1002,7 @@ func extractBinary(targz []byte, name string) ([]byte, error) {
 
 func extractLinuxReleaseUnit(targz []byte) (map[string][]byte, error) {
 	const (
-		desktop = "reasonix-desktop"
+		desktop = "reasonix-wails"
 		guard   = "reasonix-guard"
 		cli     = "reasonix"
 	)
@@ -1055,7 +1055,7 @@ func applyLinux(targz []byte, prepared *repair.UpdateTransaction) error {
 	if err != nil {
 		return err
 	}
-	bin := release["reasonix-desktop"]
+	bin := release["reasonix-wails"]
 	guard := release["reasonix-guard"]
 	cli := release["reasonix"]
 	exe := currentExecutablePathForLinux()
@@ -1122,7 +1122,7 @@ func applyLinuxVersioned(targz []byte, targetVersion string) error {
 	defer os.RemoveAll(staging)
 	desktopPath := filepath.Join(staging, installlayout.DesktopBinaryName())
 	cliPath := filepath.Join(staging, installlayout.CLIBinaryName())
-	if err := os.WriteFile(desktopPath, release["reasonix-desktop"], 0o700); err != nil {
+	if err := os.WriteFile(desktopPath, release["reasonix-wails"], 0o700); err != nil {
 		return fmt.Errorf("update: stage Linux desktop: %w", err)
 	}
 	if err := os.WriteFile(cliPath, release["reasonix"], 0o700); err != nil {
@@ -1302,7 +1302,7 @@ func releaseUnitPathsFor(dir, goos string) []string {
 		if desktop, err := installlayout.ActiveDesktopPath(dir); err == nil {
 			paths = append(paths, desktop)
 		} else {
-			paths = append(paths, filepath.Join(dir, "reasonix-desktop.exe"))
+			paths = append(paths, filepath.Join(dir, "reasonix-wails.exe"))
 		}
 		if helper, err := installlayout.ActiveUpdateHelperPath(dir); err == nil {
 			paths = append(paths, helper)
@@ -1316,9 +1316,9 @@ func releaseUnitPathsFor(dir, goos string) []string {
 	paths := make([]string, 0, len(names)+1)
 	switch goos {
 	case "linux":
-		paths = append(paths, filepath.Join(dir, "reasonix-desktop"))
+		paths = append(paths, filepath.Join(dir, "reasonix-wails"))
 	case "windows":
-		paths = append(paths, filepath.Join(dir, "reasonix-desktop.exe"))
+		paths = append(paths, filepath.Join(dir, "reasonix-wails.exe"))
 	}
 	if len(names) == 0 {
 		return paths

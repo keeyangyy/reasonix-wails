@@ -78,7 +78,7 @@ func TestLifecycleDiagnosticsUsePreWailsOwnershipGate(t *testing.T) {
 // this, tests that persist desktop state, sessions, cache, or CLI-style config
 // can leak into the developer's real Reasonix directories.
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "reasonix-desktop-test")
+	dir, err := os.MkdirTemp("", "reasonix-wails-test")
 	if err != nil {
 		os.Exit(1)
 	}
@@ -93,7 +93,7 @@ func TestMain(m *testing.M) {
 	// first; an inherited value punches through every redirection above, so
 	// tests would read and write the operator's live home. Unset + fail closed.
 	os.Unsetenv("REASONIX_HOME")
-	if home := config.ReasonixHomeDir(); home == "" || !strings.Contains(home, "reasonix-desktop-test") {
+	if home := config.ReasonixHomeDir(); home == "" || !strings.Contains(home, "reasonix-wails-test") {
 		println("desktop TestMain: isolation failed closed — ReasonixHomeDir() =", home)
 		println("refusing to run tests against a non-isolated home (data-loss red line)")
 		os.Exit(1)

@@ -14,7 +14,7 @@ func credProxyOpts(baseURL string) *CredentialProxyOptions {
 	return &CredentialProxyOptions{
 		BaseURL:  baseURL,
 		Token:    "virtual-token-123",
-		Provider: "reasonix-desktop-proxy",
+		Provider: "reasonix-wails-proxy",
 		Model:    "deepseek-v4-flash",
 	}
 }
@@ -39,7 +39,7 @@ func TestEnsureCredentialProviderAppendsAndIsIdempotent(t *testing.T) {
 	}
 	for _, want := range []string{
 		`[[providers]]`,
-		`name = "reasonix-desktop-proxy"`,
+		`name = "reasonix-wails-proxy"`,
 		`base_url = "http://127.0.0.1:18999"`,
 		`api_key_env = "REASONIX_PROXY_TOKEN"`,
 		`model = "deepseek-v4-flash"`,
@@ -70,13 +70,13 @@ func TestEnsureCredentialProviderAppendsAndIsIdempotent(t *testing.T) {
 		t.Fatalf("port change duplicated the block:\n%s", third)
 	}
 	other := credProxyOpts("http://127.0.0.1:19000")
-	other.Provider, other.TokenEnv, other.Token = "reasonix-desktop-proxy-other", "REASONIX_PROXY_TOKEN_OTHER", "other-token"
+	other.Provider, other.TokenEnv, other.Token = "reasonix-wails-proxy-other", "REASONIX_PROXY_TOKEN_OTHER", "other-token"
 	if _, err := ensureCredentialProvider(ctx, fs, root, other); err != nil {
 		t.Fatalf("second workspace: %v", err)
 	}
 	cfg, _ := os.ReadFile(filepath.Join(root, ".reasonix", "config.toml"))
 	env, _ := os.ReadFile(filepath.Join(root, ".reasonix", ".env"))
-	if !strings.Contains(string(cfg), `name = "reasonix-desktop-proxy-other"`) || !strings.Contains(string(env), "REASONIX_PROXY_TOKEN=virtual-token-123") || !strings.Contains(string(env), "REASONIX_PROXY_TOKEN_OTHER=other-token") {
+	if !strings.Contains(string(cfg), `name = "reasonix-wails-proxy-other"`) || !strings.Contains(string(env), "REASONIX_PROXY_TOKEN=virtual-token-123") || !strings.Contains(string(env), "REASONIX_PROXY_TOKEN_OTHER=other-token") {
 		t.Fatalf("workspace credentials collided:\nconfig=%s\nenv=%s", cfg, env)
 	}
 	healed := credProxyOpts("http://127.0.0.1:20000")
@@ -124,10 +124,10 @@ func TestEnsureCredentialProviderPreservesUserConfig(t *testing.T) {
 func TestLaunchCommandCredentialInjection(t *testing.T) {
 	paths := StatePaths{Dir: "/d", TokenFile: "/d/t", PortFile: "/d/p", PidFile: "/d/i", LogFile: "/d/l"}
 	cmd := LaunchCommand("/usr/bin/reasonix", "/ws", paths, &CredentialProxyOptions{
-		BaseURL: "http://127.0.0.1:18999", Token: "to'ken $x", Provider: "reasonix-desktop-proxy", Model: "m",
+		BaseURL: "http://127.0.0.1:18999", Token: "to'ken $x", Provider: "reasonix-wails-proxy", Model: "m",
 	})
 	for _, want := range []string{
-		`--model 'reasonix-desktop-proxy'`,
+		`--model 'reasonix-wails-proxy'`,
 		`nohup '/usr/bin/reasonix' serve`,
 	} {
 		if !strings.Contains(cmd, want) {
@@ -165,7 +165,7 @@ func TestEnsureCredentialProviderMaterializesBuiltinDefault(t *testing.T) {
 		`default_model = "deepseek-flash"   # user's choice stays`,
 		`name = "deepseek-flash"`,
 		`api_key_env = "DEEPSEEK_API_KEY"`,
-		`name = "reasonix-desktop-proxy"`,
+		`name = "reasonix-wails-proxy"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("config missing %q:\n%s", want, got)
@@ -176,7 +176,7 @@ func TestEnsureCredentialProviderMaterializesBuiltinDefault(t *testing.T) {
 	}
 	// The materialized entry must come BEFORE ours so file order reads
 	// user-default then desktop-proxy.
-	if strings.Index(got, `name = "deepseek-flash"`) > strings.Index(got, `name = "reasonix-desktop-proxy"`) {
+	if strings.Index(got, `name = "deepseek-flash"`) > strings.Index(got, `name = "reasonix-wails-proxy"`) {
 		t.Fatalf("materialized entry should precede ours:\n%s", got)
 	}
 

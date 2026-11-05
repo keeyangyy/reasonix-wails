@@ -16,7 +16,7 @@ func writeReasonixTestBundle(t *testing.T, path string) {
 	}
 	plist := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.wails.reasonix-desktop</string></dict></plist>`
+<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.wails.reasonix-wails</string></dict></plist>`
 	if err := os.WriteFile(filepath.Join(path, "Contents", "Info.plist"), []byte(plist), 0o644); err != nil {
 		t.Fatal(err)
 	}

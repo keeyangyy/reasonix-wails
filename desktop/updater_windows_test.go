@@ -195,7 +195,7 @@ func TestPreparedWindowsUpdateHelperSHA256BindsReleaseUnitMember(t *testing.T) {
 	prepared := &repair.UpdateTransaction{
 		SchemaVersion: 1,
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		ToVersion:     "v2",
 		Platform:      "windows/amd64",
 		CreatedAt:     "2026-07-29T00:00:00Z",

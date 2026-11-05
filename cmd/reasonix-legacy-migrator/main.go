@@ -171,15 +171,13 @@ func migrateWithRelaunch(installRoot, activeVersion string, relaunch bool) error
 	members := []installlayout.Member{
 		{Name: desktopName, Path: flatDesktop},
 	}
+	// Legacy 1.18-1.19 trees shipped a CLI sidecar. This product no longer does,
+	// so carry the old binary over only when the tree being migrated has one.
+	requiredNames := []string{desktopName}
 	if p := optionalRegular(filepath.Join(installRoot, cliName)); p != "" {
 		members = append(members, installlayout.Member{Name: cliName, Path: p})
-	} else {
-		// CLI may be absent on some portable trees; synthesize from desktop only
-		// is not allowed — require the whitelist. Prefer copying desktop as a
-		// last-resort placeholder is forbidden; fail closed.
-		return fmt.Errorf("migrate: flat CLI binary %s is required", cliName)
+		requiredNames = append(requiredNames, cliName)
 	}
-	requiredNames := []string{desktopName, cliName}
 	if runtime.GOOS == "windows" {
 		requiredNames = append(requiredNames, helperName)
 		if p := optionalRegular(filepath.Join(installRoot, helperName)); p != "" {
@@ -261,8 +259,7 @@ func activateInstallerStaging(installRoot, activeVersion, stagingRoot string) er
 	}
 
 	desktopName := installlayout.DesktopBinaryName()
-	cliName := installlayout.CLIBinaryName()
-	requiredNames := []string{desktopName, cliName}
+	requiredNames := []string{desktopName}
 	if runtime.GOOS == "windows" {
 		requiredNames = append(requiredNames, installlayout.UpdateHelperBinaryName())
 	}
@@ -275,9 +272,8 @@ func activateInstallerStaging(installRoot, activeVersion, stagingRoot string) er
 	launcherSource := filepath.Join(stagingRoot, launcherName)
 	rootMembers := []installlayout.Member{
 		{Name: launcherName, Path: launcherSource},
-		{Name: cliName, Path: filepath.Join(stagingRoot, cliName)},
 	}
-	requiredRootNames := []string{launcherName, cliName}
+	requiredRootNames := []string{launcherName}
 	if alias := installlayout.PortableAliasName(); alias != "" {
 		rootMembers = append(rootMembers, installlayout.Member{Name: alias, Path: launcherSource})
 		requiredRootNames = append(requiredRootNames, alias)

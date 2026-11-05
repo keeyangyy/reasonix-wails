@@ -41,7 +41,7 @@ func prepareSupersededAppUpdateFixture(t *testing.T, withBackup, withBackupIdent
 	}
 	target := filepath.Join(root, "Reasonix.app")
 	marker := filepath.Join(target, "Contents", "Resources", "release.txt")
-	executable := filepath.Join(target, "Contents", "MacOS", "reasonix-desktop")
+	executable := filepath.Join(target, "Contents", "MacOS", "reasonix-wails")
 	for _, path := range []string{marker, executable} {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)

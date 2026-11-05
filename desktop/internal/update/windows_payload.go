@@ -17,7 +17,7 @@ const (
 )
 
 var windowsPayloadFileNames = [...]string{
-	"reasonix-desktop.exe",
+	"reasonix-wails.exe",
 	"reasonix-guard.exe",
 	"reasonix-launcher.exe",
 	"reasonix-update-helper.exe",

@@ -10,7 +10,7 @@ import (
 
 func TestStripLegacyLaunchArgs(t *testing.T) {
 	got := stripLegacyLaunchArgs([]string{
-		"launch", "--detach", "--safe-mode", "--app", `C:\Old\reasonix-desktop.exe`, "--foo", "bar",
+		"launch", "--detach", "--safe-mode", "--app", `C:\Old\reasonix-wails.exe`, "--foo", "bar",
 	})
 	want := []string{"--foo", "bar"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {

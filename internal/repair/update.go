@@ -3384,7 +3384,7 @@ func stageUpdateRollbackBackup(
 // primary target; Guard/launcher artifacts only as release-unit siblings.
 func allowedUpdateTargetBase(base string, primary bool) bool {
 	switch strings.ToLower(base) {
-	case "reasonix-desktop", "reasonix-desktop.exe":
+	case "reasonix-wails", "reasonix-wails.exe":
 		return primary
 	case "reasonix.exe":
 		return !primary

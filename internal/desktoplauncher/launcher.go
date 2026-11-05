@@ -102,7 +102,7 @@ func ResolveDesktopPath(installRoot string) (string, error) {
 	if path := siblingDesktop(installRoot); path != "" {
 		return path, nil
 	}
-	return "", fmt.Errorf("cannot locate reasonix-desktop under %s (missing current.json)", installRoot)
+	return "", fmt.Errorf("cannot locate reasonix-wails under %s (missing current.json)", installRoot)
 }
 
 func runLegacyMigratorIfNeeded(installRoot string) error {

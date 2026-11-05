@@ -117,7 +117,7 @@ func run(args []string) int {
 	// the complete transaction identity and exact release-unit path set while it
 	// acquires the pending + target locks.
 	claimTargets := windowsReleaseUnitPaths(installDir)
-	claimLauncher := filepath.Join(installDir, "reasonix-desktop.exe")
+	claimLauncher := filepath.Join(installDir, "reasonix-wails.exe")
 	// The old desktop may acquire the pending lock during its normal shutdown.
 	// Wait for that exact process first, then claim the transaction and hold both
 	// pending and target locks across the installer replacement window.
@@ -281,7 +281,7 @@ func runVersionedWindowsUpdate(logger *log.Logger, installer, installerSHA256, i
 		SchemaVersion: 1,
 		ToVersion:     toVersion,
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 	}
 	if err := activateVersionedWindowsFromStaging(claimed, stagingDir); err != nil {
 		logger.Printf("activate versioned release: %v", err)
@@ -486,7 +486,7 @@ func windowsReleaseUnitPaths(installDir string) []string {
 		return nil
 	}
 	names := []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-guard.exe",
 		"reasonix-launcher.exe",
 		"reasonix-update-helper.exe",

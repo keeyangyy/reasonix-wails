@@ -108,11 +108,11 @@ func loadWindowsStagedReleaseUnit(claimed *repair.UpdateTransaction, stagingDir 
 
 func validateWindowsClaimedReleaseUnit(claimed *repair.UpdateTransaction) error {
 	if claimed == nil ||
-		!strings.EqualFold(filepath.Base(claimed.TargetPath), "reasonix-desktop.exe") {
+		!strings.EqualFold(filepath.Base(claimed.TargetPath), "reasonix-wails.exe") {
 		return fmt.Errorf("claimed release unit primary executable is invalid")
 	}
 	required := map[string]bool{
-		"reasonix-desktop.exe":       false,
+		"reasonix-wails.exe":       false,
 		"reasonix-guard.exe":         false,
 		"reasonix-launcher.exe":      false,
 		"reasonix-update-helper.exe": false,
@@ -200,8 +200,8 @@ func readWindowsPayloadMetadata(path string) ([]byte, error) {
 
 func windowsStagedSourceName(targetBase string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(targetBase)) {
-	case "reasonix-desktop.exe":
-		return "reasonix-desktop.exe", nil
+	case "reasonix-wails.exe":
+		return "reasonix-wails.exe", nil
 	case "reasonix-guard.exe":
 		return "reasonix-guard.exe", nil
 	case "reasonix-launcher.exe":

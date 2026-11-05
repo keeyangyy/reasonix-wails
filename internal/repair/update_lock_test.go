@@ -17,7 +17,7 @@ func TestPendingUpdateRollbackExcludesConcurrentCommit(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("REASONIX_HOME", home)
 	dir := t.TempDir()
-	target := filepath.Join(dir, "reasonix-desktop")
+	target := filepath.Join(dir, "reasonix-wails")
 	originalExecutable := repairExecutable
 	repairExecutable = func() (string, error) { return filepath.Join(dir, "reasonix-guard"), nil }
 	t.Cleanup(func() { repairExecutable = originalExecutable })

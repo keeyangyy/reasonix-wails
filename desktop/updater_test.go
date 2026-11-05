@@ -977,7 +977,7 @@ func TestExtractBinary(t *testing.T) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
-	files := map[string][]byte{"README": []byte("ignore me"), "reasonix-desktop": want}
+	files := map[string][]byte{"README": []byte("ignore me"), "reasonix-wails": want}
 	for name, body := range files {
 		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)
@@ -989,7 +989,7 @@ func TestExtractBinary(t *testing.T) {
 	tw.Close()
 	gz.Close()
 
-	got, err := extractBinary(buf.Bytes(), "reasonix-desktop")
+	got, err := extractBinary(buf.Bytes(), "reasonix-wails")
 	if err != nil {
 		t.Fatalf("extractBinary: %v", err)
 	}
@@ -1029,14 +1029,14 @@ func TestExtractLinuxReleaseUnitRejectsAmbiguousMembers(t *testing.T) {
 		return tar.Header{Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg}
 	}
 	headers := []tar.Header{
-		base("reasonix-desktop", []byte("desktop")),
+		base("reasonix-wails", []byte("desktop")),
 		base("reasonix-guard", []byte("guard")),
 		base("reasonix", []byte("cli")),
 	}
 	bodies := [][]byte{[]byte("desktop"), []byte("guard"), []byte("cli")}
 	if got, err := extractLinuxReleaseUnit(makeArchive(t, headers, bodies)); err != nil ||
-		string(got["reasonix-desktop"]) != "desktop" {
-		t.Fatalf("complete release extraction = %v, %q", err, got["reasonix-desktop"])
+		string(got["reasonix-wails"]) != "desktop" {
+		t.Fatalf("complete release extraction = %v, %q", err, got["reasonix-wails"])
 	}
 
 	duplicateHeaders := append(append([]tar.Header(nil), headers...), base("nested/reasonix", []byte("duplicate")))
@@ -1083,7 +1083,7 @@ func TestApplyLinuxVersionedActivatesWithoutPersistingGuard(t *testing.T) {
 	var archive bytes.Buffer
 	gz := gzip.NewWriter(&archive)
 	tw := tar.NewWriter(gz)
-	for _, name := range []string{"reasonix-desktop", "reasonix-guard", "reasonix"} {
+	for _, name := range []string{"reasonix-wails", "reasonix-guard", "reasonix"} {
 		body := []byte("new-" + name)
 		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)
@@ -1111,7 +1111,7 @@ func TestApplyLinuxVersionedActivatesWithoutPersistingGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(activeDesktop)
-	if err != nil || string(data) != "new-reasonix-desktop" {
+	if err != nil || string(data) != "new-reasonix-wails" {
 		t.Fatalf("active desktop=%q err=%v", data, err)
 	}
 	for _, guardPath := range []string{
@@ -1127,7 +1127,7 @@ func TestApplyLinuxVersionedActivatesWithoutPersistingGuard(t *testing.T) {
 func TestApplyLinuxHoldsReleaseUnitLockDuringReplace(t *testing.T) {
 	dir := robustTempDir(t)
 	t.Setenv("REASONIX_HOME", robustTempDir(t))
-	exe := filepath.Join(dir, "reasonix-desktop")
+	exe := filepath.Join(dir, "reasonix-wails")
 	releasePaths := releaseUnitPathsFor(dir, "linux")
 	for _, path := range releasePaths {
 		if err := os.WriteFile(path, []byte("old"), 0o700); err != nil {
@@ -1160,7 +1160,7 @@ func TestApplyLinuxHoldsReleaseUnitLockDuringReplace(t *testing.T) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
-	for _, name := range []string{"reasonix-desktop", "reasonix-guard", "reasonix"} {
+	for _, name := range []string{"reasonix-wails", "reasonix-guard", "reasonix"} {
 		body := []byte(name)
 		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)

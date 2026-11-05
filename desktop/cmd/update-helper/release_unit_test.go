@@ -14,7 +14,7 @@ import (
 func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast(t *testing.T) {
 	staging := t.TempDir()
 	for name, content := range map[string]string{
-		"reasonix-desktop.exe":       "desktop-v2",
+		"reasonix-wails.exe":       "desktop-v2",
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",
@@ -29,9 +29,9 @@ func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast
 		SchemaVersion: 1,
 		ToVersion:     "v2",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		Files: []repair.UpdateTransactionFile{
-			{TargetPath: filepath.Join(installDir, "reasonix-desktop.exe")},
+			{TargetPath: filepath.Join(installDir, "reasonix-wails.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-guard.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-launcher.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-update-helper.exe")},
@@ -43,7 +43,7 @@ func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := filepath.Base(members[len(members)-1].targetPath); !strings.EqualFold(got, "reasonix-desktop.exe") {
+	if got := filepath.Base(members[len(members)-1].targetPath); !strings.EqualFold(got, "reasonix-wails.exe") {
 		t.Fatalf("last published member = %q, want desktop", got)
 	}
 	var published []string
@@ -60,14 +60,14 @@ func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast
 	if got := strings.Join(published, ","); !strings.Contains(got, "Reasonix.exe=launcher-v2") {
 		t.Fatalf("portable alias did not reuse launcher payload: %s", got)
 	}
-	if !strings.HasPrefix(published[len(published)-1], "reasonix-desktop.exe=") {
+	if !strings.HasPrefix(published[len(published)-1], "reasonix-wails.exe=") {
 		t.Fatalf("publish order = %v", published)
 	}
 }
 
 func TestLoadWindowsStagedReleaseUnitRejectsIncompletePayloadBeforePublish(t *testing.T) {
 	staging := t.TempDir()
-	if err := os.WriteFile(filepath.Join(staging, "reasonix-desktop.exe"), []byte("desktop-v2"), 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(staging, "reasonix-wails.exe"), []byte("desktop-v2"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	useTestWindowsPayloadManifest(t, staging, "v2")
@@ -76,9 +76,9 @@ func TestLoadWindowsStagedReleaseUnitRejectsIncompletePayloadBeforePublish(t *te
 		SchemaVersion: 1,
 		ToVersion:     "v2",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		Files: []repair.UpdateTransactionFile{
-			{TargetPath: filepath.Join(installDir, "reasonix-desktop.exe")},
+			{TargetPath: filepath.Join(installDir, "reasonix-wails.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-guard.exe")},
 		},
 	}
@@ -150,9 +150,9 @@ func TestLoadWindowsStagedReleaseUnitDoesNotCreateMissingPortableAlias(t *testin
 		SchemaVersion: 1,
 		ToVersion:     "v2",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		Files: []repair.UpdateTransactionFile{
-			{TargetPath: filepath.Join(installDir, "reasonix-desktop.exe")},
+			{TargetPath: filepath.Join(installDir, "reasonix-wails.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-guard.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-launcher.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-update-helper.exe")},
@@ -196,7 +196,7 @@ func TestPublishLoadedFileUpdateReleaseUnitStopsOnFirstFailedCompareAndPublish(t
 func TestLoadWindowsStagedReleaseUnitRejectsUnverifiedPayloadBeforePublish(t *testing.T) {
 	staging := t.TempDir()
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-guard.exe",
 		"reasonix-launcher.exe",
 		"reasonix-update-helper.exe",
@@ -222,7 +222,7 @@ func TestLoadWindowsStagedReleaseUnitRejectsUnverifiedPayloadBeforePublish(t *te
 func TestLoadWindowsStagedReleaseUnitReadsEachSourceThroughVerifier(t *testing.T) {
 	staging := t.TempDir()
 	for name, content := range map[string]string{
-		"reasonix-desktop.exe":       "desktop-v2",
+		"reasonix-wails.exe":       "desktop-v2",
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",
@@ -315,7 +315,7 @@ func completeWindowsStagedReleaseUnitForTest(t *testing.T, version string) (stri
 		SchemaVersion: 1,
 		ToVersion:     version,
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		Files:         files,
 	}
 }

@@ -17,7 +17,7 @@ func TestPreferVersionedWindowsActivation(t *testing.T) {
 		t.Fatal("empty staging must not prefer versioned")
 	}
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 	} {
@@ -34,7 +34,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 	installDir := t.TempDir()
 	staging := t.TempDir()
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 		"reasonix-guard.exe",
@@ -44,7 +44,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 		}
 	}
 	// Seed a flat desktop so cleanup is observable.
-	if err := os.WriteFile(filepath.Join(installDir, "reasonix-desktop.exe"), []byte("old"), 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(installDir, "reasonix-wails.exe"), []byte("old"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(installDir, "reasonix-guard.exe"), []byte("old-guard"), 0o700); err != nil {
@@ -55,7 +55,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 		SchemaVersion: 1,
 		ToVersion:     "v1.20.0",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		CreatedAt:     "2026-01-01T00:00:00Z",
 	}
 	if err := activateVersionedWindowsFromStaging(claimed, staging); err != nil {
@@ -73,7 +73,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(desktop)
-	if err != nil || string(raw) != "payload:reasonix-desktop.exe" {
+	if err != nil || string(raw) != "payload:reasonix-wails.exe" {
 		t.Fatalf("desktop payload = %q err=%v", raw, err)
 	}
 	for _, name := range []string{"reasonix-launcher.exe", "Reasonix.exe"} {
@@ -81,7 +81,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 			t.Fatalf("root entry %s: %v", name, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(installDir, "reasonix-desktop.exe")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(installDir, "reasonix-wails.exe")); !os.IsNotExist(err) {
 		t.Fatal("flat desktop should be removed")
 	}
 	if _, err := os.Stat(filepath.Join(installDir, "reasonix-guard.exe")); !os.IsNotExist(err) {
@@ -99,7 +99,7 @@ func TestPreferRelaunchPathIgnoresStaleVersionedDesktop(t *testing.T) {
 	writeVersionedPayload := func(dir, prefix string) {
 		t.Helper()
 		for _, name := range []string{
-			"reasonix-desktop.exe",
+			"reasonix-wails.exe",
 			"reasonix-update-helper.exe",
 			"reasonix-launcher.exe",
 		} {
@@ -113,7 +113,7 @@ func TestPreferRelaunchPathIgnoresStaleVersionedDesktop(t *testing.T) {
 		SchemaVersion: 1,
 		ToVersion:     "v1.24.0",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		CreatedAt:     "2026-01-01T00:00:00Z",
 	}, oldSrc); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestPreferRelaunchPathIgnoresStaleVersionedDesktop(t *testing.T) {
 		SchemaVersion: 1,
 		ToVersion:     "v1.24.1",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		CreatedAt:     "2026-01-01T00:00:01Z",
 	}, newSrc); err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestInstallStagedWindowsReleaseUnitPrefersVersioned(t *testing.T) {
 	installDir := t.TempDir()
 	staging := t.TempDir()
 	for _, name := range []string{
-		"reasonix-desktop.exe",
+		"reasonix-wails.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 		"reasonix-guard.exe",
@@ -159,7 +159,7 @@ func TestInstallStagedWindowsReleaseUnitPrefersVersioned(t *testing.T) {
 		SchemaVersion: 1,
 		ToVersion:     "v1.20.0",
 		TargetKind:    "file",
-		TargetPath:    filepath.Join(installDir, "reasonix-desktop.exe"),
+		TargetPath:    filepath.Join(installDir, "reasonix-wails.exe"),
 		CreatedAt:     "2026-01-01T00:00:00Z",
 	}
 	started, receipts, err := installStagedWindowsReleaseUnit(claimed, staging)

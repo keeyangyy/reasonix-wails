@@ -847,7 +847,7 @@ jobs:
           $code = 0
           foreach ($attempt in 1..2) {
             $output = & ../scripts/test-webview2-native-smoke.ps1 `
-              -ExecutablePath "build/bin/reasonix-desktop.exe" `
+              -ExecutablePath "build/bin/reasonix-wails.exe" `
               -TimeoutSeconds 60 `
               -HealthySeconds 5 2>&1
             $code = $LASTEXITCODE

@@ -49,7 +49,7 @@ func TestIsDpkgOwnedReasonixRejectsEmpty(t *testing.T) {
 		t.Fatal("relative path must not be dpkg-owned")
 	}
 	// A random absolute path that is not packaged.
-	if isDpkgOwnedReasonix(filepath.Join(t.TempDir(), "reasonix-desktop")) {
+	if isDpkgOwnedReasonix(filepath.Join(t.TempDir(), "reasonix-wails")) {
 		t.Fatal("unpackaged path must not be dpkg-owned")
 	}
 }

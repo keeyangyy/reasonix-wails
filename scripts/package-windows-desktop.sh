@@ -24,7 +24,7 @@ INSTALLER_DIR="$DESKTOP/build/windows/installer"
 BIN_DIR="$DESKTOP/build/bin"
 DIST="$ROOT/dist"
 APPNAME="Reasonix"
-BINNAME="reasonix-desktop"
+BINNAME="reasonix-wails"
 GUARDNAME="reasonix-guard"
 LAUNCHERNAME="reasonix-launcher"
 UPDATE_HELPER="reasonix-update-helper.exe"
@@ -45,7 +45,7 @@ for name in "${required_payload[@]}"; do
 	[ -s "$PAYLOAD/$name" ] || { echo "Windows payload file is missing or empty: $name" >&2; exit 1; }
 done
 
-payload_exe_count=$(find "$PAYLOAD" -maxdepth 1 -type f -iname '*.exe' | wc -l | tr -d '[:space:]')
+payload_exe_count=$(cd "$PAYLOAD" && ls -1 *.exe 2>/dev/null | wc -l | tr -d '[:space:]')
 [ "$payload_exe_count" = "${#required_payload[@]}" ] || {
 	echo "Windows payload must contain exactly ${#required_payload[@]} executables, found $payload_exe_count" >&2
 	exit 1
@@ -70,7 +70,6 @@ cp "$PAYLOAD/$BINNAME.exe" "$BIN_DIR/$BINNAME.exe"
 cp "$PAYLOAD/$GUARDNAME.exe" "$INSTALLER_DIR/$GUARDNAME.exe"
 cp "$PAYLOAD/$LAUNCHERNAME.exe" "$INSTALLER_DIR/$LAUNCHERNAME.exe"
 cp "$PAYLOAD/$UPDATE_HELPER" "$INSTALLER_DIR/$UPDATE_HELPER"
-cp "$PAYLOAD/$WINDOWS_CLINAME.exe" "$INSTALLER_DIR/$WINDOWS_CLINAME.exe"
 rm -f -- "$INSTALLER_DIR/$PAYLOAD_MANIFEST" "$INSTALLER_DIR/$PAYLOAD_SIGNATURE"
 if [ "$manifest_present" = "1" ]; then
 	cp "$PAYLOAD/$PAYLOAD_MANIFEST" "$INSTALLER_DIR/$PAYLOAD_MANIFEST"
@@ -89,7 +88,7 @@ fi
 # Wails documents project.nsi as manually invokable with the architecture
 # binary define. Delete only generated installers so a stale first-pass package
 # cannot be mistaken for the rebuilt payload-signed installer.
-find "$BIN_DIR" -maxdepth 1 -type f -name '*installer*.exe' -delete
+rm -f "$BIN_DIR"/*installer*.exe
 binary_path="$BIN_DIR/$BINNAME.exe"
 if command -v cygpath >/dev/null 2>&1; then
 	binary_path="$(cygpath -w "$binary_path")"
@@ -108,7 +107,7 @@ fi
 		project.nsi
 )
 
-installer=$(find "$BIN_DIR" -maxdepth 1 -type f -name '*installer*.exe' -print -quit)
+installer=$(ls -1 "$BIN_DIR"/*installer*.exe 2>/dev/null | head -n 1)
 [ -n "$installer" ] && [ -s "$installer" ] || { echo "makensis did not produce a Windows installer" >&2; exit 1; }
 
 mkdir -p "$DIST"
@@ -140,10 +139,8 @@ esac
 mkdir -p "$portable_staging/versions/$version_label"
 cp "$PAYLOAD/$BINNAME.exe" "$portable_staging/versions/$version_label/$BINNAME.exe"
 cp "$PAYLOAD/$UPDATE_HELPER" "$portable_staging/versions/$version_label/$UPDATE_HELPER"
-cp "$PAYLOAD/$WINDOWS_CLINAME.exe" "$portable_staging/versions/$version_label/$WINDOWS_CLINAME.exe"
 cp "$PAYLOAD/$LAUNCHERNAME.exe" "$portable_staging/$LAUNCHERNAME.exe"
 cp "$PAYLOAD/$LAUNCHERNAME.exe" "$portable_staging/$APPNAME.exe"
-cp "$PAYLOAD/$WINDOWS_CLINAME.exe" "$portable_staging/$WINDOWS_CLINAME.exe"
 cat >"$portable_staging/current.json" <<EOF
 {
   "schemaVersion": 1,

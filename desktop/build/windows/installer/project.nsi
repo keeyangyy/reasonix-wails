@@ -300,7 +300,7 @@ check_guard:
    FileClose $1
 
 check_launcher:
-	IfFileExists "$INSTDIR\${REASONIX_LAUNCHER}" 0 check_cli
+	IfFileExists "$INSTDIR\${REASONIX_LAUNCHER}" 0 check_portable_entry
 	ClearErrors
 	FileOpen $1 "$INSTDIR\${REASONIX_LAUNCHER}" a
 	IfErrors locked
@@ -418,7 +418,7 @@ reasonix_layout_activated:
 
     !if /FileExists "${REASONIX_LAUNCHER}"
     ; Keep both target and icon on the stable launcher. Pointing IconLocation at
-    ; versions\vX\reasonix-desktop.exe leaves a blank shortcut as soon as version
+    ; versions\vX\reasonix-wails.exe leaves a blank shortcut as soon as version
     ; retention removes that directory after a later update.
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0

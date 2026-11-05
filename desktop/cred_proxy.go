@@ -29,7 +29,7 @@ import (
 
 // credentialProxyProviderName is the provider entry the bootstrap installs in
 // the remote config; the serve launches with --model <name>.
-const credentialProxyProviderName = "reasonix-desktop-proxy"
+const credentialProxyProviderName = "reasonix-wails-proxy"
 
 type credProxyRoute struct {
 	proxy     *httputil.ReverseProxy
