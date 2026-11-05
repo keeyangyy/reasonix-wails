@@ -13,7 +13,6 @@ WAILS_VERSION := $(shell tr -d '[:space:]' < .wails-version)
 .PHONY: build vet fmt lint lint-go lint-install lint-cross lint-update wails-install test desktop-test desktop-test-short desktop-test-times sdk-test sdk-test-race hooks cross clean
 
 build:
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/reasonix$(GOEXE) ./cmd/reasonix
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/reasonix-plugin-example$(GOEXE) ./cmd/reasonix-plugin-example
 
 vet:
@@ -79,12 +78,8 @@ hooks:
 	@echo "installed: core.hooksPath -> .githooks (pre-push runs go vet)"
 
 cross:
-	@mkdir -p dist
-	@for p in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do \
-		os=$${p%/*}; arch=$${p#*/}; ext=; [ $$os = windows ] && ext=.exe; \
-		echo "build $$os/$$arch"; \
-		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -ldflags "$(LDFLAGS)" -o dist/reasonix-$$os-$$arch$$ext ./cmd/reasonix; \
-	done
+	@echo "cross-compiling the CLI product was removed; only the Windows x64 desktop is built." >&2
+	@exit 1
 
 clean:
 	rm -rf bin dist

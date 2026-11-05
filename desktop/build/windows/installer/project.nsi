@@ -112,7 +112,6 @@ OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the inst
 !define REASONIX_UPDATE_HELPER "reasonix-update-helper.exe"
 !define REASONIX_GUARD "reasonix-guard.exe"
 !define REASONIX_LAUNCHER "reasonix-launcher.exe"
-!define REASONIX_CLI "reasonix-cli.exe"
 !define REASONIX_PORTABLE_ENTRY "Reasonix.exe"
 !define REASONIX_LAYOUT_INSTALLER "reasonix-layout-installer.exe"
 !define REASONIX_PAYLOAD_MANIFEST "reasonix-payload.json"
@@ -307,13 +306,6 @@ check_launcher:
 	IfErrors locked
 	FileClose $1
 
-check_cli:
-	IfFileExists "$INSTDIR\${REASONIX_CLI}" 0 check_portable_entry
-	ClearErrors
-	FileOpen $1 "$INSTDIR\${REASONIX_CLI}" a
-	IfErrors locked
-	FileClose $1
-
 check_portable_entry:
    IfFileExists "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" 0 done
    ClearErrors
@@ -376,9 +368,6 @@ reasonix_stage_payload:
     !if /FileExists "${REASONIX_LAUNCHER}"
     File "/oname=${REASONIX_LAUNCHER}" "${REASONIX_LAUNCHER}"
     !endif
-    !if /FileExists "${REASONIX_CLI}"
-    File "/oname=${REASONIX_CLI}" "${REASONIX_CLI}"
-    !endif
     Goto reasonix_section_done
 
 reasonix_normal_install:
@@ -398,11 +387,6 @@ reasonix_normal_install:
     File "/oname=${REASONIX_UPDATE_HELPER}" "${REASONIX_UPDATE_HELPER}"
     !else
     !warning "${REASONIX_UPDATE_HELPER} was not found; Windows auto-update will fail safely until the helper is installed."
-    !endif
-    !if /FileExists "${REASONIX_CLI}"
-    File "/oname=${REASONIX_CLI}" "${REASONIX_CLI}"
-    !else
-    !warning "${REASONIX_CLI} was not found; remote upload installation will be unavailable."
     !endif
     !if /FileExists "${REASONIX_LAUNCHER}"
     File "/oname=${REASONIX_LAUNCHER}" "${REASONIX_LAUNCHER}"
@@ -461,7 +445,6 @@ Section "uninstall"
     Delete "$INSTDIR\${REASONIX_UPDATE_HELPER}"
     Delete "$INSTDIR\${REASONIX_GUARD}"
     Delete "$INSTDIR\${REASONIX_LAUNCHER}"
-    Delete "$INSTDIR\${REASONIX_CLI}"
     Delete "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"
     Delete "$INSTDIR\current.json"
     RMDir /r "$INSTDIR\versions"

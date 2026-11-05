@@ -40,7 +40,6 @@ required_payload=(
 	"$GUARDNAME.exe"
 	"$LAUNCHERNAME.exe"
 	"$UPDATE_HELPER"
-	"$WINDOWS_CLINAME.exe"
 	"reasonix-uninstall.exe"
 )
 for name in "${required_payload[@]}"; do

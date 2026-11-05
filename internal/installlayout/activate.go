@@ -53,7 +53,6 @@ type ActivationRequest struct {
 func AllowedVersionMembers() []string {
 	names := []string{
 		DesktopBinaryName(),
-		CLIBinaryName(),
 		UpdateHelperBinaryName(),
 	}
 	return names
