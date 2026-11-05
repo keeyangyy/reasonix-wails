@@ -21,7 +21,6 @@ var windowsPayloadFileNames = [...]string{
 	"reasonix-guard.exe",
 	"reasonix-launcher.exe",
 	"reasonix-update-helper.exe",
-	"reasonix-cli.exe",
 }
 
 type WindowsPayloadManifest struct {

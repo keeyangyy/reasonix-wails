@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -17,17 +18,19 @@ func writePortableFixture(t *testing.T, dir, name, content string) {
 }
 
 func TestVerifyWindowsPortableVersionedLayout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("portable verification script requires a POSIX shell with GNU find")
+	}
 	verify := filepath.Join("..", "scripts", "verify-windows-portable.sh")
 	good := t.TempDir()
 	// versioned-v1 root entries
 	writePortableFixture(t, good, "reasonix-launcher.exe", "launcher")
 	writePortableFixture(t, good, "Reasonix.exe", "launcher")
-	writePortableFixture(t, good, "reasonix-cli.exe", "cli")
 	ver := filepath.Join(good, "versions", "v1.20.0")
 	if err := os.MkdirAll(ver, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe"} {
+	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"} {
 		writePortableFixture(t, ver, name, name)
 	}
 	if err := os.WriteFile(filepath.Join(good, "current.json"), []byte(`{
@@ -50,7 +53,6 @@ func TestVerifyWindowsPortableVersionedLayout(t *testing.T) {
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 		"Reasonix.exe",
-		"reasonix-cli.exe",
 	} {
 		writePortableFixture(t, flat, name, name)
 	}
@@ -67,7 +69,6 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 	build := string(buildData)
 	for _, want := range []string{
 		`CLINAME="reasonix"`,
-		`WINDOWS_CLINAME="reasonix-cli"`,
 		`./cmd/reasonix`,
 		`./cmd/reasonix-legacy-migrator`,
 		`./cmd/reasonix-launcher`,
@@ -87,7 +88,6 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 		`cp "build/bin/$BINNAME.exe" "$payload_dir/$BINNAME.exe"`,
 		`cp "$launcher_out" "$payload_dir/$LAUNCHERNAME.exe"`,
 		`cp "$guard_out" "$payload_dir/$GUARDNAME.exe"`,
-		`cp "build/windows/installer/$WINDOWS_CLINAME.exe" "$payload_dir/$WINDOWS_CLINAME.exe"`,
 		`cp "build/windows/installer/reasonix-uninstall.exe" "$payload_dir/reasonix-uninstall.exe"`,
 		`"$ROOT/scripts/package-windows-desktop.sh" "$arch" "$payload_dir"`,
 		`"$BINNAME" "$LAUNCHERNAME" "$GUARDNAME" "$CLINAME"`,
@@ -174,7 +174,6 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 	}
 	windows := string(windowsData)
 	for _, want := range []string{
-		`File "/oname=${REASONIX_CLI}" "${REASONIX_CLI}"`,
 		`!define REASONIX_UNINST_FINALIZE 'cmd.exe /C copy /Y "%1" "reasonix-uninstall.exe" >NUL'`,
 		`!uninstfinalize '${REASONIX_UNINST_FINALIZE}'`,
 		`File "/oname=uninstall.exe" "${ARG_REASONIX_SIGNED_UNINSTALLER}"`,

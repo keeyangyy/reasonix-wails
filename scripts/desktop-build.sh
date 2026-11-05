@@ -34,7 +34,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APPNAME="Reasonix"            # wails.json productName -> Reasonix.app
 BINNAME="reasonix-desktop"    # wails.json outputfilename -> linux binary name
 CLINAME="reasonix"            # bundled CLI sidecar used for remote serve upload
-WINDOWS_CLINAME="reasonix-cli" # Windows cannot store Reasonix.exe and reasonix.exe separately
 GUARDNAME="reasonix-guard"
 LAUNCHERNAME="reasonix-launcher"
 windows_resource_tool_dir=""
@@ -150,9 +149,6 @@ if [ "$os" = windows ]; then
 	GOOS=windows GOARCH="$arch" go build -trimpath -ldflags="-s -w" \
 		-o "build/windows/installer/$UPDATE_HELPER" ./cmd/update-helper
 	stamp_windows_executable "build/windows/installer/$UPDATE_HELPER" "Reasonix Update Helper" "reasonix-update-helper" "$UPDATE_HELPER"
-	cli_out="$ROOT/desktop/build/windows/installer/$WINDOWS_CLINAME.exe"
-	build_cli
-	stamp_windows_executable "$cli_out" "Reasonix CLI" "$WINDOWS_CLINAME" "$WINDOWS_CLINAME.exe"
 	# The first NSIS pass must regenerate this release's uninstaller; a stale
 	# preserved file must never enter the signing payload.
 	rm -f "build/windows/installer/reasonix-uninstall.exe"
@@ -297,7 +293,6 @@ windows)
 	cp "build/windows/installer/$UPDATE_HELPER" "$payload_dir/$UPDATE_HELPER"
 	cp "$launcher_out" "$payload_dir/$LAUNCHERNAME.exe"
 	cp "$guard_out" "$payload_dir/$GUARDNAME.exe"
-	cp "build/windows/installer/$WINDOWS_CLINAME.exe" "$payload_dir/$WINDOWS_CLINAME.exe"
 	cp "build/windows/installer/reasonix-uninstall.exe" "$payload_dir/reasonix-uninstall.exe"
 	"$ROOT/scripts/package-windows-desktop.sh" "$arch" "$payload_dir"
 	;;

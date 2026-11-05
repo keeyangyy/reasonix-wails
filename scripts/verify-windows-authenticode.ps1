@@ -18,7 +18,6 @@ $expectedPayload = @(
     "reasonix-guard.exe",
     "reasonix-launcher.exe",
     "reasonix-update-helper.exe",
-    "reasonix-cli.exe",
     "reasonix-uninstall.exe"
 )
 
@@ -83,10 +82,8 @@ try {
         $portableSources = @(
             [pscustomobject]@{ Portable = "reasonix-launcher.exe"; Payload = "reasonix-launcher.exe" },
             [pscustomobject]@{ Portable = "Reasonix.exe"; Payload = "reasonix-launcher.exe" },
-            [pscustomobject]@{ Portable = "reasonix-cli.exe"; Payload = "reasonix-cli.exe" },
             [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-desktop.exe"); Payload = "reasonix-desktop.exe" },
-            [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-update-helper.exe"); Payload = "reasonix-update-helper.exe" },
-            [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-cli.exe"); Payload = "reasonix-cli.exe" }
+            [pscustomobject]@{ Portable = (Join-Path $activeDir "reasonix-update-helper.exe"); Payload = "reasonix-update-helper.exe" }
         )
     }
     else {
@@ -95,14 +92,13 @@ try {
             [pscustomobject]@{ Portable = "reasonix-guard.exe"; Payload = "reasonix-guard.exe" },
             [pscustomobject]@{ Portable = "reasonix-launcher.exe"; Payload = "reasonix-launcher.exe" },
             [pscustomobject]@{ Portable = "Reasonix.exe"; Payload = "reasonix-launcher.exe" },
-            [pscustomobject]@{ Portable = "reasonix-update-helper.exe"; Payload = "reasonix-update-helper.exe" },
-            [pscustomobject]@{ Portable = "reasonix-cli.exe"; Payload = "reasonix-cli.exe" }
+            [pscustomobject]@{ Portable = "reasonix-update-helper.exe"; Payload = "reasonix-update-helper.exe" }
         )
     }
 
     $portableFiles = @(Get-ChildItem -LiteralPath $extractRoot -Recurse -File -Filter "*.exe")
-    if ($portableFiles.Count -ne 6) {
-        throw "Portable archive must contain exactly 6 executables, found $($portableFiles.Count)"
+    if ($portableFiles.Count -ne $portableSources.Count) {
+        throw "Portable archive must contain exactly $($portableSources.Count) executables, found $($portableFiles.Count)"
     }
 
     foreach ($entry in $portableSources) {

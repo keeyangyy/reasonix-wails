@@ -11,7 +11,6 @@ staging="${1:?usage: verify-windows-portable.sh STAGING_DIR}"
 # Root entry points for versioned-v1 (no Guard, no flat desktop/helper).
 required_root=(
 	"Reasonix.exe"
-	"reasonix-cli.exe"
 	"reasonix-launcher.exe"
 	"current.json"
 )
@@ -49,7 +48,7 @@ if [ -z "$active_dir" ]; then
 	active_dir=""
 	for d in "${version_dirs[@]}"; do
 		base=$(basename "$d")
-		if [ -f "$d/reasonix-desktop.exe" ] && [ -f "$d/reasonix-cli.exe" ] && [ -f "$d/reasonix-update-helper.exe" ]; then
+		if [ -f "$d/reasonix-desktop.exe" ] && [ -f "$d/reasonix-update-helper.exe" ]; then
 			active_dir="versions/$base"
 			break
 		fi
@@ -64,7 +63,7 @@ version_path="$staging/$active_dir"
 	echo "Windows portable activeDir does not exist: $active_dir" >&2
 	exit 1
 }
-for name in reasonix-desktop.exe reasonix-cli.exe reasonix-update-helper.exe; do
+for name in reasonix-desktop.exe reasonix-update-helper.exe; do
 	[ -f "$version_path/$name" ] || {
 		echo "Windows portable version member is missing: $active_dir/$name" >&2
 		exit 1
@@ -82,10 +81,6 @@ cmp -s "$staging/Reasonix.exe" "$staging/reasonix-launcher.exe" || {
 	echo "Reasonix.exe is not the packaged GUI launcher" >&2
 	exit 1
 }
-if cmp -s "$staging/Reasonix.exe" "$staging/reasonix-cli.exe"; then
-	echo "Reasonix.exe was overwritten by the CLI sidecar" >&2
-	exit 1
-fi
 
 # Case-insensitive collision check among root exes.
 actual=()

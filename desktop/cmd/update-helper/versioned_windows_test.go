@@ -18,7 +18,6 @@ func TestPreferVersionedWindowsActivation(t *testing.T) {
 	}
 	for _, name := range []string{
 		"reasonix-desktop.exe",
-		"reasonix-cli.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 	} {
@@ -36,7 +35,6 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 	staging := t.TempDir()
 	for _, name := range []string{
 		"reasonix-desktop.exe",
-		"reasonix-cli.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 		"reasonix-guard.exe",
@@ -78,7 +76,7 @@ func TestActivateVersionedWindowsFromStaging(t *testing.T) {
 	if err != nil || string(raw) != "payload:reasonix-desktop.exe" {
 		t.Fatalf("desktop payload = %q err=%v", raw, err)
 	}
-	for _, name := range []string{"reasonix-launcher.exe", "Reasonix.exe", "reasonix-cli.exe"} {
+	for _, name := range []string{"reasonix-launcher.exe", "Reasonix.exe"} {
 		if _, err := os.Stat(filepath.Join(installDir, name)); err != nil {
 			t.Fatalf("root entry %s: %v", name, err)
 		}
@@ -102,7 +100,6 @@ func TestPreferRelaunchPathIgnoresStaleVersionedDesktop(t *testing.T) {
 		t.Helper()
 		for _, name := range []string{
 			"reasonix-desktop.exe",
-			"reasonix-cli.exe",
 			"reasonix-update-helper.exe",
 			"reasonix-launcher.exe",
 		} {
@@ -149,7 +146,6 @@ func TestInstallStagedWindowsReleaseUnitPrefersVersioned(t *testing.T) {
 	staging := t.TempDir()
 	for _, name := range []string{
 		"reasonix-desktop.exe",
-		"reasonix-cli.exe",
 		"reasonix-update-helper.exe",
 		"reasonix-launcher.exe",
 		"reasonix-guard.exe",

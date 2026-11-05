@@ -490,7 +490,6 @@ func windowsReleaseUnitPaths(installDir string) []string {
 		"reasonix-guard.exe",
 		"reasonix-launcher.exe",
 		"reasonix-update-helper.exe",
-		"reasonix-cli.exe",
 		"Reasonix.exe",
 	}
 	paths := make([]string, 0, len(names))

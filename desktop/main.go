@@ -55,8 +55,8 @@ var macSelfUpdate = "false"
 const (
 	disableWebview2GPUEnv       = "REASONIX_DISABLE_WEBVIEW2_GPU"
 	legacyDisableWebview2GPUEnv = "REASONIX_DESKTOP_DISABLE_WEBVIEW2_GPU"
-	webviewDataDirEnv            = "REASONIX_WEBVIEW_DATA_DIR"
-	webviewDataDirName           = "reasonix-wails"
+	webviewDataDirEnv           = "REASONIX_WEBVIEW_DATA_DIR"
+	webviewDataDirName          = "reasonix-wails"
 	linuxDRIRenderNodeGlob      = "/dev/dri/renderD*"
 )
 

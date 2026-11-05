@@ -18,7 +18,6 @@ func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",
-		"reasonix-cli.exe":           "cli-v2",
 	} {
 		if err := os.WriteFile(filepath.Join(staging, name), []byte(content), 0o700); err != nil {
 			t.Fatal(err)
@@ -36,7 +35,6 @@ func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast
 			{TargetPath: filepath.Join(installDir, "reasonix-guard.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-launcher.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-update-helper.exe")},
-			{TargetPath: filepath.Join(installDir, "reasonix-cli.exe")},
 			{TargetPath: filepath.Join(installDir, "Reasonix.exe")},
 		},
 	}
@@ -158,7 +156,6 @@ func TestLoadWindowsStagedReleaseUnitDoesNotCreateMissingPortableAlias(t *testin
 			{TargetPath: filepath.Join(installDir, "reasonix-guard.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-launcher.exe")},
 			{TargetPath: filepath.Join(installDir, "reasonix-update-helper.exe")},
-			{TargetPath: filepath.Join(installDir, "reasonix-cli.exe")},
 			{TargetPath: filepath.Join(installDir, "Reasonix.exe"), MissingBefore: true},
 		},
 	}
@@ -203,7 +200,6 @@ func TestLoadWindowsStagedReleaseUnitRejectsUnverifiedPayloadBeforePublish(t *te
 		"reasonix-guard.exe",
 		"reasonix-launcher.exe",
 		"reasonix-update-helper.exe",
-		"reasonix-cli.exe",
 	} {
 		if err := os.WriteFile(filepath.Join(staging, name), []byte(name), 0o700); err != nil {
 			t.Fatal(err)
@@ -230,7 +226,6 @@ func TestLoadWindowsStagedReleaseUnitReadsEachSourceThroughVerifier(t *testing.T
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",
-		"reasonix-cli.exe":           "cli-v2",
 	} {
 		if err := os.WriteFile(filepath.Join(staging, name), []byte(content), 0o700); err != nil {
 			t.Fatal(err)

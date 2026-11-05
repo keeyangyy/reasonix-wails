@@ -116,7 +116,6 @@ func validateWindowsClaimedReleaseUnit(claimed *repair.UpdateTransaction) error 
 		"reasonix-guard.exe":         false,
 		"reasonix-launcher.exe":      false,
 		"reasonix-update-helper.exe": false,
-		"reasonix-cli.exe":           false,
 		"reasonix.exe":               false,
 	}
 	installDir := filepath.Clean(filepath.Dir(claimed.TargetPath))
@@ -209,8 +208,6 @@ func windowsStagedSourceName(targetBase string) (string, error) {
 		return "reasonix-launcher.exe", nil
 	case "reasonix-update-helper.exe":
 		return "reasonix-update-helper.exe", nil
-	case "reasonix-cli.exe":
-		return "reasonix-cli.exe", nil
 	case "reasonix.exe":
 		return "reasonix-launcher.exe", nil
 	default:

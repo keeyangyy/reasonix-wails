@@ -1307,10 +1307,7 @@ func releaseUnitPathsFor(dir, goos string) []string {
 		if helper, err := installlayout.ActiveUpdateHelperPath(dir); err == nil {
 			paths = append(paths, helper)
 		}
-		if cli, err := installlayout.ActiveCLIPath(dir); err == nil {
-			paths = append(paths, cli)
-		}
-		for _, name := range []string{"reasonix-launcher.exe", "reasonix-cli.exe", "Reasonix.exe"} {
+		for _, name := range []string{"reasonix-launcher.exe", "Reasonix.exe"} {
 			paths = append(paths, filepath.Join(dir, name))
 		}
 		return paths
@@ -1337,7 +1334,7 @@ func updateSiblingNames(goos string) []string {
 	case "windows":
 		// Legacy flat release unit. reasonix-guard.exe may still exist on disk
 		// during migration from 1.18–1.19.1; the new layout omits it.
-		return []string{"reasonix-guard.exe", "reasonix-launcher.exe", "reasonix-update-helper.exe", "reasonix-cli.exe", "Reasonix.exe"}
+		return []string{"reasonix-guard.exe", "reasonix-launcher.exe", "reasonix-update-helper.exe", "Reasonix.exe"}
 	case "linux":
 		return []string{"reasonix-guard", "reasonix"}
 	default:

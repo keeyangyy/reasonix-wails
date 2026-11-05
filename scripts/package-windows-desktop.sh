@@ -28,7 +28,6 @@ BINNAME="reasonix-desktop"
 GUARDNAME="reasonix-guard"
 LAUNCHERNAME="reasonix-launcher"
 UPDATE_HELPER="reasonix-update-helper.exe"
-WINDOWS_CLINAME="reasonix-cli"
 PAYLOAD_MANIFEST="reasonix-payload.json"
 PAYLOAD_SIGNATURE="$PAYLOAD_MANIFEST.minisig"
 

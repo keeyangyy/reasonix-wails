@@ -257,7 +257,7 @@ func TestExpectedUpdateVersionRejectsAdvancedPointer(t *testing.T) {
 
 func TestUpdateSiblingNamesCoverEveryReplacedEntryPoint(t *testing.T) {
 	windows := strings.Join(updateSiblingNames("windows"), "\x00")
-	for _, want := range []string{"reasonix-guard.exe", "reasonix-launcher.exe", "reasonix-update-helper.exe", "reasonix-cli.exe", "Reasonix.exe"} {
+	for _, want := range []string{"reasonix-guard.exe", "reasonix-launcher.exe", "reasonix-update-helper.exe", "Reasonix.exe"} {
 		if !strings.Contains(windows, want) {
 			t.Errorf("Windows release unit omits %q: %q", want, windows)
 		}

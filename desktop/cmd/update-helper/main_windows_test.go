@@ -95,7 +95,7 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 	stubDesktopHandoff(t)
 	installDir := t.TempDir()
 	seed := t.TempDir()
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe"} {
+	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"} {
 		if err := os.WriteFile(filepath.Join(seed, name), []byte("old-"+name), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -106,10 +106,9 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 		RequestID:   "seed-windows-helper",
 		Members: []installlayout.Member{
 			{Name: "reasonix-desktop.exe", Path: filepath.Join(seed, "reasonix-desktop.exe")},
-			{Name: "reasonix-cli.exe", Path: filepath.Join(seed, "reasonix-cli.exe")},
 			{Name: "reasonix-update-helper.exe", Path: filepath.Join(seed, "reasonix-update-helper.exe")},
 		},
-		RequiredNames: []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe"},
+		RequiredNames: []string{"reasonix-desktop.exe", "reasonix-update-helper.exe"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +148,7 @@ func TestRunVersionedLayoutDoesNotReadOrClaimLegacyPending(t *testing.T) {
 		return true, nil
 	}
 	runInstallerFn = func(_ string, staging string) error {
-		for _, name := range []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+		for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 			if err := os.WriteFile(filepath.Join(staging, name), []byte("new-"+name), 0o700); err != nil {
 				return err
 			}
@@ -188,7 +187,7 @@ func TestRunVersionedUpdateRelaunchesLauncherNotOldDesktop(t *testing.T) {
 	stubDesktopHandoff(t)
 	installDir := t.TempDir()
 	seed := t.TempDir()
-	for _, name := range []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+	for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 		if err := os.WriteFile(filepath.Join(seed, name), []byte("old-"+name), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -227,7 +226,7 @@ func TestRunVersionedUpdateRelaunchesLauncherNotOldDesktop(t *testing.T) {
 	claimInstallerExecutionFn = func(string, string) (func(), error) { return func() {}, nil }
 	reconcileWindowsUninstallRegistrationFn = func(string, string) (bool, error) { return true, nil }
 	runInstallerFn = func(_ string, staging string) error {
-		for _, name := range []string{"reasonix-desktop.exe", "reasonix-cli.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
+		for _, name := range []string{"reasonix-desktop.exe", "reasonix-update-helper.exe", "reasonix-launcher.exe"} {
 			if err := os.WriteFile(filepath.Join(staging, name), []byte("new-"+name), 0o700); err != nil {
 				return err
 			}

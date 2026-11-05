@@ -20,9 +20,6 @@
     <pe-file path="reasonix-update-helper.exe">
       <authenticode-verify />
     </pe-file>
-    <pe-file path="reasonix-cli.exe">
-      <authenticode-verify />
-    </pe-file>
     <pe-file path="reasonix-uninstall.exe">
       <authenticode-verify />
     </pe-file>
