@@ -447,6 +447,7 @@ Section "uninstall"
     Delete "$INSTDIR\${REASONIX_LAUNCHER}"
     Delete "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"
     Delete "$INSTDIR\current.json"
+    Delete "$INSTDIR\.reasonix-activate.lock"
     RMDir /r "$INSTDIR\versions"
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
