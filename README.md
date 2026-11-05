@@ -5,7 +5,7 @@
 <h1 align="center">Reasonix Wails</h1>
 
 <p align="center">
-  <strong>The Wails desktop branch of Reasonix 1.x, independently maintained.</strong>
+  <strong>Based on the Wails desktop code of Reasonix 1.x, independently maintained.</strong>
 </p>
 
 <p align="center">
@@ -33,15 +33,15 @@
 
 ## What this is
 
-Reasonix Wails is the **desktop branch of Reasonix 1.x (`main-v2`)**. Upstream 2.x moved to Electron; this project keeps maintaining the 1.x Go + Wails + WebView2 desktop form, with its own features and fixes.
+Reasonix Wails was forked from the **Wails desktop phase of Reasonix 1.x (`main-v2`)**. Upstream 1.x is still maintained, but its desktop app has since moved to Electron as well, and 2.x (Studio) uses Electron too. This project stays on the Go + Wails + WebView2 form, maintains its own features, and no longer follows upstream desktop-architecture changes.
 
 How it relates to upstream:
 
 | | Upstream 1.x | Upstream 2.x (Studio) | This project |
 | --- | --- | --- | --- |
-| Desktop stack | Wails | Electron | **Wails** |
+| Desktop stack | Wails early, Electron now | Electron | **Wails** |
 | Main entry | CLI + desktop | Desktop | **Desktop only** |
-| Status | No longer extended | Active | Independently maintained |
+| Status | Still maintained | Still in development | Independently maintained |
 | Releases | Upstream | Upstream | **This repository** |
 
 This is not an official Reasonix release; features and release cadence are decided here. The original copyright, MIT license and contributor credits are preserved.
@@ -96,7 +96,7 @@ pnpm build
 
 - The agent runs locally. Your configured model provider only receives the context needed for a request.
 - Config, sessions and memory live in `%APPDATA%\reasonix` by default, shared with Reasonix Studio. This project will not rewrite that data without verified compatibility.
-- **The current source still contains upstream crash-reporting and anonymous metrics endpoints (`crash.reasonix.io`)**, which can be disabled in settings. The independence work removes automatic upload in favor of local, redacted diagnostics and manual export.
+- **No automatic upload of crash reports, telemetry or session content**: the related endpoints are empty in the current code; diagnostics stay local and can be exported manually.
 - Separate install identity, data isolation and compatibility verification are still in progress; see the [implementation plan](./docs/planning/IMPLEMENTATION_PLAN.md).
 
 ## Documentation

@@ -5,7 +5,7 @@
 <h1 align="center">Reasonix Wails</h1>
 
 <p align="center">
-  <strong>Reasonix 1.x 的 Wails 桌面分支，独立维护。</strong>
+  <strong>基于 Reasonix 1.x 的 Wails 桌面代码，独立维护。</strong>
 </p>
 
 <p align="center">
@@ -33,15 +33,15 @@
 
 ## 这是什么
 
-Reasonix Wails 是 **Reasonix 1.x（`main-v2`）的桌面分支**。上游 2.x 转向 Electron，本项目继续维护 1.x 的 Go + Wails + WebView2 桌面形态，并长期跟进自己的功能与修复。
+Reasonix Wails 从 **Reasonix 1.x（`main-v2`）的 Wails 桌面阶段**分出。上游 1.x 目前仍在维护，但其桌面端后来也迁移到了 Electron，2.x（Studio）同样使用 Electron。本项目停留在 Go + Wails + WebView2 形态，独立维护后续功能，不再跟随上游的桌面架构调整。
 
 它和上游的关系：
 
 | | 上游 1.x | 上游 2.x（Studio） | 本项目 |
 | --- | --- | --- | --- |
-| 桌面技术 | Wails | Electron | **Wails** |
+| 桌面技术 | 早期 Wails，现行 Electron | Electron | **Wails** |
 | 主要入口 | CLI + 桌面 | 桌面 | **仅桌面** |
-| 维护状态 | 不再扩展 | 活跃开发 | 独立维护 |
+| 维护状态 | 上游仍在维护 | 上游仍在开发 | 独立维护 |
 | 发布渠道 | 上游 Releases | 上游 Releases | **本仓库 Releases** |
 
 本项目不是 Reasonix 官方发行版，功能和发布节奏由本仓库独立决定。原项目的版权、MIT 许可和贡献者署名均予保留。
@@ -97,7 +97,7 @@ pnpm build
 
 - Agent 在本机运行。你配置的模型服务商只会收到请求所需的上下文。
 - 配置、会话和记忆默认存放在 `%APPDATA%\reasonix`，与 Reasonix Studio 共用；本项目不会在未确认兼容性前改写这些数据。
-- **当前源码仍保留了上游的崩溃上报与匿名统计端点（`crash.reasonix.io`）**，可在设置中关闭。独立化改造会移除自动上报，改为本地脱敏诊断 + 手动导出。
+- **不自动上传崩溃、遥测或会话内容**：相关端点在当前代码中已置空，崩溃与诊断信息只保存在本地，可手动导出。
 - 独立安装身份、数据隔离与兼容性验证仍在进行中，细节见[实施计划](./docs/planning/IMPLEMENTATION_PLAN.md)。
 
 ## 文档
