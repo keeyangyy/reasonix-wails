@@ -108,14 +108,14 @@ func readValidatedMarkdownImageSnapshot(f *os.File, mimeType string, size int64)
 	if size <= 0 {
 		return nil, errors.New("empty markdown image")
 	}
-	if size > remoteMarkdownImageMaxBytes {
+	if size > markdownImageMaxBytes {
 		return nil, errMarkdownImageTooLarge
 	}
-	body, err := io.ReadAll(io.LimitReader(f, remoteMarkdownImageMaxBytes+1))
+	body, err := io.ReadAll(io.LimitReader(f, markdownImageMaxBytes+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(body) > remoteMarkdownImageMaxBytes {
+	if int64(len(body)) > markdownImageMaxBytes {
 		return nil, errMarkdownImageTooLarge
 	}
 	snapshot, detected := safeRemoteMarkdownImage(body)

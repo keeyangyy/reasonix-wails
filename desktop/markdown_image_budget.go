@@ -15,7 +15,11 @@ import (
 	"golang.org/x/image/webp"
 )
 
-const markdownImageMaxPixels int64 = 40_000_000
+const (
+	markdownImageMaxPixels int64 = 40_000_000
+	// markdownImageMaxBytes caps local and data: markdown images.
+	markdownImageMaxBytes int64 = 10 * 1024 * 1024
+)
 
 var errMarkdownImageTooLarge = errors.New("markdown image exceeds the decode budget")
 
@@ -23,7 +27,7 @@ func validateOpenMarkdownImageFile(f *os.File, mimeType string, size int64) erro
 	if size <= 0 {
 		return fmt.Errorf("empty image")
 	}
-	if size > remoteMarkdownImageMaxBytes {
+	if size > markdownImageMaxBytes {
 		return errMarkdownImageTooLarge
 	}
 	return validateMarkdownImageConfig(f, mimeType)
@@ -33,7 +37,7 @@ func validateMarkdownImageBytes(body []byte, mimeType string) error {
 	if len(body) == 0 {
 		return fmt.Errorf("empty image")
 	}
-	if len(body) > remoteMarkdownImageMaxBytes {
+	if int64(len(body)) > markdownImageMaxBytes {
 		return errMarkdownImageTooLarge
 	}
 	return validateMarkdownImageConfig(bytes.NewReader(body), mimeType)

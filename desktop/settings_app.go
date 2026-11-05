@@ -3330,7 +3330,6 @@ func (a *App) ClearProviderKey(apiKeyEnv string) error {
 	if err := removeDotEnv(apiKeyEnv); err != nil {
 		return err
 	}
-	a.revokeCredentialProxyRoutesByCredential(apiKeyEnv)
 	if err := a.rebuildSetting("provider key"); err != nil {
 		if _, ok := a.deferredRebuildWarning("provider key", err); ok {
 			return nil

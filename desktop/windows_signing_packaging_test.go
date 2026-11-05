@@ -281,7 +281,7 @@ func TestWindowsPackagerRejectsMissingOrPartialRequiredPayloadManifest(t *testin
 
 func TestSignPathConfigurationsCoverExactWindowsPayload(t *testing.T) {
 	expected := map[string]bool{
-		"reasonix-wails.exe":       true,
+		"reasonix-wails.exe":         true,
 		"reasonix-guard.exe":         true,
 		"reasonix-launcher.exe":      true,
 		"reasonix-update-helper.exe": true,

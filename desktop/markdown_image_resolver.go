@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ type MarkdownImageView struct {
 	ErrorCode string `json:"errorCode,omitempty"`
 }
 
-const markdownDataImageMaxEncodedBytes = remoteMarkdownImageMaxBytes*4/3 + 1024
+const markdownDataImageMaxEncodedBytes = markdownImageMaxBytes*4/3 + 1024
 
 // ResolveMarkdownImageForTab applies a tag-specific policy that is deliberately
 // stricter than ordinary Markdown links.
@@ -35,19 +36,7 @@ func (a *App) ResolveMarkdownImageForTab(tabID, source string) MarkdownImageView
 		source = "https:" + source
 	}
 	if strings.HasPrefix(strings.ToLower(source), "http://") || strings.HasPrefix(strings.ToLower(source), "https://") {
-		remote, err := validateRemoteMarkdownImageURL(source)
-		if err != nil {
-			return MarkdownImageView{OpenHref: source, ErrorCode: "blocked-remote"}
-		}
-		name := filepath.Base(strings.TrimSpace(mustURLPath(remote)))
-		if name == "." || name == string(filepath.Separator) {
-			name = "image"
-		}
-		return MarkdownImageView{
-			URL:      remoteMarkdownImagePath + "?url=" + url.QueryEscape(remote),
-			Filename: name,
-			OpenHref: remote,
-		}
+		return MarkdownImageView{OpenHref: source, ErrorCode: "blocked-remote"}
 	}
 	if strings.HasPrefix(strings.ToLower(source), "data:") {
 		return resolveMarkdownDataImage(source)
@@ -113,7 +102,7 @@ func mustURLPath(raw string) string {
 }
 
 func resolveMarkdownDataImage(source string) MarkdownImageView {
-	if len(source) > markdownDataImageMaxEncodedBytes {
+	if int64(len(source)) > markdownDataImageMaxEncodedBytes {
 		return MarkdownImageView{ErrorCode: "too-large"}
 	}
 	comma := strings.IndexByte(source, ',')
@@ -153,10 +142,10 @@ func resolveMarkdownDataImage(source string) MarkdownImageView {
 	if err != nil || len(data) == 0 {
 		return MarkdownImageView{ErrorCode: "invalid-data"}
 	}
-	if len(data) > remoteMarkdownImageMaxBytes {
+	if int64(len(data)) > markdownImageMaxBytes {
 		return MarkdownImageView{ErrorCode: "too-large"}
 	}
-	validated, detected := safeRemoteMarkdownImage(data)
+	validated, detected := data, http.DetectContentType(data)
 	if detected != declared || detected == "image/svg+xml" {
 		return MarkdownImageView{ErrorCode: "invalid-data"}
 	}

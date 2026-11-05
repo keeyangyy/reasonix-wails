@@ -34,10 +34,7 @@ func (a *App) shutdownBody() {
 	if a.workspaceHub != nil {
 		a.workspaceHub.close()
 	}
-	// A real quit terminates web windows whose tunnels die with this process.
-	// Remote Serve stays resident; background tray close never reaches shutdown
-	// and therefore keeps those windows alive.
-	a.closeAllRemoteWindows()
+
 	// Run after controller teardown (and after its deferred lifecycle unlocks)
 	// so every accepted usage record reaches disk before a normal app exit.
 	defer func() {
@@ -47,17 +44,13 @@ func (a *App) shutdownBody() {
 		_ = flushDesktopDerivedCatalogs(flushCtx)
 	}()
 	a.stopDeferredRebuildRetry()
-	// End every takeover mirror before controller teardown releases the leases:
-	// Serve's mirror-end then hands those sessions straight back to their
-	// remote tabs instead of waiting out the stale-mirror timeout.
-	a.stopTakeoverMirrors()
+
 	a.stopHistoryIndexMigration()
 	a.stopMainThreadWatchdog()
 	if a.heartbeat != nil {
 		a.heartbeat.Stop()
 	}
 	a.stopBotRuntime()
-	a.stopRemoteRuntime()
 	a.stopTray()
 	// Terminal process shutdown is independent from controller teardown. Do it
 	// before acquiring runtime lifecycle locks so a slow PTY cannot delay while
@@ -109,7 +102,7 @@ func (a *App) shutdownBody() {
 	}
 	// Every lease is released; taken-over sessions can go straight back to
 	// their remote tabs.
-	a.endTakeoverMirrors()
+
 	if a.startupReady.Load() {
 		// A stable React + Wails heartbeat is sufficient health evidence even if
 		// the user closes before the delayed commit task runs.

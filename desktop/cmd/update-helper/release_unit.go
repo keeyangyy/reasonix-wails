@@ -112,7 +112,7 @@ func validateWindowsClaimedReleaseUnit(claimed *repair.UpdateTransaction) error 
 		return fmt.Errorf("claimed release unit primary executable is invalid")
 	}
 	required := map[string]bool{
-		"reasonix-wails.exe":       false,
+		"reasonix-wails.exe":         false,
 		"reasonix-guard.exe":         false,
 		"reasonix-launcher.exe":      false,
 		"reasonix-update-helper.exe": false,

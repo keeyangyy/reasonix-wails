@@ -134,7 +134,7 @@ func TestResolveMarkdownImageForTabRejectsLargeLocalImages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Truncate(remoteMarkdownImageMaxBytes + 1); err != nil {
+	if err := f.Truncate(markdownImageMaxBytes + 1); err != nil {
 		_ = f.Close()
 		t.Fatal(err)
 	}

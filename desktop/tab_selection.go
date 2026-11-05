@@ -8,45 +8,6 @@ func (a *App) SetActiveTab(tabID string) error {
 	a.tabSelectionMu.Lock()
 	defer a.tabSelectionMu.Unlock()
 
-	a.remoteTabMu.Lock()
-	if _, isRemote := a.remoteTabs[tabID]; isRemote {
-		switchingFromLocal := a.remoteTabLayout.activeID == ""
-		a.remoteTabMu.Unlock()
-		if switchingFromLocal {
-			if err := a.snapshotActiveLocalBeforeRemote(); err != nil {
-				return err
-			}
-		}
-
-		a.remoteTabMu.Lock()
-		tab, isRemote := a.remoteTabs[tabID]
-		if !isRemote {
-			a.remoteTabMu.Unlock()
-			return fmt.Errorf("tab %q not found", tabID)
-		}
-		a.remoteTabLayout.activeID = tabID
-		revive := tab.state == "disconnected"
-		terminalState, terminalErr := "", ""
-		if revive {
-			tab.state = "connecting"
-		} else if tab.state == "error" || tab.state == "serve_down" {
-			terminalState, terminalErr = tab.state, tab.err
-		}
-		hostID, workspace := tab.ref.HostID, tab.ref.Workspace
-		a.remoteTabMu.Unlock()
-		if revive {
-			a.emitRemoteTabState(tabID, "connecting", "")
-			a.goRemoteTabSafe("remoteTabServe", func() { a.bootstrapRemoteTab(tabID, hostID, workspace) })
-		} else if terminalState != "" {
-			// A restored shell can fail before its React surface subscribes. Re-publish
-			// the authoritative terminal state on activation so the recovery UI does
-			// not remain on an inferred connecting placeholder.
-			a.emitRemoteTabState(tabID, terminalState, terminalErr)
-		}
-		a.saveTabsFromRemote()
-		return nil
-	}
-	a.remoteTabMu.Unlock()
 	a.mu.RLock()
 	_, ok := a.tabs[tabID]
 	alreadyActive := a.activeTabID == tabID
@@ -55,10 +16,6 @@ func (a *App) SetActiveTab(tabID string) error {
 		return fmt.Errorf("tab %q not found", tabID)
 	}
 	if alreadyActive {
-		a.remoteTabMu.Lock()
-		a.remoteTabLayout.activeID = ""
-		a.remoteTabMu.Unlock()
-		a.saveTabsFromRemote()
 		return nil
 	}
 	a.mu.RLock()
@@ -75,10 +32,6 @@ func (a *App) SetActiveTab(tabID string) error {
 	}
 	if a.activeTabID == tabID {
 		a.mu.Unlock()
-		a.remoteTabMu.Lock()
-		a.remoteTabLayout.activeID = ""
-		a.remoteTabMu.Unlock()
-		a.saveTabsFromRemote()
 		return nil
 	}
 	a.activeTabID = tabID

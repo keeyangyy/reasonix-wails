@@ -1656,18 +1656,7 @@ type tabEventSink struct {
 	botSink           event.Sink // optional: when set, events are also forwarded here
 	botSinkGen        uint64
 	turn              turnSubmissionState // stays reserved through the end of TurnDone fan-out
-	// takeoverMirror, when set, forwards every event to the serve that used to
-	// own this session so the remote tab keeps rendering after a local
-	// takeover. Atomic so Emit reads it without the sink lock.
-	takeoverMirror atomic.Pointer[takeoverMirror]
-}
 
-// setTakeoverMirror installs (or clears) the session-takeover frame mirror.
-func (s *tabEventSink) setTakeoverMirror(m *takeoverMirror) {
-	if s == nil {
-		return
-	}
-	s.takeoverMirror.Store(m)
 }
 
 type closeableEventSink interface {
@@ -6437,7 +6426,6 @@ type ProjectNode struct {
 	// physical recovery copies are an internal persistence detail.
 	RecoveryCopyCount int           `json:"recoveryCopyCount,omitempty"`
 	IsolatedWorktree  bool          `json:"isolatedWorktree,omitempty"`
-	Remote            *RemoteTabRef `json:"remote,omitempty"`
 	RuntimeOnly       bool          `json:"runtimeOnly,omitempty"`
 	Children          []ProjectNode `json:"children,omitempty"`
 }

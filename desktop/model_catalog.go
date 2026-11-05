@@ -36,15 +36,7 @@ func (a *App) recordModelSwitchTiming(tabID string, timing *modelSwitchTiming, s
 }
 
 func (a *App) ModelsForTab(tabID string) []ModelInfo {
-	if cur, ok := a.remoteTabCurrentModel(tabID); ok {
-		if !a.remoteTabLocalProxy(tabID) {
-			if infos, err := a.remoteServeModelsForTab(tabID, cur); err == nil {
-				return infos
-			}
-			return []ModelInfo{}
-		}
-		return a.remoteProxyModelCatalog(cur)
-	}
+
 	a.mu.RLock()
 	curModel := ""
 	workspaceRoot := ""

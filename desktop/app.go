@@ -292,11 +292,6 @@ type App struct {
 	// It is process-local by design: shutdown closes every detached controller.
 	detachedSessions map[string]*WorkspaceTab
 
-	// takeoverMirrors tracks sessions this desktop took over from a local
-	// serve: the tab writes locally while its events mirror to the remote tab.
-	takeoverMirrors        map[string]*takeoverMirror
-	takeoverAdoptRevisions map[string]uint64
-	takeoverMu             sync.Mutex
 	// serveProbeUntil suppresses serve probing after a failed handshake
 	// (rotated token file); guarded by serveProbeMu.
 	serveProbeUntil map[string]time.Time
@@ -347,55 +342,6 @@ type App struct {
 	// from chat runtimes: terminal lifecycle must never acquire App.mu or the
 	// controller rebuild locks while process I/O is blocked.
 	terminals *terminalManager
-
-	// Remote SSH module: the manager is created lazily on the first remote
-	// binding call and closed on shutdown.
-	remoteMu      sync.Mutex
-	remoteRuntime remoteKernel
-
-	// Remote web windows (SSH Serve child processes). The main process tracks
-	// the live child plus transient handoff processes for each host. Host-scoped
-	// lifecycle operations are generation-fenced and serialized so an overlapping
-	// disconnect/stop cannot miss a window that is still being spawned. Closing a
-	// window releases only its registration, while the remote Serve and the SSH
-	// connection keep running. The child deliberately skips local runtimes.
-	remoteWindows          *remoteWindowRegistry
-	remoteWindowLifecycles remoteWindowLifecycleRegistry
-	remoteWindowOpener     func(remoteWindowLaunch) error // test-only injection
-	// Remote project tabs are in-app surfaces bound to a remote workspace.
-	// Project pins persist in user config; open tab shells persist separately
-	// and restore disconnected until the user activates them.
-	remoteTabMu     sync.Mutex
-	remoteTabs      map[string]*remoteTab
-	remoteTabLayout remoteTabLayoutState
-	remoteTabTasks  sync.WaitGroup
-	// remoteTabModelMu makes the caller's current-model snapshot, the remote
-	// Serve rebuild, and the tab metadata commit one transaction. Without it,
-	// overlapping switches could roll remote config back to a stale model.
-	remoteTabModelMu sync.Mutex
-	// remoteEventHook observes remote events in tests; production leaves it nil.
-	remoteEventHook func(name string, payload any)
-	// credProxy is the lazy app-wide key holder for local-proxy mode.
-	credProxyMu sync.Mutex
-	credProxy   *credentialProxy
-	// remoteWindowTicket/remoteWindowHostKey are set from argv before Wails
-	// starts in a child process. They gate the blank-shell middleware and the
-	// startup branches so the child never initializes local runtimes.
-	remoteWindowTicket  string
-	remoteWindowHostKey string
-	// remoteWindowOwnerID scopes child single-instance locks to one primary
-	// Desktop process. remoteWindowParentPID is set only in children and lets
-	// them exit when that owner (and therefore its SSH tunnel) disappears.
-	remoteWindowOwnerID   string
-	remoteWindowParentPID int
-	// remoteWindowMu serializes ticket consumption and navigation in a child
-	// process so a handoff arriving before domReady cannot be overridden by the
-	// initial ticket (or vice versa). remoteWindowTicketConsumed makes the
-	// initial handoff idempotent because WebKit fires OnDomReady again after the
-	// shell navigates to the remote Serve page.
-	remoteWindowMu             sync.Mutex
-	remoteWindowTicketConsumed bool
-	remoteWindow               *remoteWindowLaunch
 
 	// promptHistoryTape is a lazy, cursor-addressed view of prompt history. It
 	// stores session order and per-session parsed entries only after that session is
@@ -463,9 +409,8 @@ func NewApp() *App {
 		mediaTokens:          newMediaTokenStore(),
 		botInstalls:          map[string]*botInstallSession{},
 		botRuntime:           newDesktopBotRuntime(),
-		remoteWindows:        newRemoteWindowRegistry(),
-		remoteWindowOwnerID:  newRemoteWindowOwnerID(),
-		topicState:           desktopTopicState,
+
+		topicState: desktopTopicState,
 		worktreeReservations: worktreeRuntimeReservations{
 			cleanup: map[string]struct{}{},
 			merge:   map[string]struct{}{},
@@ -508,13 +453,7 @@ func (a *App) startup(ctx context.Context) {
 	a.webView2Recovery.startGuidance(ctx)
 	a.desktopShell.coordinator.start(ctx)
 	a.lifecycle.tracker.markAsync("ready")
-	if a.remoteWindowTicket != "" {
-		// Remote web window child: no local tabs, tray, heartbeat, providers,
-		// or remote manager. domReady consumes the ticket and navigates; the
-		// owner watcher closes the window if the primary Desktop disappears.
-		a.watchRemoteWindowOwner(ctx)
-		return
-	}
+
 	installSystemQuitHook()
 	a.enableDeferredRebuildRetry()
 	a.startHistoryIndexMigration()
@@ -554,12 +493,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) beforeClose(ctx context.Context) bool {
-	if a.remoteWindowTicket != "" {
-		// A remote web window closes immediately — nothing to snapshot, lease,
-		// or hide. Closing it must not stop the remote Serve or the main
-		// process's SSH connection.
-		return false
-	}
+
 	if a.forceQuit.Swap(false) || consumeSystemQuitRequested() {
 		return false
 	}
@@ -754,12 +688,7 @@ func (a *App) restoreOrBuildTabs() {
 		}
 		a.setDesktopLocale(i18n.DetectLanguage(lang))
 	}
-	if cfgErr != nil || singleSurfaceLayoutStyle(startupCfg.DesktopLayoutStyle()) {
-		f = singleSurfaceTabsFile(f)
-	}
-	// Restore remote tabs as disconnected shells; activation performs the
-	// first network work so desktop startup remains offline-safe.
-	a.restoreRemoteTabShells(f)
+
 	if len(f.Tabs) > 0 {
 		toBuild := make([]*WorkspaceTab, 0, len(f.Tabs))
 		for _, entry := range f.Tabs {
@@ -820,11 +749,6 @@ func (a *App) restoreOrBuildTabs() {
 		for _, tab := range toBuild {
 			a.startTabControllerBuild(tab)
 		}
-		return
-	}
-	if len(f.RemoteTabs) > 0 {
-		// A remote-only single-surface layout is restored above as disconnected
-		// shells. It is not a first launch and must not grow a fallback Global tab.
 		return
 	}
 
@@ -910,10 +834,7 @@ func (a *App) snapshotAllTabs() {
 
 // shutdown snapshots all tabs, saves the final window geometry, and closes tabs.
 func (a *App) shutdown(context.Context) {
-	if a.remoteWindowTicket != "" {
-		// Remote web window child has no local state to stop.
-		return
-	}
+
 	// Freeze publication, then cancel off-barrier history, catalog, and plugin
 	// work so normal quit never waits for background I/O.
 	a.shuttingDown.Store(true)
@@ -930,10 +851,6 @@ func (a *App) domReady(_ context.Context) {
 	// SA_ONSTACK flags required by Go; this is a no-op outside Linux.
 	repairWebKitSignalHandlers()
 
-	if a.remoteWindowTicket != "" {
-		a.domReadyRemoteWindow()
-		return
-	}
 	if a.desktopShell.coordinator != nil {
 		a.desktopShell.coordinator.markDOMReady()
 	}
@@ -1874,9 +1791,7 @@ func (a *App) SetCollaborationMode(mode string) {
 // turn cannot observe collaboration, approval, and goal from different UI
 // generations.
 func (a *App) SetComposerProfileForTab(tabID, collaborationMode, toolApprovalMode, goal string) ([]string, error) {
-	if a.isRemoteTab(tabID) {
-		return []string{}, nil
-	}
+
 	collaborationMode = normalizeCollaborationMode(collaborationMode)
 	toolApprovalMode = normalizeToolApprovalMode(toolApprovalMode)
 	goal = strings.TrimSpace(goal)
@@ -3608,10 +3523,7 @@ func (a *App) ResumeSessionForTab(tabID, path string) ([]HistoryMessage, error) 
 			return nil, fmt.Errorf("session is held by the remote side; use TakeoverSession to reclaim it")
 		}
 		a.setTabReadOnly(tab.ID, false)
-		// A read-only transcript explicitly reopened for writing re-announces
-		// itself so a resident Serve can mirror and later reclaim it.
-		a.attachTakeoverMirror(tab.ID, sessionPath)
-		go a.adoptSessionFromLocalServe(tab.ID, sessionPath)
+
 		return a.HistoryForTab(tabID), nil
 	}
 	loaded, err := loadResumableSession(sessionPath)
@@ -3623,8 +3535,6 @@ func (a *App) ResumeSessionForTab(tabID, path string) ([]HistoryMessage, error) 
 		return nil, err
 	}
 	a.setTabReadOnly(tab.ID, false)
-	a.attachTakeoverMirror(tab.ID, sessionPath)
-	go a.adoptSessionFromLocalServe(tab.ID, sessionPath)
 	return a.HistoryForTab(tabID), nil
 }
 
@@ -3942,11 +3852,7 @@ func (a *App) rebindTabToLoadedSessionPath(tab *WorkspaceTab, sessionPath string
 		tab.sink.setBinding(tab.ID, a, tab.SessionGeneration)
 		tab.sink.setContext(a.ctx)
 	}
-	// Wiring a mirror inspects App state under a read lock, so defer it until
-	// after this transaction releases App.mu. The same applies to asynchronous
-	// adoption: publishing the committed identity first lets its stale-result
-	// fence observe one coherent runtime generation.
-	shouldAdopt := !tab.ReadOnly
+
 	if detachSource {
 		a.newSessionRuntimeLocked(tab, transition.targetKey)
 	}
@@ -3956,10 +3862,7 @@ func (a *App) rebindTabToLoadedSessionPath(tab *WorkspaceTab, sessionPath string
 	candidate.sink = nil
 	committed = true
 	a.mu.Unlock()
-	a.attachTakeoverMirror(tab.ID, sessionPath)
-	if shouldAdopt {
-		go a.adoptSessionFromLocalServe(tab.ID, sessionPath)
-	}
+
 	// Test-only observation point: the replacement is committed but the retired
 	// sink still carries its old epoch. Production has no hook and immediately
 	// fences that sink below.
@@ -5070,11 +4973,7 @@ func (a *App) SwitchWorkspace(dir string) (string, error) {
 }
 
 func (a *App) singleSurfaceLayoutEnabled() bool {
-	cfg, _, err := a.loadDesktopUserConfigForView()
-	if err != nil {
-		return true
-	}
-	return singleSurfaceLayoutStyle(cfg.DesktopLayoutStyle())
+	return false
 }
 
 // HistoryMessage is one prior turn, for the frontend to repopulate its transcript
@@ -6516,12 +6415,6 @@ func (a *App) CancelJobForTab(tabID, jobID string) (bool, error) {
 		return false, fmt.Errorf("job id is required")
 	}
 	if tabID != "" {
-		if a.isRemoteTab(tabID) {
-			if err := a.CancelRemoteTabJobs(tabID, []string{jobID}); err != nil {
-				return false, err
-			}
-			return true, nil
-		}
 		ctrl := a.ctrlForRuntimeTabID(tabID)
 		if ctrl != nil {
 			return cancelJobForController(ctrl, jobID)
@@ -6586,9 +6479,6 @@ type Meta struct {
 	DismissedTodoBatches []string `json:"dismissedTodoBatches,omitempty"`
 	// PinnedFiles holds metadata about standing pinned context files for this tab.
 	PinnedFiles []PinnedFileInfo `json:"pinnedFiles,omitempty"`
-	// Remote marks a remote session tab; its readiness is carried by the
-	// remote-tab state channel rather than a local controller.
-	Remote *RemoteTabRef `json:"remote,omitempty"`
 }
 
 type GoalRuntimeView struct {
@@ -6646,11 +6536,7 @@ func (a *App) MetaForTab(tabID string) Meta {
 	runtimeView := a.sessionRuntimeViewLocked(tab)
 	a.mu.RUnlock()
 	if tab == nil {
-		meta := Meta{EventChannel: eventChannel}
-		if ref, ok := a.remoteTabRefFor(tabID); ok {
-			meta.Remote = &ref
-		}
-		return meta
+		return Meta{EventChannel: eventChannel}
 	}
 	cwd := snap.workspaceRoot
 	if cwd == "" {
@@ -9594,9 +9480,7 @@ func (a *App) SetModelForTab(tabID, name string) (retErr error) {
 	if name == "" {
 		return nil
 	}
-	if a.isRemoteTab(tabID) {
-		return a.SetRemoteTabModel(tabID, name)
-	}
+
 	if a.ctx == nil {
 		return nil
 	}

@@ -92,7 +92,7 @@ func newDesktopLifecycleTracker(root, appVersion, appChannel string) *desktopLif
 }
 
 func prepareDesktopDiagnostics(app *App) {
-	if app == nil || app.remoteWindowTicket != "" || version == "dev" {
+	if app == nil || version == "dev" {
 		return
 	}
 	root := config.MemoryUserDir()
@@ -137,7 +137,7 @@ func (a *App) releaseDesktopDiagnosticsOwnership() {
 }
 
 func initializeLifecycleDiagnostics(app *App) {
-	if app == nil || app.remoteWindowTicket != "" {
+	if app == nil {
 		return
 	}
 	// Native WebKit recovery is a reliability mechanism, not telemetry. Always

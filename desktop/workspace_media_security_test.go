@@ -64,7 +64,7 @@ func TestMarkdownMediaTokenRevalidatesInPlaceContent(t *testing.T) {
 		replacement []byte
 	}{
 		{name: "pixel budget", replacement: markdownImageTestPNGConfig(10_000, 4_001)},
-		{name: "byte budget", replacement: make([]byte, remoteMarkdownImageMaxBytes+1)},
+		{name: "byte budget", replacement: make([]byte, markdownImageMaxBytes+1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			original, _ := os.Getwd()

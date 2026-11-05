@@ -222,11 +222,7 @@ func (a *App) goSafe(site string, fn func()) {
 }
 
 func (a *App) goRemoteTabSafe(site string, fn func()) {
-	a.remoteTabTasks.Add(1)
-	a.goSafe(site, func() {
-		defer a.remoteTabTasks.Done()
-		fn()
-	})
+	a.goSafe(site, fn)
 }
 
 // flushPendingCrash drains a Go panic captured on a prior run and POSTs it, then

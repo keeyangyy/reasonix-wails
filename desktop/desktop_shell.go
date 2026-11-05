@@ -54,7 +54,7 @@ func newDesktopShellCoordinator(app *App) *desktopShellCoordinator {
 }
 
 func (c *desktopShellCoordinator) start(ctx context.Context) {
-	if c == nil || c.app == nil || c.app.remoteWindowTicket != "" {
+	if c == nil || c.app == nil {
 		return
 	}
 	c.mu.Lock()

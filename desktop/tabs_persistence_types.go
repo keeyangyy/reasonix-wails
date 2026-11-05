@@ -22,11 +22,10 @@ type desktopTabEntry struct {
 }
 
 type desktopTabsFile struct {
-	Tabs           []desktopTabEntry       `json:"tabs"`
-	ActiveTab      string                  `json:"activeTab"`
-	RemoteTabs     []desktopRemoteTabEntry `json:"remoteTabs,omitempty"`
-	RemoteTabOrder []string                `json:"remoteTabOrder,omitempty"`
-	TabOrder       []string                `json:"tabOrder,omitempty"`
+	Tabs      []desktopTabEntry `json:"tabs"`
+	ActiveTab string            `json:"activeTab"`
+
+	TabOrder []string `json:"tabOrder,omitempty"`
 }
 
 func persistedDesktopTabEntry(tab *WorkspaceTab) desktopTabEntry {

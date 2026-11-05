@@ -14,7 +14,7 @@ import (
 func TestLoadWindowsStagedReleaseUnitPreflightsAllMembersAndPublishesDesktopLast(t *testing.T) {
 	staging := t.TempDir()
 	for name, content := range map[string]string{
-		"reasonix-wails.exe":       "desktop-v2",
+		"reasonix-wails.exe":         "desktop-v2",
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",
@@ -222,7 +222,7 @@ func TestLoadWindowsStagedReleaseUnitRejectsUnverifiedPayloadBeforePublish(t *te
 func TestLoadWindowsStagedReleaseUnitReadsEachSourceThroughVerifier(t *testing.T) {
 	staging := t.TempDir()
 	for name, content := range map[string]string{
-		"reasonix-wails.exe":       "desktop-v2",
+		"reasonix-wails.exe":         "desktop-v2",
 		"reasonix-guard.exe":         "guard-v2",
 		"reasonix-launcher.exe":      "launcher-v2",
 		"reasonix-update-helper.exe": "helper-v2",

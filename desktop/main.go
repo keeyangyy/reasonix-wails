@@ -153,34 +153,10 @@ func main() {
 	appMenu := app.createAppMenu()
 	dragAndDrop := &options.DragAndDrop{EnableFileDrop: true}
 	bindings := []any{app}
-	remoteWindow := launch.RemoteWindowTicket != ""
+	preparePrimaryDesktopRuntime(app)
+	defer app.releaseDesktopDiagnosticsOwnership()
 
-	if remoteWindow {
-		// A remote web child window: a second Reasonix process that hosts the
-		// SSH Serve page for one remote host. It deliberately skips local
-		// runtimes (tabs, tray, heartbeat, providers) and exposes no Wails
-		// bindings, local menus, or file drops, so it can never act as a second
-		// local app. Its single-instance identity is per owner and host, so one
-		// Desktop reuses its window while a restarted Desktop cannot adopt an
-		// unregistered survivor from the prior process.
-		if launch.RemoteWindowHostKey == "" || !isRemoteWindowOwnerID(launch.RemoteWindowOwnerID) || launch.RemoteWindowParentPID <= 0 {
-			println("Error: remote window ticket requires valid host and owner identities")
-			return
-		}
-		app.remoteWindowTicket = launch.RemoteWindowTicket
-		app.remoteWindowHostKey = launch.RemoteWindowHostKey
-		app.remoteWindowOwnerID = launch.RemoteWindowOwnerID
-		app.remoteWindowParentPID = launch.RemoteWindowParentPID
-		singleInstance = remoteWindowSingleInstanceLock(app)
-		appMenu = nil
-		dragAndDrop = &options.DragAndDrop{DisableWebViewDrop: true}
-		bindings = nil
-	} else {
-		preparePrimaryDesktopRuntime(app)
-		defer app.releaseDesktopDiagnosticsOwnership()
-	}
-
-	width, height := initialDesktopWindowSize(remoteWindow)
+	width, height := initialDesktopWindowSize(false)
 	zoomFactor := initialDesktopZoomFactor()
 
 	// On Linux, cover JavaScriptCore's lazy signal-handler installation window.
@@ -191,7 +167,7 @@ func main() {
 		Title:     title,
 		Width:     width,
 		Height:    height,
-		Frameless: desktopWindowFrameless(goruntime.GOOS, remoteWindow),
+		Frameless: desktopWindowFrameless(goruntime.GOOS, false),
 		Logger:    newCrashCaptureLogger(app),
 		MinWidth:  760,
 		MinHeight: 480,
@@ -201,9 +177,7 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Middleware: assetserver.ChainMiddleware(
-				app.remoteWindowAssetMiddleware(),
 				app.jsProfilingMiddleware(),
-				app.remoteMarkdownImageMiddleware(),
 				app.workspaceMediaMiddleware(),
 				app.themeAssetMiddleware(),
 			),
@@ -292,14 +266,7 @@ func parseDesktopLaunchArgs(args []string) desktopLaunchOptions {
 			out.LegacySafeModeArg = true
 		case arg == "launch" || arg == "--detach":
 			// Legacy launch tokens from old shortcuts. They produce no behavior.
-		case strings.HasPrefix(arg, remoteWindowTicketArgPrefix):
-			out.RemoteWindowTicket = strings.TrimPrefix(arg, remoteWindowTicketArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowHostArgPrefix):
-			out.RemoteWindowHostKey = strings.TrimPrefix(arg, remoteWindowHostArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowOwnerArgPrefix):
-			out.RemoteWindowOwnerID = strings.TrimPrefix(arg, remoteWindowOwnerArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowParentArgPrefix):
-			out.RemoteWindowParentPID, _ = strconv.Atoi(strings.TrimPrefix(arg, remoteWindowParentArgPrefix))
+
 		}
 	}
 	return out
