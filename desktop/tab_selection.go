@@ -41,9 +41,6 @@ func (a *App) SetActiveTab(tabID string) error {
 	supersededReq, supersededTab := a.supersedePendingTopicActivationLocked(tabID, false)
 	dir, entries, activeID, version := a.saveTabsCollectLocked()
 	a.mu.Unlock()
-	a.remoteTabMu.Lock()
-	a.remoteTabLayout.activeID = ""
-	a.remoteTabMu.Unlock()
 
 	// I/O outside the lock — disk writes can block for hundreds of ms on
 	// Windows when antivirus or the search indexer briefly locks the file.

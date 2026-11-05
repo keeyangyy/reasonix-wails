@@ -955,10 +955,6 @@ func (a *App) attachExistingSessionRuntimeCore(tab *WorkspaceTab, path string, w
 	attachedSink := tab.sink
 	attachedEpoch := a.runtimeEpochForTabLocked(tab)
 	a.mu.Unlock()
-	if path != "" && !tab.ReadOnly {
-		a.attachTakeoverMirror(tab.ID, path)
-		go a.adoptSessionFromLocalServe(tab.ID, path)
-	}
 
 	a.replayPendingPromptsAfterRuntimeAttach(tab.ID, attachedSink, attachedCtrl, attachedEpoch)
 	return true
@@ -1719,9 +1715,7 @@ func (s *tabEventSink) Emit(e event.Event) {
 		}
 	}
 	s.emitRuntimeEvent(eventChannel, toWireTabWithSubmission(e, tabID, s.runtimeEpochSnapshot(), s.submissionIDSnapshot(), turnStartedAt, s.sessionGenerationSnapshot()))
-	if m := s.takeoverMirror.Load(); m != nil {
-		m.forwardEvent(e)
-	}
+
 	if app != nil {
 		if status, update := topicActivityStatusFromEvent(e); update {
 			changed := app.setTabActivityStatus(tabID, status)
@@ -2432,7 +2426,7 @@ func (a *App) ListTabs() []TabMeta {
 	}
 	a.mu.RUnlock()
 	if !needsRepair {
-		return a.listTabsWithRemote(out)
+		return out
 	}
 
 	a.mu.Lock()
@@ -2443,7 +2437,7 @@ func (a *App) ListTabs() []TabMeta {
 		}
 	}
 	a.mu.Unlock()
-	return a.listTabsWithRemote(out)
+	return out
 }
 
 // syncTabWorkspaceRootSpellings repoints visible and detached project runtimes
@@ -3236,51 +3230,29 @@ func (a *App) indexedBlankTopicIDLocked(scope, workspaceRoot string) string {
 // ReorderTabs persists the full local+remote strip while keeping each
 // registry's internal order independent.
 func (a *App) ReorderTabs(tabIDs []string) error {
-	a.remoteTabMu.Lock()
-	remoteCount := len(a.remoteTabs)
-	a.remoteTabMu.Unlock()
 	a.mu.Lock()
-	if len(tabIDs) != len(a.tabs)+remoteCount {
+	if len(tabIDs) != len(a.tabs) {
 		a.mu.Unlock()
 		return fmt.Errorf("tab order length mismatch")
 	}
 	seen := make(map[string]bool, len(tabIDs))
 	next := make([]string, 0, len(a.tabs))
-	nextRemote := make([]string, 0, remoteCount)
 	for _, id := range tabIDs {
 		if seen[id] {
 			a.mu.Unlock()
 			return fmt.Errorf("duplicate tab %q", id)
 		}
 		seen[id] = true
-		if _, ok := a.tabs[id]; ok {
-			next = append(next, id)
-		} else {
-			nextRemote = append(nextRemote, id)
+		if _, ok := a.tabs[id]; !ok {
+			a.mu.Unlock()
+			return fmt.Errorf("unknown tab %q", id)
 		}
+		next = append(next, id)
 	}
 	if len(next) != len(a.tabs) {
 		a.mu.Unlock()
 		return fmt.Errorf("tab order is missing local tabs")
 	}
-	a.remoteTabMu.Lock()
-	remoteOK := len(nextRemote) == len(a.remoteTabs)
-	if remoteOK {
-		for _, id := range nextRemote {
-			if a.remoteTabs[id] == nil {
-				remoteOK = false
-				break
-			}
-		}
-	}
-	if !remoteOK {
-		a.remoteTabMu.Unlock()
-		a.mu.Unlock()
-		return fmt.Errorf("tab order is missing remote tabs")
-	}
-	a.remoteTabLayout.order = append([]string(nil), nextRemote...)
-	a.remoteTabLayout.stripOrder = append([]string(nil), tabIDs...)
-	a.remoteTabMu.Unlock()
 	a.tabOrder = next
 	dir, entries, activeID, version := a.saveTabsCollectLocked()
 	a.mu.Unlock()
@@ -3309,7 +3281,7 @@ func (a *App) closeTabRuntime(tabID string, allowDetach bool) error {
 		a.mu.Unlock()
 		return fmt.Errorf("tab %q not found", tabID)
 	}
-	if len(a.tabs) <= 1 && !a.hasRemoteTabSurface() {
+	if len(a.tabs) <= 1 {
 		a.mu.Unlock()
 		return fmt.Errorf("cannot close the last tab")
 	}
@@ -3341,7 +3313,7 @@ func (a *App) closeTabRuntime(tabID string, allowDetach bool) error {
 		}
 		return fmt.Errorf("tab %q changed while closing", tabID)
 	}
-	if len(a.tabs) <= 1 && !a.hasRemoteTabSurface() {
+	if len(a.tabs) <= 1 {
 		a.mu.Unlock()
 		return fmt.Errorf("cannot close the last tab")
 	}
@@ -4260,13 +4232,7 @@ func (a *App) buildTabControllerWithContextCore(tab *WorkspaceTab, loadedSession
 	a.advanceSessionRuntimeEpochLocked(tab)
 	keepBuildContext = true
 	a.mu.Unlock()
-	// A directly-opened session announces itself to a resident serve so the
-	// remote side can watch it read-only and reclaim it (see
-	// adoptSessionFromLocalServe). First-open path of the takeover flow.
-	if path := strings.TrimSpace(tab.currentSessionPath()); path != "" && !tab.ReadOnly {
-		a.attachTakeoverMirror(tab.ID, path)
-		go a.adoptSessionFromLocalServe(tab.ID, path)
-	}
+
 	recoverPendingTurnProjections(tab, ctrl)
 	a.emitReady(wailsCtx, tab.ID)
 }
@@ -5092,11 +5058,7 @@ func (a *App) saveTabsWrite(dir string, entries []desktopTabEntry, activeID stri
 	for _, entry := range entries {
 		localIDs = append(localIDs, entry.ID)
 	}
-	remoteEntries, remoteOrder, tabOrder, remoteActive := a.remoteTabsFileEntries(localIDs)
-	if remoteActive != "" {
-		activeID = remoteActive
-	}
-	f := desktopTabsFile{Tabs: entries, ActiveTab: activeID, RemoteTabs: remoteEntries, RemoteTabOrder: remoteOrder, TabOrder: tabOrder}
+	f := desktopTabsFile{Tabs: entries, ActiveTab: activeID, TabOrder: localIDs}
 	b, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
 		return

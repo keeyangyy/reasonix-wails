@@ -21,7 +21,7 @@ const windowsWebView2StartupFallbackMessage = "The desktop interface did not bec
 // isolation is the primary repair; this watchdog is the last-resort visible
 // recovery path for policy-forced proxies and unrelated WebView2 failures.
 func (a *App) startWindowsWebView2StartupFallback(ctx context.Context) {
-	if !shouldStartWindowsWebView2StartupFallback(goruntime.GOOS, a.remoteWindowTicket != "") {
+	if !shouldStartWindowsWebView2StartupFallback(goruntime.GOOS, false) {
 		return
 	}
 	go func() {

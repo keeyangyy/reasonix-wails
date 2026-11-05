@@ -118,7 +118,7 @@ func readValidatedMarkdownImageSnapshot(f *os.File, mimeType string, size int64)
 	if int64(len(body)) > markdownImageMaxBytes {
 		return nil, errMarkdownImageTooLarge
 	}
-	snapshot, detected := safeRemoteMarkdownImage(body)
+	snapshot, detected := body, http.DetectContentType(body)
 	if detected == "" || detected != mimeType {
 		return nil, errors.New("markdown image MIME does not match the authorized file")
 	}

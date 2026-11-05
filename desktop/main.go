@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
-	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
