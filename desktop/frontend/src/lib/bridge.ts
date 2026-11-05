@@ -24,25 +24,12 @@ import { mockWorkspaceFile } from "./mockWorkspaceFile";
 import { mockAIRenameSession, type SessionTitleBindings } from "./mockSessionTitle";
 import { mockHistoryContentField, mockHistorySlice } from "./bridgeHistoryFixtures";
 import { createMockModelScopePreset, type MockProviderPresetTemplate } from "./mockModelScopePreset";
-import { createMockRemoteProjects } from "./mockRemoteProjects";
-import { mockRemoteHostView } from "./mockRemoteHosts";
-import type { RemoteProjectBindings } from "./remoteProjectBridge";
 import type { ScrollDiagnosticBindings } from "./scrollDiagnosticBridge";
 import { makeMockMCPAppBindings, type MCPAppBindings } from "./mcpAppBridge";
 import { makeMockPinnedContextBindings, type PinnedContextBindings } from "./pinnedContextBridge";
 import { createDesktopPreferencesMock } from "./desktopPreferencesMock";
 import type {
-  RemoteHostView,
-  RemoteHostInput,
-  RemoteConnectionStatus,
-  RemoteDirEntry,
-  RemoteFilePreview,
-  RemoteWriteResult,
-  RemoteForwardInput,
-  RemoteForwardView,
-  RemoteServerView,
-  RemoteForwardsEvent,
-  RemoteLegacyWorkbenchData,
+
   BalanceInfo,
   UsageStatsRange,
   UsageStatsRequest,
@@ -154,7 +141,6 @@ import type {
 } from "./types";
 import { browserPreviewShellSupport } from "./shellSupportPreview";
 import { previewVersionList, type UpdateVersionList } from "./updateVersions";
-export * from "./remoteTabEvents";
 export const COMPACT_RATIO_MIN_PERCENT = 30, COMPACT_RATIO_MAX_PERCENT = 85;
 
 export interface DesktopShellStatusView {
@@ -197,7 +183,7 @@ interface DesktopWindowState {
 }
 // AppBindings is the hand-written React-to-Go contract; _CheckGeneratedBindings
 // catches generated methods missing here, so update this interface and typecheck.
-export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganizationBindings, HistoryCatalogBindings, TaskCatalogBindings, BlankProjectBindings, QualityFloorBindings, SessionTitleBindings, ScrollDiagnosticBindings, RemoteProjectBindings, MCPAppBindings, PinnedContextBindings {
+export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganizationBindings, HistoryCatalogBindings, TaskCatalogBindings, BlankProjectBindings, QualityFloorBindings, SessionTitleBindings, ScrollDiagnosticBindings, MCPAppBindings, PinnedContextBindings {
   Platform(): Promise<string>;
   MinimiseMainWindow(): Promise<void>;
   ToggleMaximiseMainWindow(): Promise<void>;
@@ -728,35 +714,6 @@ export interface AppBindings extends SessionCatalogBindings, ProjectTreeOrganiza
   // New native-feel bindings (added with the desktop native-feel plan).
   ConfirmAction(req: NativeConfirmRequest): Promise<boolean>;
   SaveWindowState(state: DesktopWindowState): Promise<void>;
-  // ── Remote (SSH) ──
-  RemoteHosts(): Promise<RemoteHostView[]>;
-  AddRemoteHost(input: RemoteHostInput): Promise<RemoteHostView>;
-  UpdateRemoteHost(id: string, input: RemoteHostInput): Promise<RemoteHostView>;
-  RemoveRemoteHost(id: string): Promise<void>;
-  ScanSSHConfig(): Promise<RemoteHostInput[]>;
-  ConnectRemoteHost(id: string): Promise<void>;
-  DisconnectRemoteHost(id: string): Promise<void>;
-  RemoteConnectionStatuses(): Promise<RemoteConnectionStatus[]>;
-  ConfirmRemoteHostKey(hostId: string, accept: boolean): Promise<void>;
-  ConfirmRemoteSecret(hostId: string, promptId: string, secret: string, accept: boolean): Promise<void>;
-  ListRemoteDir(hostId: string, path: string): Promise<RemoteDirEntry[]>;
-  ReadRemoteFile(hostId: string, path: string): Promise<RemoteFilePreview>;
-  WriteRemoteFile(hostId: string, path: string, body: string, expectMtimeUnix: number): Promise<RemoteWriteResult>;
-  MkdirRemote(hostId: string, path: string): Promise<void>;
-  RenameRemotePath(hostId: string, oldPath: string, newPath: string): Promise<void>;
-  DeleteRemotePath(hostId: string, path: string, recursive: boolean): Promise<void>;
-  RemoteForwards(hostId: string): Promise<RemoteForwardView[]>;
-  AddRemoteForward(hostId: string, input: RemoteForwardInput): Promise<RemoteForwardView>;
-  RemoveRemoteForward(hostId: string, forwardId: string): Promise<void>;
-  OpenRemoteWorkspace(hostId: string, workspace: string): Promise<void>;
-  PickRemoteIdentityFile(): Promise<string>;
-  CheckRemotePlatform(hostId: string): Promise<void>;
-  StopRemoteServer(hostId: string, workspace: string): Promise<void>;
-  RemoteServerStatus(hostId: string, workspace: string): Promise<RemoteServerView>;
-  RemoteServerLogs(hostId: string, workspace: string, tailLines: number): Promise<string>;
-  RemoteLastWorkspace(hostId: string): Promise<string>;
-  ScanRemoteLegacyWorkbenchData(): Promise<RemoteLegacyWorkbenchData>;
-  CleanRemoteLegacyWorkbenchData(target: "mirrors" | "trust"): Promise<void>;
 }
 // Compile-time drift check. Exclude<A, B> extracts keys in A that are missing
 // from B. If that set is non-empty, AssertNever<non-never> fails with
@@ -1088,42 +1045,6 @@ export function onSessionRecoveryFailed(cb: (payload: SessionRecoveryFailedEvent
   return () => {};
 }
 
-export function onRemoteStatus(cb: (s: RemoteConnectionStatus) => void): () => void {
-  if (realApp() && typeof window !== "undefined" && window.runtime) {
-    return window.runtime.EventsOn("remote:status", (payload?: unknown) => cb((payload ?? {}) as RemoteConnectionStatus));
-  }
-  return registerMockRemoteListener("status", cb as (v: unknown) => void);
-}
-
-export function onRemoteForwards(cb: (e: RemoteForwardsEvent) => void): () => void {
-  if (realApp() && typeof window !== "undefined" && window.runtime) {
-    return window.runtime.EventsOn("remote:forwards", (payload?: unknown) => cb((payload ?? {}) as RemoteForwardsEvent));
-  }
-  return registerMockRemoteListener("forwards", cb as (v: unknown) => void);
-}
-
-export function onRemoteServer(cb: (s: RemoteServerView) => void): () => void {
-  if (realApp() && typeof window !== "undefined" && window.runtime) {
-    return window.runtime.EventsOn("remote:server", (payload?: unknown) => cb((payload ?? {}) as RemoteServerView));
-  }
-  return registerMockRemoteListener("server", cb as (v: unknown) => void);
-}
-
-// Mock event fan-out so browser-dev and tsx tests can drive remote:* events
-// without a Wails runtime.
-type MockRemoteChannel = "status" | "forwards" | "server";
-const mockRemoteListeners: Record<MockRemoteChannel, Set<(v: unknown) => void>> = {
-  status: new Set(),
-  forwards: new Set(),
-  server: new Set(),
-};
-function registerMockRemoteListener(ch: MockRemoteChannel, cb: (v: unknown) => void): () => void {
-  mockRemoteListeners[ch].add(cb);
-  return () => mockRemoteListeners[ch].delete(cb);
-}
-export function __emitMockRemote(ch: MockRemoteChannel, payload: unknown): void {
-  for (const cb of mockRemoteListeners[ch]) cb(payload);
-}
 
 // app proxies each call to the live binding (or the dev mock only when truly
 // outside the shell), so a late-injected window.go is picked up transparently.
@@ -1424,23 +1345,6 @@ function mockExternalOpenerIconDataURL(color: string, label: string): string {
 }
 function makeMockApp(): AppBindings {
   const scenario = mockScenario();
-  // Both bridge families publish into the same catalog, as ListTabs does in
-  // the desktop backend. A remote event is not a second source of tab state.
-  const remoteProjects = createMockRemoteProjects({
-    get: id => { const tab = mockTabs.find(item => item.id === id); return tab && { ...tab }; },
-    publish: tab => {
-      const existing = mockTabs.some(item => item.id === tab.id);
-      mockTabs = mockTabs.map(item => item.id === tab.id ? { ...tab } : tab.active ? { ...item, active: false } : item);
-      if (!existing) mockTabs.push({ ...tab });
-    },
-    remove: id => {
-      if (!mockTabs.some(tab => tab.id === id)) return;
-      if (mockTabs.length === 1) throw new Error("cannot close the last tab");
-      const index = mockTabs.findIndex(tab => tab.id === id), active = mockTabs[index].active;
-      mockTabs = mockTabs.filter(tab => tab.id !== id);
-      if (active) setMockActiveTab(mockTabs[Math.min(index, mockTabs.length - 1)].id);
-    },
-  });
   const freshMock = scenario === "fresh";
   const guidanceMock = scenario === "guidance", recoveryMock = typeof import.meta.env !== "undefined" && import.meta.env.DEV && scenario === "recovery";
   const runningMock = scenario === "running" || guidanceMock;
@@ -2017,7 +1921,7 @@ function makeMockApp(): AppBindings {
   };
   const cloneProjectTree = () => {
     if (mockProjectTree.length === 0) ensureMockGlobalFolder();
-    return remoteProjects.appendToTree(JSON.parse(JSON.stringify(mockProjectTreeForDisplay())) as ProjectNode[]);
+    return JSON.parse(JSON.stringify(mockProjectTreeForDisplay())) as ProjectNode[];
   };
   const projectChildren = (node: ProjectNode): ProjectNode[] => Array.isArray(node.children) ? node.children : [];
   const findMockTopic = (topicId: string): ProjectNode | null => {
@@ -5414,7 +5318,7 @@ function makeMockApp(): AppBindings {
       const tab = mockTabs.find((item) => item.id === _tabID);
       if (!tab) throw new Error(`tab ${_tabID} not found`);
       setMockActiveTab(_tabID);
-      if (!tab.remote) queueMockTopicRuntime(tab);
+      queueMockTopicRuntime(tab);
     },
     async ReorderTabs(_tabIDs: string[]) {
       const byId = new Map(mockTabs.map((tab) => [tab.id, tab]));
@@ -5704,100 +5608,6 @@ function makeMockApp(): AppBindings {
         ],
       };
     },
-    // ── Remote (SSH) mock ──
-    async RemoteHosts() {
-      return mockRemoteHosts.slice();
-    },
-    async AddRemoteHost(input) {
-      const view = mockRemoteHostView(input.label, input);
-      mockRemoteHosts = [...mockRemoteHosts.filter((h) => h.id !== view.id), view];
-      return view;
-    },
-    async UpdateRemoteHost(id, input) {
-      const previous = mockRemoteHosts.find((h) => h.id === id);
-      const view = mockRemoteHostView(id, input, previous);
-      mockRemoteHosts = mockRemoteHosts.map((h) => (h.id === id ? view : h));
-      return view;
-    },
-    async RemoveRemoteHost(id) {
-      mockRemoteHosts = mockRemoteHosts.filter((h) => h.id !== id);
-      delete mockRemoteConn[id];
-    },
-    async ScanSSHConfig() {
-      return [
-        { label: "gpu-box", host: "gpu-box", port: 0, user: "", identityFile: "", proxyJump: "", defaultWorkspace: "", serveInstall: "auto", credentialMode: "remote", useSSHConfig: true, preserveExistingSettings: true },
-      ];
-    },
-    async ConnectRemoteHost(id) {
-      mockRemoteConn[id] = "connecting";
-      __emitMockRemote("status", { hostId: id, state: "connecting" });
-      setTimeout(() => {
-        mockRemoteConn[id] = "connected";
-        __emitMockRemote("status", { hostId: id, state: "connected" });
-      }, 300);
-    },
-    async DisconnectRemoteHost(id) {
-      mockRemoteConn[id] = "stopped";
-      __emitMockRemote("status", { hostId: id, state: "stopped" });
-    },
-    async RemoteConnectionStatuses() {
-      return Object.entries(mockRemoteConn).map(([hostId, state]) => ({ hostId, state: state as RemoteConnectionStatus["state"] }));
-    },
-    async ConfirmRemoteHostKey(hostId, accept) {
-      mockRemoteConn[hostId] = accept ? "connected" : "stopped";
-      __emitMockRemote("status", { hostId, state: mockRemoteConn[hostId] });
-    },
-    async ConfirmRemoteSecret(hostId, _promptId, _secret, accept) {
-      mockRemoteConn[hostId] = accept ? "connected" : "stopped";
-      __emitMockRemote("status", { hostId, state: mockRemoteConn[hostId] });
-    },
-    async ListRemoteDir(_hostId, path) {
-      const base = path.replace(/\/$/, "");
-      return [
-        { name: "src", path: `${base}/src`, isDir: true, size: 0, mtimeUnix: 1_700_000_000, symlink: false },
-        { name: "README.md", path: `${base}/README.md`, isDir: false, size: 1024, mtimeUnix: 1_700_000_500, symlink: false },
-      ];
-    },
-    async ReadRemoteFile(_hostId, path) {
-      return { path, body: `# Mock remote file\n${path}\n`, size: 40, mtimeUnix: 1_700_000_500, truncated: false, binary: false };
-    },
-    async WriteRemoteFile(_hostId, _path, _body, _expectMtimeUnix) {
-      return { ok: true, conflict: false, newMtimeUnix: 1_700_000_900 };
-    },
-    async MkdirRemote() {},
-    async RenameRemotePath() {},
-    async DeleteRemotePath() {},
-    async RemoteForwards(hostId) {
-      return mockRemoteForwards[hostId] ?? [];
-    },
-    async AddRemoteForward(hostId, input) {
-      const view: RemoteForwardView = { id: `L:${input.localPort}`, hostId, ...input, state: "active" };
-      mockRemoteForwards[hostId] = [...(mockRemoteForwards[hostId] ?? []), view];
-      __emitMockRemote("forwards", { hostId, forwards: mockRemoteForwards[hostId] });
-      return view;
-    },
-    async RemoveRemoteForward(hostId, forwardId) {
-      mockRemoteForwards[hostId] = (mockRemoteForwards[hostId] ?? []).filter((f) => f.id !== forwardId);
-      __emitMockRemote("forwards", { hostId, forwards: mockRemoteForwards[hostId] });
-    },
-    async OpenRemoteWorkspace() {},
-    async PickRemoteIdentityFile() { return "~/.ssh/id_ed25519"; },
-    async CheckRemotePlatform() {},
-    async StopRemoteServer(hostId, workspace) {
-      __emitMockRemote("server", { hostId, workspace, state: "stopped" });
-    },
-    async RemoteServerStatus(hostId, workspace) {
-      return { hostId, workspace, state: "stopped" };
-    },
-    async RemoteServerLogs() {
-      return "mock serve log line 1\nmock serve log line 2\n";
-    },
-    async RemoteLastWorkspace() {
-      return "~/app";
-    },
-    async ScanRemoteLegacyWorkbenchData() {
-      return { mirrorCount: 0, mirrorBytes: 0, trustFile: false };
-    },
     async ExtensionActions() {
       return [];
     },
@@ -5805,12 +5615,6 @@ function makeMockApp(): AppBindings {
       return "";
     },
     async SubmitExtensionForm() {},
-    ...remoteProjects.bindings,
-    async CleanRemoteLegacyWorkbenchData() {},
   };
 }
-let mockRemoteHosts: RemoteHostView[] = [
-  { id: "demo", label: "demo", host: "192.168.1.10", port: 22, user: "dev", identityFile: "", proxyJump: "", defaultWorkspace: "~/app", serveInstall: "auto", credentialMode: "remote", useSSHConfig: false },
-];
-const mockRemoteConn: Record<string, RemoteConnectionStatus["state"]> = { demo: "connected" };
-const mockRemoteForwards: Record<string, RemoteForwardView[]> = {};
+
