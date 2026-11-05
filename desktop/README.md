@@ -35,15 +35,13 @@ vet / test ./...` skip this directory, while the import path stays under
 
 ## Prerequisites
 
+This fork ships **Windows x64 only**.
+
 - Go (matches the parent module).
 - Node 24+ and **pnpm 10** (`npm install -g pnpm@10`).
 - Wails CLI matching the library: run `make wails-install` from the repository
   root. The target reads the shared `.wails-version` pin.
-- Platform webview libs: macOS ships WebKit; Windows needs the Edge **WebView2**
-  runtime; Linux needs `libgtk-3-dev` plus WebKitGTK. The default build links
-  against **WebKitGTK 4.0**; distros that only ship **4.1** (Fedora 40+, Ubuntu
-  24.04+, Arch) build with `-tags webkit2_41` — see [Build](#build). Run
-  `wails doctor` to verify.
+- Windows needs the Edge **WebView2** runtime. Run `wails doctor` to verify.
 
 ## Develop
 

@@ -302,16 +302,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Keep preflight on the same complete native matrix as publication so
-          # it cannot attest a release whose adjacent platform build is broken.
-          - { runner: macos-14, platform: darwin/universal, name: darwin-universal }
+          # This fork ships Windows x64 only.
           - { runner: windows-latest, platform: windows/amd64, name: windows-amd64 }
-          - { runner: windows-11-arm, platform: windows/arm64, name: windows-arm64 }
-          - { runner: ubuntu-22.04, platform: linux/amd64, name: linux-amd64 }
     runs-on: ${{ matrix.runner }}
     env:
       # Windows Authenticode signing engages only when the SignPath token is set, so
-      # forks / token-less runs still build (unsigned), mirroring the APPLE_* gate.
+      # forks / token-less runs still build (unsigned).
       HAS_SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
     defaults:
       run:
@@ -337,84 +333,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: desktop/frontend/pnpm-lock.yaml
 
-      # Linux: WebKitGTK 4.1 toolchain (-tags webkit2_41 in desktop-build.sh).
-      # 4.1 ships from ubuntu-22.04 on and is the only one present on 24.04+/Fedora 40+.
-      - name: Install Linux build deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc libgtk-3-dev libwebkit2gtk-4.1-dev
-
-      # Linux: nfpm builds the .deb in desktop-build.sh's linux branch. go install
-      # drops it in ~/go/bin, already on PATH (same place the wails CLI lands below).
-      - name: Install nfpm
-        if: runner.os == 'Linux'
-        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.46.3
-
       # Windows: NSIS provides makensis for `wails build -nsis`.
       - name: Install NSIS
         if: runner.os == 'Windows'
         run: pwsh -NoProfile -File scripts/install-nsis.ps1
 
-      # macOS: create-dmg packages the .app into a drag-to-Applications .dmg.
-      - name: Install create-dmg
-        if: runner.os == 'macOS'
-        run: brew install create-dmg
-
-      # macOS signing: import the Developer ID cert into a throwaway keychain and
-      # stage the notarization key. No-ops (and the build ad-hoc signs) when the
-      # APPLE_* secrets aren't set, so forks still build.
-      - name: Import Apple signing certificate
-        if: runner.os == 'macOS'
-        env:
-          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
-          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-        run: |
-          if [ -z "$APPLE_CERT_P12" ]; then
-            echo "APPLE_CERT_P12 unset — desktop build will ad-hoc sign (un-notarized)"
-            exit 0
-          fi
-          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-          KEYCHAIN_PASS="$(uuidgen)"
-          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
-          echo "$APPLE_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN" >/dev/null
-          # Prepend the signing keychain to the search list so codesign / find-identity see it.
-          existing_keychains=()
-          while IFS= read -r keychain; do
-            [ -n "$keychain" ] && existing_keychains+=("$keychain")
-          done < <(security list-keychains -d user | sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//')
-          security list-keychains -d user -s "$KEYCHAIN" "${existing_keychains[@]}"
-          echo "$APPLE_API_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          rm -f "$RUNNER_TEMP/cert.p12"
-
       - name: Install Wails CLI
         run: go install "github.com/wailsapp/wails/v2/cmd/wails@$(cat "$GITHUB_WORKSPACE/.wails-version")"
 
-      # Official Windows releases must fail closed. Forks can still exercise
-      # unsigned packaging without repository secrets, but esengine releases
-      # may never publish an unsigned payload or installer.
-      - name: Require Windows Authenticode signing
-        if: runner.os == 'Windows' && github.repository == 'esengine/DeepSeek-Reasonix'
-        run: |
-          if [ "$HAS_SIGNPATH" != "true" ]; then
-            echo "::error::SIGNPATH_API_TOKEN is required for public Windows Preview and Stable releases"
-            exit 1
-          fi
-
       - name: Build and package
-        env:
-          # macOS Developer ID + notarization path turns on only when all five
-          # APPLE_* secrets are present; otherwise desktop-build.sh ad-hoc signs.
-          # Harmless on Windows/Linux runners (only the darwin branch reads these).
-          HAS_APPLE_CERT: ${{ secrets.APPLE_CERT_P12 != '' && secrets.APPLE_CERT_PASSWORD != '' && secrets.APPLE_API_KEY_P8 != '' && secrets.APPLE_API_KEY_ID != '' && secrets.APPLE_API_ISSUER_ID != '' }}
-          APPLE_API_KEY_PATH: ${{ runner.temp }}/notary.p8
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: scripts/desktop-build.sh "${{ matrix.platform }}" "${{ needs.resolve.outputs.version }}" "${{ needs.resolve.outputs.channel }}"
 
       # Candidate code is immutable, but release validation belongs to the

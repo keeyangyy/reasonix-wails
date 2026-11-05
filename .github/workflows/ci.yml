@@ -734,113 +734,6 @@ jobs:
 
   # Ubuntu 24.04 ships WebKitGTK 4.1 only. Keep this capability build separate
   # from the 22.04/4.0 leg so neither runtime becomes a distro whitelist.
-  desktop-linux-webkit41:
-    needs: changes
-    # fork ships Windows amd64 only; this Linux capability leg never runs.
-    if: false
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: desktop
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: desktop/go.mod
-          cache: true
-          cache-dependency-path: desktop/go.sum
-
-      - name: Install WebKitGTK 4.1 build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y dbus-daemon gcc libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
-
-      - name: Build and test WebKitGTK 4.1 observer
-        run: go test -tags webkit2_41 ./...
-
-      - name: WebKitGTK 4.1 native recovery smoke
-        run: xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 go test -tags 'webkit2_41 reasonix_webkit_smoke' . -run '^TestWebKitNativeRecoverySmoke$'
-
-  # desktop/ is a separate module, so the root macOS matrix above does not
-  # compile or exercise the native PTY and FSEvents implementations.
-  desktop-macos:
-    needs: changes
-    # fork ships Windows amd64 only; this macOS leg never runs.
-    if: false
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: desktop
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: desktop/go.mod
-          cache: true
-          cache-dependency-path: desktop/go.sum
-
-      - uses: pnpm/action-setup@v6.0.9
-        with:
-          version: 10
-          run_install: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: pnpm
-          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
-
-      - name: Install Wails CLI and build frontend
-        run: |
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-          go install "github.com/wailsapp/wails/v2/cmd/wails@$(cat "$GITHUB_WORKSPACE/.wails-version")"
-          wails generate module
-          pnpm --dir frontend install --frozen-lockfile
-          pnpm --dir frontend build
-
-      - name: Test WKWebView native transcript scrolling
-        timeout-minutes: 5
-        env:
-          REASONIX_NATIVE_SMOKE_ISOLATED_CI: "1"
-        run: |
-          pnpm --dir frontend exec vite preview --host 127.0.0.1 --port 4173 --strictPort >/tmp/reasonix-transcript-preview.log 2>&1 &
-          preview_pid=$!
-          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
-          for _ in $(seq 1 100); do
-            curl -fsS http://127.0.0.1:4173/ >/dev/null && break
-            sleep 0.1
-          done
-          go run -tags reasonix_transcript_smoke ./cmd/transcript-native-smoke \
-            -url 'http://127.0.0.1:4173/?mock=bench&bench=1' \
-            -script transcript_native_smoke_contract.js
-
-      - name: Test integrated terminal, PTY, and FSEvents lifecycle
-        run: go test -race -run 'Test(DarwinWorkspaceWatcher|WorkspaceChangeHub|ResolveTerminal|Terminal|EmptyTerminal|UnixTerminalProcess)' .
-
-      # The production Wails build uses CGO. Keep the explicit unavailable
-      # backend buildable as a fail-closed portability contract instead of
-      # silently falling back to kqueue's per-file descriptor usage.
-      - name: Test macOS build without CGO
-        env:
-          CGO_ENABLED: "0"
-        run: go test -run '^TestDarwinWorkspaceWatcherWithoutCGOIsUnavailable$' .
-
-      # desktop/*_darwin.go is the one build-tag set the lint job cannot reach:
-      # the main-thread watchdog is cgo, so it only type-checks with a real
-      # macOS toolchain.
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          working-directory: desktop
-          args: --timeout=5m
-
-  # Desktop project-root matching is case-insensitive only on Windows
-  # (sameDesktopPath folds case when os.PathSeparator is '\'), so the
-  # regression tests for that contract are named *OnWindows and can never
-  # run on the ubuntu leg above.
   desktop-windows:
     needs: changes
     if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
@@ -1091,11 +984,11 @@ jobs:
       # //go:build windows and //go:build darwin file in the tree went unlinted.
       # Both modules cross-check without a toolchain; desktop under darwin does
       # not, because its watchdog is cgo, so that leg lives in desktop-macos.
-      - name: golangci-lint (cross-platform build tags)
+      - name: golangci-lint (Windows build tags)
         run: |
           set -euo pipefail
           command -v golangci-lint
-          for target in "darwin ." "windows ." "windows desktop"; do
+          for target in "windows ." "windows desktop"; do
             read -r target_os target_dir <<< "$target"
             echo "::group::golangci-lint GOOS=$target_os ($target_dir)"
             (cd "$target_dir" && GOOS="$target_os" golangci-lint run --timeout=5m ./...)
@@ -1105,19 +998,13 @@ jobs:
       - name: release workflow contracts
         run: |
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
-            -ignore 'label "windows-11-arm" is unknown' \
-            .github/workflows/release-stable.yml \
             .github/workflows/prepare-release-notes.yml \
-            .github/workflows/release-stable-trigger.yml \
-            .github/workflows/release.yml \
-            .github/workflows/release-npm.yml \
             .github/workflows/release-desktop.yml \
             .github/workflows/release-verify-issues.yml \
             .github/workflows/docs-impact.yml \
             .github/workflows/transcript-native-smoke.yml \
             .github/workflows/ci.yml
           node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
-          bash scripts/release-workflows.test.sh
           bash scripts/update-versions-index.test.sh
           node scripts/check-single-release-public-contract.mjs
 
