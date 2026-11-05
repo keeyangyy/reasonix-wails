@@ -8,7 +8,7 @@
     <pe-file path="*installer*.exe">
       <authenticode-sign />
     </pe-file>
-    <pe-file path="reasonix-desktop.exe">
+    <pe-file path="reasonix-wails.exe">
       <authenticode-verify />
     </pe-file>
     <pe-file path="reasonix-guard.exe">
