@@ -20,8 +20,6 @@
   &nbsp;·&nbsp;
   <a href="./docs/GUIDE.md">Guide</a>
   &nbsp;·&nbsp;
-  <a href="./docs/planning/IMPLEMENTATION_PLAN.md">Implementation plan</a>
-  &nbsp;·&nbsp;
   <a href="https://github.com/keeyangyy/reasonix-wails/issues">Issues</a>
 </p>
 
@@ -97,7 +95,7 @@ pnpm build
 - The agent runs locally. Your configured model provider only receives the context needed for a request.
 - Config, sessions and memory live in `%APPDATA%\reasonix` by default, shared with Reasonix Studio. This project will not rewrite that data without verified compatibility.
 - **No automatic upload of crash reports, telemetry or session content**: the related endpoints are empty in the current code; diagnostics stay local and can be exported manually.
-- Separate install identity, data isolation and compatibility verification are still in progress; see the [implementation plan](./docs/planning/IMPLEMENTATION_PLAN.md).
+- Separate install identity, data isolation and compatibility verification are still in progress.
 
 ## Documentation
 
@@ -107,9 +105,8 @@ pnpm build
 - [Capability diagnostics](./docs/CAPABILITY_DIAGNOSTICS.md)
 - [Bot guide](./docs/BOT_GUIDE.md)
 - [Extensions and plugins](./docs/EXTENSIONS.md)
-- [Baseline audit](./docs/BASELINE_AUDIT.md) · [Decisions](./docs/planning/DECISIONS.md) · [Implementation plan](./docs/planning/IMPLEMENTATION_PLAN.md)
 
-`docs/` in this repository is the single source of truth for documentation.
+Product documentation lives in `docs/`; development plans, audits and process notes stay out of the repository.
 
 ## Credits
 

@@ -20,8 +20,6 @@
   &nbsp;·&nbsp;
   <a href="./docs/GUIDE.zh-CN.md">使用指南</a>
   &nbsp;·&nbsp;
-  <a href="./docs/planning/IMPLEMENTATION_PLAN.md">实施计划</a>
-  &nbsp;·&nbsp;
   <a href="https://github.com/keeyangyy/reasonix-wails/issues">反馈</a>
 </p>
 
@@ -98,7 +96,7 @@ pnpm build
 - Agent 在本机运行。你配置的模型服务商只会收到请求所需的上下文。
 - 配置、会话和记忆默认存放在 `%APPDATA%\reasonix`，与 Reasonix Studio 共用；本项目不会在未确认兼容性前改写这些数据。
 - **不自动上传崩溃、遥测或会话内容**：相关端点在当前代码中已置空，崩溃与诊断信息只保存在本地，可手动导出。
-- 独立安装身份、数据隔离与兼容性验证仍在进行中，细节见[实施计划](./docs/planning/IMPLEMENTATION_PLAN.md)。
+- 独立安装身份、数据隔离与兼容性验证仍在进行中。
 
 ## 文档
 
@@ -108,9 +106,8 @@ pnpm build
 - [能力诊断](./docs/CAPABILITY_DIAGNOSTICS.zh-CN.md)
 - [机器人使用指南](./docs/BOT_GUIDE.zh-CN.md)
 - [扩展与插件](./docs/EXTENSIONS.zh-CN.md)
-- [基线审计](./docs/BASELINE_AUDIT.md) · [决策记录](./docs/planning/DECISIONS.md) · [实施计划](./docs/planning/IMPLEMENTATION_PLAN.md)
 
-文档以仓库内 `docs/` 为唯一维护源。
+产品文档以仓库内 `docs/` 为准；开发计划、审计和过程记录不进入仓库。
 
 ## 致谢
 
