@@ -515,7 +515,7 @@ export interface WireFinalReadiness {
 }
 
 // Tab management types (desktop/tabs.go).
-export interface TabMeta extends RemoteTabMetaFields {
+export interface TabMeta {
   id: string;
   tabType?: "session" | "file";
   scope: string;
@@ -593,7 +593,7 @@ export interface TerminalWorkspaceView {
   shells: TerminalShellView[];
 }
 
-export interface ProjectNode extends RemoteProjectNodeFields {
+export interface ProjectNode {
   key: string;
   kind: "project" | "topic" | "session" | "global_folder" | "global_topic" | "global_session";
   label: string;
@@ -1033,7 +1033,7 @@ export interface ContextInfo {
   contextBudget?: ContextBudgetInfo;
 }
 
-export interface Meta extends RemoteSessionMetaFields {
+export interface Meta {
   label: string;
   ready: boolean;
   runtime?: SessionRuntimeView;

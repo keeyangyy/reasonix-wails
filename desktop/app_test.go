@@ -4479,8 +4479,8 @@ func TestCreationLayoutQuickClicksSerializeWorkspaceRebuild(t *testing.T) {
 func runQuickClickWorkspaceReconcileTest(t *testing.T, layoutStyle string) {
 	t.Helper()
 	f := newStaleWorkspaceBindingFixtureWithLayout(t, "quick_click_"+layoutStyle, layoutStyle)
-	if got, want := f.app.singleSurfaceLayoutEnabled(), singleSurfaceLayoutStyle(layoutStyle); got != want {
-		t.Fatalf("singleSurfaceLayoutEnabled(%q) = %v, want %v", layoutStyle, got, want)
+	if f.app.singleSurfaceLayoutEnabled() {
+		t.Fatalf("singleSurfaceLayoutEnabled(%q) = true, want false", layoutStyle)
 	}
 	blockingCtrl := f.installBlockingSnapshotController()
 

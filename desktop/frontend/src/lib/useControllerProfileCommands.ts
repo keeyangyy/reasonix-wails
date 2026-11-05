@@ -15,8 +15,8 @@ function bindProfileRead(slot: CommittedSlot<readonly ControllerProfileResource[
 }
 
 export function useControllerProfileCommands(options: {
-  target: SessionResource; profiles: readonly ControllerProfileResource[]; ready: boolean; remote: boolean; runtimeEpoch?: string;
-  ports: ControllerProfilePorts; remoteModel(name: string): Promise<void>;
+  target: SessionResource; profiles: readonly ControllerProfileResource[]; ready: boolean; remote?: boolean; runtimeEpoch?: string;
+  ports: ControllerProfilePorts; remoteModel?: (name: string) => Promise<void>;
   operations: ReturnType<typeof useSessionOperations>; report(error: unknown): void;
 }) {
   const { target, profiles, ready, remote, runtimeEpoch, operations, ports, remoteModel, report } = options;

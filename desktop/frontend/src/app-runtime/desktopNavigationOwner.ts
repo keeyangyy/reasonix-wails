@@ -1,5 +1,5 @@
 import { CommandCancelled } from "../lib/commandOutcome";
-import type { RemoteTabOpenOptions, RemoteTabRefView, SessionMeta, TabMeta } from "../lib/types";
+import type { SessionMeta, TabMeta } from "../lib/types";
 import type { useAppRuntimeAdapter } from "./useAppRuntimeAdapter";
 import { isChannelSession, sidebarImSessionTarget, type SidebarImConnection } from "./sidebarImProjection";
 import type { SessionOperationAuthority } from "./useResourceOperations";
@@ -9,15 +9,13 @@ export type DesktopNavigationIntent =
   | { kind: "blank"; scope: string; workspaceRoot: string }
   | { kind: "isolated-worktree"; workspaceRoot: string }
   | { kind: "sidebar-im"; connection: SidebarImConnection }
-  | { kind: "resume-session"; session: SessionMeta }
-  | { kind: "remote-project"; remote: RemoteTabRefView; options: RemoteTabOpenOptions };
+  | { kind: "resume-session"; session: SessionMeta };
 type Runtime = ReturnType<typeof useAppRuntimeAdapter>;
 export type DesktopNavigationPorts = Pick<Runtime["navigation"],
   "isNavigationIntentCurrent" | "activateTopic" | "openTopicSession" | "openGlobalTab" | "openProjectTab"
-  | "ensureBlankSurface" | "ensureBlankTab" | "createIsolatedWorktree" | "registeredNavigationIntent" | "switchRemoteTab"> &
+  | "ensureBlankSurface" | "ensureBlankTab" | "createIsolatedWorktree" | "registeredNavigationIntent"> &
   Pick<Runtime["sessionActions"], "openChannelSession" | "resumeSession"> & {
     listTabs(): Promise<TabMeta[]>;
-    openRemoteProject(hostId: string, workspace: string, options: RemoteTabOpenOptions): Promise<TabMeta>;
     applyTabs(tabs: TabMeta[]): void;
     seedTab(tab: TabMeta): void;
     topicAccepted?(intent: number): void;
@@ -66,17 +64,7 @@ export async function executeDesktopNavigation(input: DesktopNavigationCapture, 
     : ports.ensureBlankTab(scope, scope === "project" ? workspace : "", seq);
   checkpoint();
   try {
-    if (request.kind === "remote-project") {
-      const token = await ports.registeredNavigationIntent(seq);
-      checkpoint();
-      if (!token) throw new CommandCancelled("superseded");
-      const tab = await ports.openRemoteProject(request.remote.hostId, request.remote.workspace, request.options);
-      checkpoint(); ports.seedTab(tab);
-      await ports.switchRemoteTab(tab, seq);
-      checkpoint(); ports.reveal();
-      await refresh();
-      return tab;
-    }
+
     if (request.kind === "topic" || request.kind === "blank") {
       const tab = request.kind === "topic"
         ? await openTopic(request.scope, request.workspaceRoot, request.topicId, request.sessionPath)
@@ -126,7 +114,6 @@ export async function executeDesktopNavigation(input: DesktopNavigationCapture, 
     ports.reveal(); await refresh();
   } catch (error) {
     checkpoint();
-    if (request.kind === "remote-project") throw error;
     if (request.kind === "topic" || request.kind === "blank") {
       ports.notice({ key: "history.failedOpenSession", tone: "error" });
       await refresh(); return;

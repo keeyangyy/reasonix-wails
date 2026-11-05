@@ -16,10 +16,10 @@ export type SessionNavigationCommandsInput = {
   running: boolean;
   singleSurface: boolean;
   t: Translator;
-  showToast: (message: string, level: "error") => void;
+  _showToast: (message: string, level: "error") => void;
   closeTransientOverlays: () => void;
   clearImDetail: () => void;
-  navigation: Pick<ReturnType<typeof useDesktopNavigation>, "enqueueNavigation" | "enqueueNavigationWithIntent" | "openRemoteProject">;
+  navigation: Pick<ReturnType<typeof useDesktopNavigation>, "enqueueNavigation" | "enqueueNavigationWithIntent">;
   noteNavigationIntent: () => number;
   beginNavigationSurface: (seq: number) => void;
   settleNavigationSurface: (seq: number) => void;
@@ -44,7 +44,7 @@ export type SessionNavigationCommandsInput = {
  * coalesce through the shared navigation epoch from useDesktopNavigation.
  */
 export function useSessionNavigationCommands(input: SessionNavigationCommandsInput) {
-  const { activeTab, running, singleSurface, t, showToast, navigation, ports } = input;
+  const { activeTab, running, singleSurface, t, navigation, ports } = input;
 
   const blankSessionTarget = useCommittedCommand(() => {
     const activeWorkspaceRoot = activeTab?.scope === "project" ? activeTab.workspaceRoot || "" : "";
@@ -58,11 +58,7 @@ export function useSessionNavigationCommands(input: SessionNavigationCommandsInp
   const handleNewTab = useCommittedCommand(async () => {
     input.closeTransientOverlays();
     input.clearImDetail();
-    if (activeTab?.remote) {
-      const outcome = await navigation.openRemoteProject(activeTab.remote, { newSession: true });
-      if (outcome.status === "failed") showToast(outcome.error instanceof Error ? outcome.error.message : String(outcome.error), "error");
-      return;
-    }
+
     const target = blankSessionTarget();
     await openBlankSession(target.scope, target.workspaceRoot);
   });

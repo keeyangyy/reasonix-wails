@@ -2,9 +2,6 @@ import { useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "rea
 import type { Translator } from "../lib/i18n";
 import type { useToast } from "../lib/toast";
 import type { SessionMeta, TabMeta } from "../lib/types";
-import type { RemoteNavigationCommand } from "../lib/remoteNavigationCommands";
-import { CommandCancelled, type CommandAuthority, type CommandOutcome } from "../lib/commandOutcome";
-import { useCommittedAsyncCommand } from "../lib/useCommittedAsyncCommand";
 import { refreshHistoryProjection, type HistoryViewState } from "./historyViewProjection";
 import { useCommittedCommand } from "../lib/useCommittedCommand";
 import { enqueueNavigationRequest, type NavigationCoalescingRefs } from "../lib/openTopicCoalescing";
@@ -13,7 +10,7 @@ import { executeDesktopNavigation, type DesktopNavigationCapture, type DesktopNa
 
 type QueueInput = { capture: DesktopNavigationCapture; authority: SessionOperationAuthority; result: { error?: unknown; tab?: TabMeta } };
 async function runQueuedRequest(request: QueueInput) {
-  try { request.result.tab = await executeDesktopNavigation(request.capture, request.authority); }
+  try { request.result.tab = (await executeDesktopNavigation(request.capture, request.authority)) ?? undefined; }
   catch (error) { request.result.error = error; }
 }
 async function executeQueuedNavigation(input: { capture: DesktopNavigationCapture; queue: NavigationCoalescingRefs<QueueInput> }, authority: SessionOperationAuthority) {
@@ -21,18 +18,6 @@ async function executeQueuedNavigation(input: { capture: DesktopNavigationCaptur
   await enqueueNavigationRequest(input.queue, { capture: input.capture, authority, result }, runQueuedRequest);
   if (result.error) throw result.error;
   return result.tab;
-}
-async function startRemoteNavigation(input: {
-  intent: DesktopNavigationIntent;
-  noteIntent(): number; showChat(): void;
-  execute(intent: DesktopNavigationIntent, seq: number): Promise<CommandOutcome<TabMeta | undefined>>;
-}, authority: CommandAuthority) {
-  authority.checkpoint();
-  input.showChat();
-  const outcome = await input.execute(input.intent, input.noteIntent());
-  if (outcome.status === "failed") throw outcome.error;
-  if (outcome.status === "cancelled") throw new CommandCancelled(outcome.reason);
-  return outcome.value;
 }
 
 /** Owns the existing last-click-wins queue; no App render or view model is queued. */
@@ -77,15 +62,11 @@ export function useDesktopNavigation(input: {
     input.showChat();
     return enqueueNavigationWithIntent(intent, input.noteIntent());
   });
-  const openRemoteProject: RemoteNavigationCommand = useCommittedAsyncCommand(
-    (...[remote, options]: Parameters<RemoteNavigationCommand>) => ({
-      intent: { kind: "remote-project", remote: { ...remote }, options: { ...options } } as DesktopNavigationIntent,
-      showChat: input.showChat, noteIntent: input.noteIntent, execute: executeWithIntent,
-    }), startRemoteNavigation);
+
   useLayoutEffect(() => () => {
     queue.seqRef.current++;
     queue.pendingRef.current?.resolve();
     queue.pendingRef.current = null;
   }, [queue]);
-  return { enqueueNavigation, enqueueNavigationWithIntent, openRemoteProject };
+  return { enqueueNavigation, enqueueNavigationWithIntent };
 }

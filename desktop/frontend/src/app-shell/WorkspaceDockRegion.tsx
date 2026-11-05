@@ -1,10 +1,9 @@
 import { lazy, Suspense, type ComponentProps, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { Activity, FileText, GitBranch, Server } from "lucide-react";
+import { Activity, FileText, GitBranch } from "lucide-react";
 import type { Translator } from "../lib/i18n";
 import type { RightDockMode } from "../store/layout";
 
 const ContextPanel = lazy(() => import("../components/ContextPanel").then((module) => ({ default: module.ContextPanel })));
-const RemotePanel = lazy(() => import("../components/RemotePanel").then((module) => ({ default: module.RemotePanel })));
 const WorkspacePanel = lazy(async () => {
   const [module] = await Promise.all([
     import("../components/WorkspacePanel"),
@@ -18,12 +17,9 @@ export type WorkspaceDockRegionProps = {
   overlay: boolean;
   mode: RightDockMode;
   creation: boolean;
-  remoteAvailable: boolean;
   showContext: boolean;
   t: Translator;
   onMode: (mode: RightDockMode) => void;
-  onRemote: () => void;
-  remote: ComponentProps<typeof RemotePanel>;
   context: ComponentProps<typeof ContextPanel>;
   workspace: ComponentProps<typeof WorkspacePanel>;
   workspaceKey: string;
@@ -39,7 +35,7 @@ export type WorkspaceDockRegionProps = {
 
 /** Shared workbench/creation dock; layout variants change data, not component identity. */
 export function WorkspaceDockRegion(props: WorkspaceDockRegionProps) {
-  const { visible, overlay, mode, creation, remoteAvailable, showContext, t, onMode, onRemote } = props;
+  const { visible, overlay, mode, creation, showContext, t, onMode } = props;
   return (
     <>
       {props.resizer && (
@@ -58,13 +54,10 @@ export function WorkspaceDockRegion(props: WorkspaceDockRegionProps) {
               {showContext && !creation && <DockTab active={mode === "context"} onClick={() => onMode("context")} icon={<Activity size={13} />} label={t("rightDock.overview")} />}
               <DockTab active={mode === "files"} onClick={() => onMode("files")} icon={<FileText size={13} />} label={t("workspace.filesTab")} />
               <DockTab active={mode === "changed"} onClick={() => onMode("changed")} icon={<GitBranch size={13} />} label={t("workspace.changedTab")} />
-              {remoteAvailable && <DockTab active={mode === "remote"} onClick={onRemote} icon={<Server size={13} />} label={t("rightDock.remote")} />}
             </div>
           </div>
           <div className="workbench-dock__body">
-            {mode === "remote" ? (
-              <Suspense fallback={null}><RemotePanel {...props.remote} /></Suspense>
-            ) : mode === "context" && !creation ? (
+            {mode === "context" && !creation ? (
               <Suspense fallback={null}><ContextPanel {...props.context} /></Suspense>
             ) : (
               <Suspense fallback={null}><WorkspacePanel key={props.workspaceKey} {...props.workspace} /></Suspense>

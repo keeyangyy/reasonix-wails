@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties, DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, Check, ListCollapse, ListRestart, MessageSquare, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch, Sparkles, Cloud } from "lucide-react";
+import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, Check, ListCollapse, ListRestart, MessageSquare, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch, Sparkles } from "lucide-react";
 import { asArray } from "../lib/array";
 import { useToast } from "../lib/toast";
 import { app } from "../lib/bridge";
@@ -28,7 +28,7 @@ import { useProjectTreeFrontendDiagnostics, type ProjectTreeDiagnosticSnapshot }
 import { summarizeProjectTreeSessions } from "../lib/projectTreeDiagnostics";
 import { GLOBAL_PROJECT_ORDER_KEY, ProjectTreeFolderActivity, ProjectTreeGroupRows, applyProjectOrder, projectTreeProjectRoots, reorderedProjectRoots, useProjectTreeOrganization, type ProjectDropPosition } from "./ProjectTreeOrganization";
 import { ProjectTreeSessionArchiveMenu } from "./ProjectTreeSessionArchiveMenu";
-import { ProjectTreeHeaderAddControl, ProjectTreeRemoteAction, projectTreeHeaderAddItems } from "./ProjectTreeAddControls";
+import { ProjectTreeHeaderAddControl, projectTreeHeaderAddItems } from "./ProjectTreeAddControls";
 import type { ProjectTreeProps } from "./ProjectTreeProps";
 
 function projectNodeKey(node: ProjectNode, depth: number): string {
@@ -199,7 +199,6 @@ export function ProjectTree({
   activeWorkspaceRoot,
   activeTopicId,
   activeSessionPath,
-  activeRemote,
   imTopicSources = {},
   variant = "classic",
   onOpenTopic,
@@ -445,7 +444,7 @@ export function ProjectTree({
   }, [applyRuntimeProjection]);
   refreshRef.current = refresh;
 
-  const { addingProject, handleAddProject, openBlankProjectFlow, blankProjectFlow, openRemoteConnectFlow, remoteConnectFlow } = useProjectCreation({
+  const { addingProject, handleAddProject, openBlankProjectFlow, blankProjectFlow } = useProjectCreation({
     onAddProject,
     onRefresh: refresh,
     showToast,
@@ -527,7 +526,7 @@ export function ProjectTree({
     // re-rendering the tree at all.
     setExpanded((prev) => (keys.every((key) => prev.has(key)) ? prev : new Set([...prev, ...keys])));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, activeRemote]);
+  }, [tree, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath]);
 
   const markNodeRead = useCallback((node: ProjectNode) => {
     const key = projectTreeReadActivityKey(node);
@@ -1705,7 +1704,6 @@ export function ProjectTree({
             style={{ paddingLeft: 8 + depth * 16 }}
             onClick={() => {
               if (folderDisclosure.canExpand) {
-                const willExpand = !expanded.has(key);
                 toggleExpand(key, node);
               }
             }}
@@ -1854,13 +1852,12 @@ export function ProjectTree({
   const addItemCallbacks = {
     onBlank: () => { closeMenu(); openBlankProjectFlow(); },
     onLocal: () => { closeMenu(); void handleAddProject(); },
-    onRemote: () => { closeMenu(); openRemoteConnectFlow(); },
   };
   const classicHeaderAddItems = projectTreeHeaderAddItems({
-    localLabel: t("projectTree.addProjectTooltip"), remoteLabel: t("projectTree.remoteConnection"), disabled: addingProject, ...addItemCallbacks,
+    localLabel: t("projectTree.addProjectTooltip"), disabled: addingProject, ...addItemCallbacks,
   });
   const workbenchHeaderAddItems = projectTreeHeaderAddItems({
-    blankLabel: t("projectTree.createBlankProject"), localLabel: t("projectTree.useExistingFolder"), remoteLabel: t("projectTree.remoteConnection"), disabled: addingProject, ...addItemCallbacks,
+    blankLabel: t("projectTree.createBlankProject"), localLabel: t("projectTree.useExistingFolder"), disabled: addingProject, ...addItemCallbacks,
   });
 
   const timeFilterBadge = timeFilter !== "all" ? (timeFilter === "1d" ? "24h" : timeFilter) : "";
@@ -2120,7 +2117,6 @@ export function ProjectTree({
           <FolderPlus size={14} />
           <span>{t("projectTree.addProjectTooltip")}</span>
         </button>
-        <ProjectTreeRemoteAction label={t("projectTree.remoteConnection")} disabled={addingProject} onClick={openRemoteConnectFlow} />
       </div>
     );
   };
@@ -2240,7 +2236,6 @@ export function ProjectTree({
         document.body,
       )}
       {blankProjectFlow}
-      {remoteConnectFlow}
     </div>
   );
 }

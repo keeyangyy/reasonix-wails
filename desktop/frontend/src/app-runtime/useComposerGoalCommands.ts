@@ -6,9 +6,15 @@ import { useCommittedCommand } from "../lib/useCommittedCommand";
 export function useComposerGoalCommands(input: {
   applyGoal: (goal: string) => Promise<void>;
   applyCollaborationMode: (mode: CollaborationMode) => Promise<void>;
+  pauseGoal?: () => void;
+  resumeGoal?: () => void;
+  setEffort?: (level: string) => void;
 }) {
   const { runGoalAction } = useGoalActionHandler();
   const clearGoalFromUi = useCommittedCommand(() => runGoalAction(() => input.applyGoal("")));
   const setCollaborationModeFromUi = useCommittedCommand((mode: CollaborationMode) => runGoalAction(() => input.applyCollaborationMode(mode)));
-  return { clearGoalFromUi, setCollaborationModeFromUi };
+  const pauseGoalFromUi = useCommittedCommand(() => input.pauseGoal?.());
+  const resumeGoalFromUi = useCommittedCommand(() => input.resumeGoal?.());
+  const setEffortFromUi = useCommittedCommand((level: string) => input.setEffort?.(level));
+  return { clearGoalFromUi, setCollaborationModeFromUi, pauseGoalFromUi, resumeGoalFromUi, setEffortFromUi };
 }

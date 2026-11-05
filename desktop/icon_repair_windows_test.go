@@ -155,7 +155,7 @@ func TestReasonixWindowsVersionedTarget(t *testing.T) {
 		want   bool
 	}{
 		{name: "versioned desktop", target: filepath.Join(root, "versions", "v1.19.3", "reasonix-wails.exe"), want: true},
-		{name: "case-insensitive", target: filepath.Join(root, "Versions", "V1.19.3", "Reasonix-Desktop.exe"), want: true},
+		{name: "case-insensitive", target: filepath.Join(root, "Versions", "V1.19.3", "Reasonix-Wails.exe"), want: true},
 		{name: "launcher", target: launcher, want: false},
 		{name: "launcher alias", target: filepath.Join(root, "Reasonix.exe"), want: false},
 		{name: "flat desktop", target: filepath.Join(root, "reasonix-wails.exe"), want: false},

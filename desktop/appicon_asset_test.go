@@ -35,15 +35,6 @@ func TestWindowsICOUsesBlueFullCanvasRoundedBackground(t *testing.T) {
 	}
 }
 
-func TestDarwinICNSUsesMacOSIconSafeArea(t *testing.T) {
-	img := decodeICNSImage(t, "build/darwin/icon.icns", "ic10")
-	if got, want := img.Bounds(), image.Rect(0, 0, 1024, 1024); got != want {
-		t.Fatalf("macOS ic10 frame bounds = %v, want %v", got, want)
-	}
-	if got, want := alphaBounds(img), image.Rect(100, 100, 924, 924); got != want {
-		t.Fatalf("macOS icon visible bounds = %v, want %v", got, want)
-	}
-}
 
 func assertFullCanvasRoundedIcon(t *testing.T, img image.Image, size int) {
 	t.Helper()

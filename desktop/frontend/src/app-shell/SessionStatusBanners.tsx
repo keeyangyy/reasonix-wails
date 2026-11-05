@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import type { Translator } from "../lib/i18n";
-import { RemoteReclaimBanner } from "../components/RemoteReclaimBanner";
 import { UpdateBanner } from "../components/UpdateBanner";
 
 const SessionTakeoverDialog = lazy(() => import("../components/SessionTakeoverDialog").then((module) => ({ default: module.SessionTakeoverDialog })));
@@ -32,13 +31,7 @@ export function SessionStatusBanners(props: SessionStatusBannersProps) {
   const { t } = props;
   return (
     <>
-      {props.takenOver ? (
-        <RemoteReclaimBanner
-          tabId={props.reclaimTabId}
-          busyTabId={props.reclaimBusyTabId}
-          onReclaim={props.onReclaim}
-        />
-      ) : null}
+
       {props.leaseBlocked ? (
         <div className="banner banner--error">
           <span className="banner__msg">{t("topbar.startupError", { msg: props.leaseBlocked.message })}</span>

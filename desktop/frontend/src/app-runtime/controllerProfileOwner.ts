@@ -4,7 +4,7 @@ import { sessionIdentityKey } from "./sessionTarget";
 import type { SessionOperationAuthority, SessionResource } from "./useSessionOperations";
 
 export type ControllerProfile = { collaboration: CollaborationMode; approval: ToolApprovalMode; goal: string };
-export type ControllerProfileResource = { target: SessionResource; profile: ControllerProfile; remote: boolean };
+export type ControllerProfileResource = { target: SessionResource; profile: ControllerProfile; remote?: boolean };
 export type ControllerProfilePorts = {
   model(tabId: string, name: string): Promise<boolean>;
   profile(tabId: string, collaboration: CollaborationMode, approval: ToolApprovalMode, goal: string, options: { propagateError: boolean }): Promise<boolean>;
@@ -15,12 +15,12 @@ const runtimeProfile = (profile: ComposerProfile): ControllerProfile => ({
 
 /** A display-free read projection, not a second profile store. */
 export function projectControllerProfiles(tabs: readonly TabMeta[], profiles: Readonly<Record<string, ComposerProfile>>,
-  active: { target: SessionResource; profile: ComposerProfile; remote: boolean }): ControllerProfileResource[] {
+  active: { target: SessionResource; profile: ComposerProfile; remote?: boolean }): ControllerProfileResource[] {
   return [{ target: active.target, profile: runtimeProfile(active.profile), remote: active.remote },
     ...tabs.filter(tab => tab.id !== active.target.tabId).map(tab => ({
       target: { tabId: tab.id, sessionKey: sessionIdentityKey({ tabId: tab.id, sessionPath: tab.sessionPath,
         sessionGeneration: tab.sessionGeneration, scope: tab.scope, workspaceRoot: tab.workspaceRoot, topicId: tab.topicId }) },
-      profile: runtimeProfile(profiles[tab.id] ?? composerProfileFromTab(tab)), remote: Boolean(tab.remote),
+      profile: runtimeProfile(profiles[tab.id] ?? composerProfileFromTab(tab)), remote: false,
     }))];
 }
 

@@ -1,13 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { Transcript, type TranscriptProps } from "../components/Transcript";
 import { NoticePreviewPanel, noticePreviewMockEnabled } from "./NoticePreviewPanel";
 import type { SidebarImConnection } from "../app-runtime/sidebarImProjection";
-import type { TabMeta } from "../lib/types";
 import type { State } from "../lib/useController";
-import type { RemoteSessionApi } from "../lib/useRemoteSession";
 import type { Translator } from "../lib/i18n";
 
-const RemoteSessionSurface = lazy(() => import("../components/RemoteSessionSurface").then((module) => ({ default: module.RemoteSessionSurface })));
 const SidebarImConnectionDetail = lazy(() => import("./SidebarImConnectionDetail").then((module) => ({ default: module.SidebarImConnectionDetail })));
 
 export type ChatPaneTranscriptInput = {
@@ -45,7 +42,6 @@ export type ChatPaneRegionProps = {
     onManageAllowlist: (connectionId: string) => void;
     onOpenSession: (connection: SidebarImConnection) => void;
   } | null;
-  remote: { tab: TabMeta; session: RemoteSessionApi } | undefined;
   transcript: ChatPaneTranscriptInput;
   onRetryHistory: () => void;
   commands: {
@@ -86,9 +82,6 @@ export function ChatPaneRegion(props: ChatPaneRegionProps) {
         />
       ) : noticePreviewMockEnabled() ? (
         <NoticePreviewPanel />
-      ) : props.remote ? (
-        <Suspense fallback={null}><RemoteSessionSurface tab={props.remote.tab} session={props.remote.session}
-          surfaceCommitToken={transcript.surfaceCommitToken} onSurfacePaintReady={commands.onSurfacePaintReady} /></Suspense>
       ) : (
         <>
           <div className="transcript-navigation-surface" aria-busy={transitioning}>

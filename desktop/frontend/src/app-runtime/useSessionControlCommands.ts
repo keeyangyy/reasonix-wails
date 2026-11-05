@@ -12,7 +12,7 @@ export type SessionControlCommandsInput = {
     cancel(queuedItemIDs: string[]): Promise<CancelOutcome>;
     cancelForTab(tabId: string, queuedItemIDs: string[]): Promise<CancelOutcome>;
     acceptDelivery(tabId: string): Promise<unknown>;
-    disconnectRemote(hostId: string): Promise<unknown>;
+    disconnectRemote?(hostId: string): Promise<unknown>;
     cancelJobForTab(tabId: string, jobId: string): Promise<boolean>;
     refreshBackgroundRuntimes(): Promise<void>;
   };
@@ -60,7 +60,7 @@ export function useSessionControlCommands(input: SessionControlCommandsInput) {
   });
 
   const handleDisconnectRemote = useCommittedCommand((hostId: string) => {
-    void ports.disconnectRemote(hostId).catch((error) => {
+    void ports.disconnectRemote?.(hostId).catch((error) => {
       console.warn("Failed to disconnect remote host", error);
     });
   });

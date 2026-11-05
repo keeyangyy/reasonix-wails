@@ -1,4 +1,3 @@
-import { app } from "../lib/bridge";
 import { displayedComposerProfileCollaborationMode, type ComposerProfile } from "../lib/composerProfile";
 import type { TabMeta } from "../lib/types";
 import type { StructuredInvocationSubmit } from "../lib/invocationDisplay";
@@ -12,7 +11,7 @@ export function createSubmissionPorts(input: {
 }): SubmissionPorts {
   return { clearUndo: input.clearUndo, patchGoal: input.patchGoal, profile: input.profile,
     send: (tab, display, submit, structured, goal) => input.send(tab, display, submit, undefined, structured, goal),
-    setGoal: (tab, goal, remote) => remote ? app.SetRemoteTabGoal(tab, goal) : goal ? input.setGoal(tab, goal) : input.clearGoal(tab),
+    setGoal: (tab, goal) => goal ? input.setGoal(tab, goal) : input.clearGoal(tab),
   };
 }
 

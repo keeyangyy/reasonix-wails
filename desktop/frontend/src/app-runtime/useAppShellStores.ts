@@ -1,7 +1,6 @@
 import { useLayoutStore } from "../store/layout";
 import { useOverlayStore } from "../store/overlays";
 import { useAppNavigationStore } from "../store/appNavigation";
-import { useRemoteStore } from "../store/remote";
 import { useWindowChromeStore } from "../store/windowChrome";
 import { useDesktopPreferences } from "./useDesktopPreferences";
 
@@ -56,9 +55,7 @@ export function useAppShellStores() {
   const rightDockMode = useLayoutStore((s) => s.rightDockMode);
   const terminalPanelOpen = useLayoutStore((s) => s.terminalPanelOpen);
 
-  const remoteHosts = useRemoteStore((s) => s.hosts);
-  const remoteStatuses = useRemoteStore((s) => s.statuses);
-  const requestRemoteExplorer = useRemoteStore((s) => s.openExplorer);
+
 
   const desktopPlatform = useWindowChromeStore((state) => state.platform);
   const mainWindowMaximised = useWindowChromeStore((state) => state.mainWindowMaximised);
@@ -88,7 +85,6 @@ export function useAppShellStores() {
     workspacePanelOpen, rightDockTreeWidth, setRightDockTreeWidth, rightDockPreviewWidth,
     workspacePanelResizing, liveTerminalHeight, setLiveWorkspacePanelRenderWidth,
     workspacePanelMaximized, rightDockMode, terminalPanelOpen,
-    remoteHosts, remoteStatuses, requestRemoteExplorer,
     desktopPlatform, mainWindowMaximised,
     preferences,
     managementActive, desktopLayoutStyle, singleSurfaceLayout, sidebarWorkbench, sidebarCreation,

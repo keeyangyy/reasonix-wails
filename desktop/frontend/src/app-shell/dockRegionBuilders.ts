@@ -1,6 +1,6 @@
 import { workspacePanelAriaMinWidth } from "../lib/workspaceLayout";
 import type { Translator } from "../lib/i18n";
-import type { Meta, RemoteHostView, RemoteConnectionStatus, WireCompletionSummary } from "../lib/types";
+import type { Meta, WireCompletionSummary } from "../lib/types";
 import type { projectConversation } from "../app-runtime/conversationProjection";
 import type { useShellGeometry } from "../app-runtime/useShellGeometry";
 import type { useWorkspacePanelCommands } from "../app-runtime/useWorkspacePanelCommands";
@@ -24,9 +24,7 @@ type StatusBarProps = NonNullable<AppBottomRegionsProps["status"]>;
 export function buildWorkspaceDockProps(input: {
   surface: { renderable: boolean; overlay: boolean; gridOpen: boolean };
   creation: boolean;
-  remoteAvailable: boolean;
   showContext: boolean;
-  remote: boolean;
   t: Translator;
   context: ConversationView["context"];
   sessionTurns: number;
@@ -58,12 +56,9 @@ export function buildWorkspaceDockProps(input: {
     overlay: surface.overlay,
     mode: input.mode,
     creation: input.creation,
-    remoteAvailable: input.remoteAvailable,
     showContext: input.showContext,
     t: input.t,
     onMode: panels.openRightDockMode,
-    onRemote: panels.openRemoteDock,
-    remote: { onClose: panels.closeWorkspacePanel },
     context: {
       ...input.context, sessionTurns: input.sessionTurns,
       refreshKey: input.contextRefreshKey,
@@ -101,7 +96,6 @@ export function buildBottomRegionsProps(input: {
   chatSurfaceVisible: boolean;
   surfaceOpen: boolean;
   contentVisible: boolean;
-  remote: boolean;
   readOnly: boolean;
   tabId: string | undefined;
   meta: Meta | null | undefined;
@@ -120,16 +114,11 @@ export function buildBottomRegionsProps(input: {
     labelStyle: StatusBarProps["labelStyle"];
     items: StatusBarProps["items"];
     extensionStatuses: StatusBarProps["extensionStatuses"];
-    remoteHosts: RemoteHostView[];
-    remoteStatuses: Record<string, RemoteConnectionStatus>;
+
     onCancelJob: StatusBarProps["onCancelJob"];
     onCancelRuntimeJob: StatusBarProps["onCancelRuntimeJob"];
     onRevealRuntime: StatusBarProps["onRevealRuntime"];
-    onConnectRemote: StatusBarProps["onConnectRemote"];
-    onDisconnectRemote: StatusBarProps["onDisconnectRemote"];
-    onManageRemote: StatusBarProps["onManageRemote"];
-    onOpenRemote: StatusBarProps["onOpenRemote"];
-    onOpenRemoteWorkspace: StatusBarProps["onOpenRemoteWorkspace"];
+
   };
 }): AppBottomRegionsProps {
   const { geometry, status } = input;
@@ -137,7 +126,7 @@ export function buildBottomRegionsProps(input: {
     terminal: {
       surfaceVisible: input.chatSurfaceVisible,
       open: input.surfaceOpen, contentVisible: input.contentVisible,
-      remoteSurface: input.remote, t: input.t,
+      remoteSurface: false, t: input.t,
       panel: {
         tabId: input.tabId ?? "", cwd: input.meta?.cwd, readOnly: input.readOnly,
         open: input.surfaceOpen, fitEnabled: input.fitEnabled,
@@ -154,7 +143,7 @@ export function buildBottomRegionsProps(input: {
     },
     status: status ? {
       ...status.base,
-      running: status.base.running || (!input.remote && status.rewindCommitting),
+      running: status.base.running || status.rewindCommitting,
       onCancelJob: status.onCancelJob,
       onCancelRuntimeJob: status.onCancelRuntimeJob,
       onRevealRuntime: status.onRevealRuntime,
@@ -162,13 +151,7 @@ export function buildBottomRegionsProps(input: {
       labelStyle: status.labelStyle,
       items: status.items,
       extensionStatuses: status.extensionStatuses,
-      onConnectRemote: status.onConnectRemote,
-      onDisconnectRemote: status.onDisconnectRemote,
-      onManageRemote: status.onManageRemote,
-      onOpenRemote: status.onOpenRemote,
-      onOpenRemoteWorkspace: status.onOpenRemoteWorkspace,
-      remoteHosts: status.remoteHosts,
-      remoteStatuses: status.remoteStatuses,
+
     } : undefined,
   };
 }

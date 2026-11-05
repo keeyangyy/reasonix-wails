@@ -11,8 +11,8 @@ export type TranscriptSurfaceProjectionInput = {
   hydratePlaceholderItems: Item[] | undefined;
   hydratePlaceholderActive: boolean;
   items: Item[];
-  remote: boolean;
-  remoteItems: Item[];
+  remote?: boolean;
+  remoteItems?: Item[];
   activeTabId: string | undefined;
   geometrySessionKey: string;
   transitioning: boolean;
@@ -60,8 +60,8 @@ export function useTranscriptSurfaceProjection(input: TranscriptSurfaceProjectio
   // Display items: backend history is authoritative after immediate commit.
   // rewindState only drives the undo banner, not optimistic truncation.
   const displayItems = transcriptItems;
-  const committedSurfaceItems = input.remote ? input.remoteItems : displayItems;
-  const committedGeometryKey = input.remote ? `tab:${activeTabId ?? "preview"}` : input.geometrySessionKey;
+  const committedSurfaceItems = displayItems;
+  const committedGeometryKey = input.geometrySessionKey;
   // Only committed presentation can become a future retained source surface.
   // A suspended or abandoned render must never become navigation authority.
   const commitRendered = input.commitRendered;

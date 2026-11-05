@@ -1,6 +1,5 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { useCommittedCommand } from "../lib/useCommittedCommand";
-import { useRemoteComposerProfileSync } from "../lib/useRemoteComposerIntegration";
 import {
   composerProfileFromMeta,
   composerProfileFromTab,
@@ -14,7 +13,6 @@ import {
   type UserPlanModeIntents,
 } from "../lib/composerProfile";
 import type { Meta, QualityFloor, TabMeta } from "../lib/types";
-import type { RemoteSessionApi } from "../lib/useRemoteSession";
 
 export type ComposerProfileProjectionInput = {
   activeTabId: string | undefined;
@@ -23,8 +21,6 @@ export type ComposerProfileProjectionInput = {
   profilesByTab: Record<string, ComposerProfile>;
   setProfilesByTab: Dispatch<SetStateAction<Record<string, ComposerProfile>>>;
   tabMetas: readonly TabMeta[];
-  remote: boolean;
-  remoteSession: RemoteSessionApi;
   planIntentsRef: { current: UserPlanModeIntents };
   setControllerQualityFloor: (floor: QualityFloor) => Promise<unknown>;
   showToast: (message: string, level: "error") => void;
@@ -37,7 +33,7 @@ export type ComposerProfileProjectionInput = {
  * changes stay in useComposerModeActions; this hook owns the profile record.
  */
 export function useComposerProfileProjection(input: ComposerProfileProjectionInput) {
-  const { activeTabId, activeTab, meta, profilesByTab, setProfilesByTab, tabMetas, remote, remoteSession } = input;
+  const { activeTabId, activeTab, meta, profilesByTab, setProfilesByTab, tabMetas } = input;
   const activeComposerProfile = activeTabId ? profilesByTab[activeTabId] : undefined;
   const backendActiveComposerProfile = useMemo(() => {
     if (meta) {
@@ -55,9 +51,7 @@ export function useComposerProfileProjection(input: ComposerProfileProjectionInp
   const goal = composerProfile.goal;
   const collaborationMode = displayedComposerProfileCollaborationMode(composerProfile);
   const toolApprovalMode = composerProfile.toolApprovalMode;
-  const remoteComposerProfileReady = useRemoteComposerProfileSync({ activeTabId, remote,
-    remoteProfile: remoteSession.composerProfile, collaborationMode, toolApprovalMode, goal,
-    qualityFloor: composerProfile.qualityFloor, pending: composerProfile.pending, setProfiles: setProfilesByTab });
+
 
   const patchActiveComposerProfile = useCommittedCommand((patch: Partial<Omit<ComposerProfile, "pending">>, pendingFields: ComposerProfileField[]) => {
     if (!activeTabId) return;
@@ -73,10 +67,7 @@ export function useComposerProfileProjection(input: ComposerProfileProjectionInp
 
   const applyQualityFloor = useCommittedCommand((floor: QualityFloor) => {
     if (!activeTabId) return;
-    if (remote) {
-      void remoteSession.setQualityFloor(floor).catch((error) => input.showToast(error instanceof Error ? error.message : String(error), "error"));
-      return;
-    }
+
     patchActiveComposerProfile({ qualityFloor: floor }, ["qualityFloor"]);
     void input.setControllerQualityFloor(floor);
   });
@@ -96,7 +87,6 @@ export function useComposerProfileProjection(input: ComposerProfileProjectionInp
     goal,
     collaborationMode,
     toolApprovalMode,
-    remoteComposerProfileReady,
     patchActiveComposerProfile,
     patchComposerProfileForTab,
     applyQualityFloor,

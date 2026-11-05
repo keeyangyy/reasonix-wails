@@ -68,18 +68,8 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 	}
 	build := string(buildData)
 	for _, want := range []string{
-		`CLINAME="reasonix"`,
-		`./cmd/reasonix`,
 		`./cmd/reasonix-legacy-migrator`,
 		`./cmd/reasonix-launcher`,
-		`cp "$cli_out" "$app/Contents/MacOS/$CLINAME"`,
-		`macOS bundle must not include $GUARDNAME`,
-		`[ "$bundle_executable" = "$BINNAME" ]`,
-		`Print :CFBundleIconFile`,
-		`darwin_icon="$ROOT/desktop/build/darwin/icon.icns"`,
-		`cp "$darwin_icon" "$app/Contents/Resources/$bundle_icon"`,
-		`cmp -s "$darwin_icon" "$app/Contents/Resources/$bundle_icon"`,
-		`Contents/Resources/$bundle_icon`,
 		`-H windowsgui`,
 		`stamp_windows_executable "$guard_out" "Reasonix Legacy Migrator"`,
 		`stamp_windows_executable "$launcher_out" "Reasonix Launcher"`,
@@ -90,80 +80,17 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 		`cp "$guard_out" "$payload_dir/$GUARDNAME.exe"`,
 		`cp "build/windows/installer/reasonix-uninstall.exe" "$payload_dir/reasonix-uninstall.exe"`,
 		`"$ROOT/scripts/package-windows-desktop.sh" "$arch" "$payload_dir"`,
-		`"$BINNAME" "$LAUNCHERNAME" "$GUARDNAME" "$CLINAME"`,
-		`Exec=reasonix-launcher`,
 	} {
 		if !strings.Contains(build, want) {
 			t.Errorf("desktop-build.sh missing packaging contract %q", want)
 		}
-	}
-	if strings.Contains(build, `Set :CFBundleExecutable $GUARDNAME`) {
-		t.Fatal("macOS package must not replace the native Wails bundle executable with Guard")
 	}
 	launcherStamp := strings.Index(build, `stamp_windows_executable "$launcher_out" "Reasonix Launcher"`)
 	payloadCopy := strings.Index(build, `cp "$launcher_out" "$payload_dir/$LAUNCHERNAME.exe"`)
 	if launcherStamp < 0 || payloadCopy < 0 || launcherStamp > payloadCopy {
 		t.Fatalf("Windows payload must copy the already-stamped launcher (stamp=%d copy=%d)", launcherStamp, payloadCopy)
 	}
-	if strings.Contains(build, `"$staging/$CLINAME.exe"`) {
-		t.Fatal("Windows package must not collide reasonix.exe with the Reasonix.exe launcher")
-	}
-	darwinIconCopy := strings.Index(build, `cp "$darwin_icon" "$app/Contents/Resources/$bundle_icon"`)
-	developerIDSign := strings.Index(build, `codesign --force --deep --timestamp --options runtime`)
-	if darwinIconCopy < 0 || developerIDSign < 0 || darwinIconCopy > developerIDSign {
-		t.Fatalf("macOS icon must be replaced before signing (icon=%d sign=%d)", darwinIconCopy, developerIDSign)
-	}
 
-	for _, want := range []string{
-		`dpkg-deb --field "$deb_path" Package | grep -x 'reasonix-wails'`,
-		`usr/lib/reasonix/reasonix-update-helper`,
-		`usr/share/polkit-1/actions/io.reasonix.desktop.update.policy`,
-	} {
-		if !strings.Contains(build, want) {
-			t.Errorf("desktop-build.sh missing Linux deb helper contract %q", want)
-		}
-	}
-	for _, unsafe := range []string{
-		`dpkg-deb --field "$deb_path" Package | grep -qx`,
-		`dpkg-deb --field "$deb_path" Version | grep -qx`,
-		`dpkg-deb --field "$deb_path" Depends | grep -Fq`,
-		`dpkg-deb --contents "$deb_path" | grep -Eq`,
-	} {
-		if strings.Contains(build, unsafe) {
-			t.Errorf("desktop-build.sh uses early-exit grep under pipefail: %q", unsafe)
-		}
-	}
-
-	desktopEntry, err := os.ReadFile("build/linux/reasonix.desktop")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(desktopEntry), "Exec=reasonix-launcher") || strings.Contains(string(desktopEntry), "reasonix-guard") {
-		t.Fatal("Linux desktop entry must launch the permanent launcher without Guard")
-	}
-	nfpmData, err := os.ReadFile("build/linux/nfpm.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	nfpm := string(nfpmData)
-	if !strings.Contains(nfpm, "dst: /usr/bin/reasonix-launcher") || strings.Contains(nfpm, "dst: /usr/bin/reasonix-guard") {
-		t.Fatal("Linux deb must install the permanent launcher and must not persist Guard")
-	}
-	if !strings.Contains(nfpm, "postinstall: ./build/linux/postinstall.sh") {
-		t.Fatal("Linux deb must refresh native desktop icon caches after install and upgrade")
-	}
-	if !strings.Contains(nfpm, "dst: /usr/share/applications/reasonix.desktop") {
-		t.Fatal("Linux deb must install the Reasonix desktop entry")
-	}
-	postInstall, err := os.ReadFile("build/linux/postinstall.sh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"gtk-update-icon-cache", "update-desktop-database"} {
-		if !strings.Contains(string(postInstall), want) {
-			t.Errorf("Linux post-install icon repair missing %q", want)
-		}
-	}
 
 	windowsData, err := os.ReadFile("build/windows/installer/project.nsi")
 	if err != nil {

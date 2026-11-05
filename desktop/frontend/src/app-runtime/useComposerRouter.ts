@@ -170,10 +170,7 @@ export function useComposerRouter(input: ComposerRouterInput) {
   const handleSteer = useCommittedCommand(async (text: string, requestedTabId = activeTabId) => {
     const sourceTabId = requestedTabId || activeTabId;
     if (!sourceTabId) throw new Error(t("composer.workspaceStarting"));
-    if (ports.isRemoteTab(sourceTabId)) {
-      await app.SteerRemoteTab(sourceTabId, text.trim());
-      return;
-    }
+
     await ports.steerForTab(sourceTabId, text.trim());
   });
 

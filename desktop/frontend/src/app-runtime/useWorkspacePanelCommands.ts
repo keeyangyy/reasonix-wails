@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useCommittedCommand } from "../lib/useCommittedCommand";
 import { loadWorkspacePanelOpen, saveWorkspacePanelOpen, useLayoutStore, type RightDockMode } from "../store/layout";
-import { useRemoteStore } from "../store/remote";
 
 type Input = {
   workspaceRoot: string;
@@ -17,8 +16,6 @@ type Input = {
 /** One project-scoped preference owner, with no mirrored layout state. */
 export function useWorkspacePanelCommands(input: Input) {
   const mode = useLayoutStore(state => state.rightDockMode);
-  const explorerOpen = useRemoteStore(state => state.explorerOpen);
-  const hostCount = useRemoteStore(state => state.hosts.length);
   const openRightDockMode = useCommittedCommand((requestedMode?: RightDockMode) => {
     input.closeOverlays();
     const layout = useLayoutStore.getState();
@@ -55,12 +52,7 @@ export function useWorkspacePanelCommands(input: Input) {
     input.closeOverlays();
     layout.setWorkspacePreviewActive(active);
   });
-  const openRemoteDock = useCommittedCommand(() => {
-    const remote = useRemoteStore.getState();
-    const fallback = remote.hosts.find(host => ["connected", "degraded"].includes(remote.statuses[host.id]?.state)) ?? remote.hosts[0];
-    const hostId = remote.hosts.some(host => host.id === remote.explorerHostId) ? remote.explorerHostId : fallback?.id;
-    if (hostId) remote.openExplorer(hostId);
-  });
+
   const restoreWorkspaceDockWidths = useCommittedCommand((treeWidth: number, _previewWidth: number) => {
     // Single-width dock: only the tree width is meaningful; clamp it to the
     // dynamic available width (chat keeps its 400px floor), never a fixed
@@ -73,13 +65,6 @@ export function useWorkspacePanelCommands(input: Input) {
   useLayoutEffect(() => {
     if (input.creation && mode === "context") useLayoutStore.getState().setRightDockMode("files");
   }, [input.creation, mode]);
-  useEffect(() => {
-    if (!explorerOpen) return;
-    openRightDockMode("remote");
-    useRemoteStore.getState().closeExplorer();
-  }, [explorerOpen, openRightDockMode]);
-  useEffect(() => {
-    if (hostCount === 0 && mode === "remote") useLayoutStore.getState().setRightDockMode("files");
-  }, [hostCount, mode]);
-  return { openRightDockMode, closeWorkspacePanel, toggleWorkspacePanel, toggleWorkspaceMaximized, handleWorkspacePreviewModeChange, openRemoteDock, restoreWorkspaceDockWidths };
+
+  return { openRightDockMode, closeWorkspacePanel, toggleWorkspacePanel, toggleWorkspaceMaximized, handleWorkspacePreviewModeChange, restoreWorkspaceDockWidths };
 }

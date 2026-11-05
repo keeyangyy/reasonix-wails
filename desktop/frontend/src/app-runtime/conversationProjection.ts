@@ -1,39 +1,34 @@
 import type { State } from "../lib/useController";
-import type { RemoteSessionApi } from "../lib/useRemoteSession";
 import type { BackgroundRuntimeView, TabMeta } from "../lib/types";
 
 type Input = {
   local: State;
-  remote?: Pick<RemoteSessionApi, "transcript" | "running" | "modelLabel" | "commands" | "composerProfile" | "goalRuntime" | "effort">;
-  tab?: Pick<TabMeta, "id" | "label" | "remote" | "workspaceName">;
+  tab?: Pick<TabMeta, "id" | "label" | "workspaceName">;
   activeTabId?: string;
   backgroundRuntimes: BackgroundRuntimeView[];
   connectingLabel: string;
 };
 
-/** Readiness and paint identity must come from the surface that will render. */
+/** Readiness and paint identity come from the local session surface. */
 export function projectNavigationSurfaceTarget(input: {
   activeTabId?: string; sessionKey: string;
   local: Pick<State, "meta" | "backendActivationPending" | "hydrating" | "hydrateError">;
-  remote?: Pick<RemoteSessionApi, "state" | "hydrated" | "error" | "surfaceGeneration">;
 }) {
-  const { remote, local } = input;
-  const terminal = remote && ["error", "serve_down", "disconnected"].includes(remote.state);
+  const { local } = input;
   return {
     activeTabId: input.activeTabId,
-    sessionKey: remote ? JSON.stringify([input.sessionKey, remote.surfaceGeneration]) : input.sessionKey,
-    ready: remote ? remote.state === "ready" && remote.hydrated : local.meta?.ready === true,
-    backendActivationPending: remote ? false : Boolean(local.backendActivationPending),
-    hydrating: remote ? !remote.hydrated && !terminal : Boolean(local.hydrating),
-    hydrateError: remote ? terminal ? remote.error || remote.state : undefined : local.hydrateError,
+    sessionKey: input.sessionKey,
+    ready: local.meta?.ready === true,
+    backendActivationPending: Boolean(local.backendActivationPending),
+    hydrating: Boolean(local.hydrating),
+    hydrateError: local.hydrateError,
   };
 }
 
-/** Display-only projection. No local telemetry fallback is permitted on a remote surface. */
-export function projectConversation({ local, remote, tab, activeTabId, backgroundRuntimes, connectingLabel }: Input) {
-  const runtime = remote?.transcript ?? local;
-  const remoteActive = Boolean(remote);
-  const modelLabel = remote ? remote.modelLabel || tab?.label : local.meta?.label;
+/** Display-only projection. */
+export function projectConversation({ local, activeTabId, backgroundRuntimes, connectingLabel }: Input) {
+  const runtime = local;
+  const modelLabel = local.meta?.label;
   const timing = {
     turnPhase: runtime.turnPhase, turnStartAt: runtime.turnStartAt,
     turnWaitAccumMs: runtime.turnWaitAccumMs, promptWaitStartedAt: runtime.promptWaitStartedAt,
@@ -44,28 +39,27 @@ export function projectConversation({ local, remote, tab, activeTabId, backgroun
   };
   return {
     runtime,
-    localToolsEnabled: !remoteActive,
+    localToolsEnabled: true,
     composer: {
       ...timing,
-      running: remote ? remote.running : local.running,
-      goalStatus: remote ? remote.composerProfile?.goalStatus : local.meta?.goalStatus,
-      goalRuntime: remote ? remote.goalRuntime : local.meta?.goalRuntime,
-      cwd: remote ? tab?.remote?.workspace : local.meta?.cwd,
+      running: local.running,
+      goalStatus: local.meta?.goalStatus,
+      goalRuntime: local.meta?.goalRuntime,
+      cwd: local.meta?.cwd,
       modelLabel: modelLabel || connectingLabel,
-      commandCatalog: remote?.commands,
-      imageInputEnabled: !remoteActive && local.meta?.imageInputEnabled !== false,
-      imageUnderstandingEnabled: !remoteActive && local.meta?.visionFallbackEnabled === true,
-      attachmentInputEnabled: !remoteActive,
-      pinnedFiles: remote ? undefined : local.meta?.pinnedFiles,
-      turnId: remote ? undefined : local.activeTurnId,
-      effort: remote ? remote.effort : local.effort,
-      localDurableGuidance: !remoteActive,
+      imageInputEnabled: local.meta?.imageInputEnabled !== false,
+      imageUnderstandingEnabled: local.meta?.visionFallbackEnabled === true,
+      attachmentInputEnabled: true,
+      pinnedFiles: local.meta?.pinnedFiles,
+      turnId: local.activeTurnId,
+      effort: local.effort,
+      localDurableGuidance: true,
       context: runtime.context, turnCost: runtime.turnCost, turnRateBand: runtime.turnRateBand,
       currency: runtime.sessionCurrency, cacheHitTokens: runtime.usage?.cacheHitTokens,
       cacheMissTokens: runtime.usage?.cacheMissTokens, balance: runtime.balance,
     },
     context: {
-      tabId: remote ? undefined : activeTabId,
+      tabId: activeTabId,
       items: runtime.items, context: runtime.context, usage: runtime.usage,
       sessionTokens: runtime.sessionTokens, sessionCost: runtime.sessionCost,
       sessionCurrency: runtime.sessionCurrency, turnTokens: runtime.turnTotalTokens,
@@ -75,15 +69,15 @@ export function projectConversation({ local, remote, tab, activeTabId, backgroun
     status: {
       context: runtime.context, usage: runtime.usage, balance: runtime.balance,
       running: runtime.running, jobs: runtime.jobs,
-      backgroundRuntimes: remote ? [] : backgroundRuntimes,
+      backgroundRuntimes,
       sessionTokens: runtime.sessionTokens, turnTokens: runtime.turnTotalTokens,
       lastTurnOutputTokens: runtime.lastTurnOutputTokens, lastTurnModelMs: runtime.lastTurnModelMs,
       lastTurnOutputEstimated: runtime.lastTurnOutputEstimated, lastRequestTps: runtime.lastRequestTps,
       turnCost: runtime.turnCost, turnRateBand: runtime.turnRateBand, cost: runtime.sessionCost,
       currency: runtime.sessionCurrency, modelLabel,
-      workspacePath: remote ? tab?.remote?.workspace : local.meta?.workspacePath || local.meta?.workspaceRoot || local.meta?.cwd,
-      workspaceName: remote ? tab?.workspaceName : local.meta?.workspaceName,
-      gitBranch: remote ? undefined : local.meta?.gitBranch,
+      workspacePath: local.meta?.workspacePath || local.meta?.workspaceRoot || local.meta?.cwd,
+      workspaceName: local.meta?.workspaceName,
+      gitBranch: local.meta?.gitBranch,
     },
   };
 }

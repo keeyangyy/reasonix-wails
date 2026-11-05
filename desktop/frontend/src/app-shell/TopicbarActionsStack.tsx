@@ -41,7 +41,7 @@ export function buildTopicbarView(input: {
   const topicbarSubtitleTitle = imDetail
     ? [topicbarWorkspaceLabel, topicbarImSourceLabel, sidebarImScopeLabel(imDetail, t)].filter(Boolean).join(" · ")
     : [topicbarWorkspacePath || topicbarWorkspaceLabel, topicbarImSourceLabel].filter(Boolean).join(" · ");
-  const topicbarCanRename = !imDetail && (Boolean(activeTab?.topicId) || Boolean(activeTab?.remote));
+  const topicbarCanRename = !imDetail && Boolean(activeTab?.topicId);
   const topicbarTitleEditSize = Math.min(56, Math.max(4, input.rename.draft.length || topicbarTitle.length || 1));
   return {
     automationReturn: input.automationReturn,

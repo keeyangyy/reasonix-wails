@@ -12,7 +12,6 @@ import type { useComposerProfileProjection } from "../app-runtime/useComposerPro
 import type { useComposerInsertCommands } from "../app-runtime/useComposerInsertCommands";
 import type { useComposerModeActions } from "../lib/useComposerModeActions";
 import type { useComposerGoalCommands } from "../app-runtime/useComposerGoalCommands";
-import type { useRemoteComposerRuntimeActions } from "../lib/useRemoteComposerIntegration";
 import type { useControllerProfileCommands } from "../lib/useControllerProfileCommands";
 import type {
   ApprovalProps,
@@ -240,7 +239,6 @@ export type ComposerSurfaceInput = {
     inert: boolean;
     hero: boolean;
     headline: string;
-    remote: boolean;
     rewindCommitting: boolean;
     messageActionPending: boolean;
     decisionActive: boolean;
@@ -255,17 +253,10 @@ export type ComposerSurfaceInput = {
   router: { handleSend: ComposerProps["onSend"]; handleSteer: ComposerProps["onSteer"] };
   modes: ReturnType<typeof useComposerModeActions>;
   goals: ReturnType<typeof useComposerGoalCommands>;
-  remoteGoal: ReturnType<typeof useRemoteComposerRuntimeActions>;
   modelSwitch: Pick<ReturnType<typeof useControllerProfileCommands>, "switchModelFromUi">;
   inserts: Pick<ReturnType<typeof useComposerInsertCommands>, "composerInsertRequest" | "selectedTextRequest">;
   control: { handleCancelActive: ComposerProps["onCancel"] };
-  remoteComposer: {
-    send: ComposerProps["onSend"];
-    cancel: ComposerProps["onCancel"];
-    ready: boolean;
-    profileReady: boolean;
-    liveStore: ComposerProps["liveStore"];
-  };
+
   localLiveStore: ComposerProps["liveStore"];
   onInvocationMetadataChange: ComposerProps["onInvocationMetadataChange"];
   onCycleMode: ComposerProps["onCycleMode"];
@@ -279,7 +270,7 @@ export type ComposerSurfaceInput = {
 };
 
 export function buildComposerSurface(input: ComposerSurfaceInput): DecisionFooterRegionProps["composer"] {
-  const { base, view, profile, router, modes, goals, remoteGoal, modelSwitch, inserts, control, remoteComposer } = input;
+  const { base, view, profile, router, modes, goals, modelSwitch, inserts, control } = input;
   return {
     hidden: view.hidden,
     inert: view.inert,
@@ -287,7 +278,7 @@ export function buildComposerSurface(input: ComposerSurfaceInput): DecisionFoote
     headline: view.headline,
     props: {
       ...base,
-      running: base.running || (!view.remote && view.rewindCommitting),
+      running: base.running || view.rewindCommitting,
       collaborationMode: profile.collaborationMode,
       toolApprovalMode: profile.toolApprovalMode,
       qualityFloor: profile.composerProfile.qualityFloor,
@@ -295,28 +286,28 @@ export function buildComposerSurface(input: ComposerSurfaceInput): DecisionFoote
       onSetQualityFloor: profile.applyQualityFloor,
       goal: profile.goal,
       tabId: input.tabId,
-      onSend: view.remote ? remoteComposer.send : router.handleSend,
+      onSend: router.handleSend,
       onInvocationMetadataChange: input.onInvocationMetadataChange,
       onSteer: router.handleSteer,
-      onCancel: view.remote ? remoteComposer.cancel : control.handleCancelActive,
+      onCancel: control.handleCancelActive,
       onCycleMode: input.onCycleMode,
       onSetMode: modes.applyMode,
       onSetCollaborationMode: goals.setCollaborationModeFromUi,
       onSetToolApprovalMode: modes.applyToolApprovalMode,
       onToggleYoloApprovalMode: modes.toggleYoloApprovalMode,
       onClearGoal: goals.clearGoalFromUi,
-      onPauseGoal: remoteGoal.pauseGoal,
-      onResumeGoal: remoteGoal.resumeGoal,
+      onPauseGoal: goals.pauseGoalFromUi,
+      onResumeGoal: goals.resumeGoalFromUi,
       onSwitchModel: modelSwitch.switchModelFromUi,
-      onSetEffort: remoteGoal.setEffort,
+      onSetEffort: goals.setEffortFromUi,
       insertRequest: inserts.composerInsertRequest,
       selectedTextRequest: inserts.selectedTextRequest,
       readOnly: Boolean(input.tab?.readOnly),
       disabled: view.runtimeTransitioning || view.rewindCommitting || view.messageActionPending || view.decisionActive,
-      submitDisabled: view.remote ? !remoteComposer.ready || !remoteComposer.profileReady : !view.controllerReady,
+      submitDisabled: !view.controllerReady,
       decisionPending: view.rewindCommitting || view.messageActionPending || view.decisionActive,
-      ready: view.remote ? remoteComposer.ready && remoteComposer.profileReady : view.controllerReady,
-      liveStore: view.remote ? remoteComposer.liveStore : input.localLiveStore,
+      ready: view.controllerReady,
+      liveStore: input.localLiveStore,
       suspendedByDecision: view.decisionActive,
       transientDismissSignal: input.transientDismissSignal,
       sessionKey: input.sessionKey,

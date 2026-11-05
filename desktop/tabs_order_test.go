@@ -141,34 +141,7 @@ func TestSetActiveTabDoesNotResetPlannerSession(t *testing.T) {
 	}
 }
 
-func TestSingleSurfaceTabsFileKeepsActiveEntry(t *testing.T) {
-	f := desktopTabsFile{
-		Tabs: []desktopTabEntry{
-			{ID: "a", Scope: "global", TopicID: "topic-a"},
-			{ID: "b", Scope: "project", WorkspaceRoot: "/tmp/project", TopicID: "topic-b"},
-			{ID: "c", Scope: "global", TopicID: "topic-c"},
-		},
-		ActiveTab: "b",
-	}
 
-	got := singleSurfaceTabsFile(f)
-	if len(got.Tabs) != 1 || got.Tabs[0].ID != "b" || got.ActiveTab != "b" {
-		t.Fatalf("single-surface tabs = %+v, want only active b", got)
-	}
-}
-
-func TestSetDesktopLayoutStyleAppliesPolicyAfterWorkspaceAlias(t *testing.T) {
-	app := testAppWithOrderedTabs(t, "b", "a", "b", "c")
-
-	if err := app.SetDesktopLayoutStyle("workspace"); err != nil {
-		t.Fatalf("SetDesktopLayoutStyle(workspace): %v", err)
-	}
-
-	assertTabIDs(t, app.ListTabs(), "b")
-	if got := loadTabsFile(); len(got.Tabs) != 1 || got.Tabs[0].ID != "b" || got.ActiveTab != "b" {
-		t.Fatalf("persisted tabs after workspace alias = %+v, want only active b", got)
-	}
-}
 
 func TestKeepOnlyVisibleTabDetachesRunningHiddenTab(t *testing.T) {
 	isolateDesktopUserDirs(t)

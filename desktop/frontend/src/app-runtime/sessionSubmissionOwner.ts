@@ -4,14 +4,14 @@ import type { SessionOperationAuthority, SessionResource } from "./useSessionOpe
 
 export type InitialGoal = { goal: string; collaborationMode: CollaborationMode; toolApprovalMode: ToolApprovalMode };
 export type SubmissionResource = {
-  target: SessionResource; remote: boolean; ready: boolean; unavailable: string; goalDraft: boolean;
+  target: SessionResource; remote?: boolean; ready: boolean; unavailable: string; goalDraft: boolean;
   collaboration: CollaborationMode; approval: ToolApprovalMode;
 };
 export type Submission = { display: string; submit?: string; structured?: StructuredInvocationSubmit; initialGoal?: InitialGoal };
 export type SubmissionPorts = {
   send(tab: string, display: string, submit?: string, structured?: StructuredInvocationSubmit, goal?: InitialGoal): Promise<void>;
   clearUndo(tab: string): void;
-  setGoal(tab: string, goal: string, remote: boolean): Promise<void>;
+  setGoal(tab: string, goal: string, remote?: boolean): Promise<void>;
   patchGoal(tab: string, goal: string): void;
   profile(tab: string, propagateError: boolean): Promise<boolean>;
 };

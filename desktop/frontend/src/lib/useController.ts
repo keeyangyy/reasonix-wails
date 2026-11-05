@@ -48,14 +48,12 @@ import { historyPageRequestBudget } from "./historyPaging";
 import { createUniqueItemIDAllocator } from "./historyItemIds";
 import { ephemeralItemId } from "./transcriptItemIds";
 import { compactionAnchorMessageID, insertCompactionCards, placeCompactionCard, preserveLiveCompactions, recordCompactionDone, recordCompactionStarted, refreshCompactionAnchors } from "./compactionAnchor";
-import { withRemoteProviderUnreachable, withRemoteTurnInterrupted } from "./remoteTurnState";
 import type { NavigationResult, SurfaceDataCommit, SurfaceDataOutcome } from "./navigationSurfaceTransition";
 import { sameStringList, sameTodoList } from "./todoVisibility";
 import { resolveSnapshotTurnStartedAt, resolveTurnStartedAt, snapshotPredatesTurnLifecycle } from "./turnTiming";
 import { TurnEventProjector } from "./turnEventProjection";
 import { replayTurnRebuild } from "./replayRebuild";
 import { useStaleTurnWatchdog } from "./useStaleTurnWatchdog";
-import { useRemoteTabSwitch } from "./useRemoteTabSwitch";
 import { useNavigationIntentFence } from "./useNavigationIntentFence";
 import type { SearchSource } from "./searchSources";
 import { attachWebSearchOutput, historySearchAndAnswer } from "./searchTranscript";
@@ -1522,7 +1520,7 @@ function applyEvent(s: State, e: WireEvent, preserveToolPayloads = false): State
   }
   if (e.kind === "provider_unreachable") {
     const detail = typeof e.text === "string" ? e.text : "";
-    return withRemoteProviderUnreachable(s, detail);
+    return detail ? { ...s, retry: undefined } : { ...s, retry: undefined };
   }
   if (e.kind === "stream_attempt") {
     return applyStreamAttempt(s, e);
@@ -2174,7 +2172,7 @@ export function reducer(s: State, a: Action): State {
     case "turn_submit_rejected":
     case "send_failed": return reduceSubmitFailure(s, a.submissionId, a.error, a.type === "turn_submit_rejected", promptEventClock());
     case "turn_interrupted": {
-      return withRemoteTurnInterrupted(s);
+      return { ...s, activeTurnId: undefined, running: false };
     }
     case "backend_status": {
       const incomingEpoch = a.runtimeEpoch?.trim();
@@ -3914,7 +3912,7 @@ export function useController() {
   useEffect(() => {
     const tabId = activeTabId;
     const meta = activeState.meta;
-    if (!tabId || !meta || meta.remote || meta.ready || meta.startupErr || activeState.backendActivationPending) {
+    if (!tabId || !meta || meta.ready || meta.startupErr || activeState.backendActivationPending) {
       readyMetaReconcileSeq.current += 1;
       readyMetaReconcileActive.current = undefined;
       return;
@@ -4888,36 +4886,6 @@ export function useController() {
     // hydrated by useRemoteSession via RemoteTabSnapshot after ready. Running
     // HistorySliceForTab here fails with "session path unavailable" and the
     // hydrateError path would bounce the user back to the previous local tab.
-    if (optimisticTab?.remote) {
-      if (!preserveTargetSurface) dispatchTo(tabId, { type: "reset" });
-      dispatchTo(tabId, { type: "hydrate_done" });
-      const backendActivation = app.SetActiveTab(tabId)
-        .then(async () => {
-          if (!isNavigationIntentCurrent(navigationSeq) || activeTabIdRef.current !== tabId) {
-            noteActivationSettled(switchRequestId, "cancelled");
-            await reassertVisibleTabAfterStaleNavigation("tab.switch", tabId);
-            return false;
-          }
-          confirmBackendActiveTab(tabId);
-          noteActivationSettled(switchRequestId, "ready");
-          return true;
-        })
-        .catch((err) => {
-          noteActivationSettled(switchRequestId, "failed", errorMessage(err));
-          if (!isNavigationIntentCurrent(navigationSeq)) return false;
-          dispatchTo(tabId, { type: "backend_activation_done" });
-          if (previousTabId && activeTabIdRef.current === tabId) {
-            setActiveTabId(previousTabId);
-            activeTabIdRef.current = previousTabId;
-          }
-          return false;
-        });
-      trackBackendActivation(tabId, backendActivation);
-      return backendActivation.then(async (activated) => {
-        if (!activated || !isNavigationIntentCurrent(navigationSeq)) return undefined;
-        return reconcileTabRuntime(tabId, RUNTIME_STATUS_ONLY);
-      });
-    }
     if (!preserveTargetSurface) dispatchTo(tabId, { type: "reset" });
     if (optimisticStatus?.running) dispatchTo(tabId, optimisticStatus);
     dispatchTo(tabId, { type: "hydrate_start", reason: "switch-tab", placeholderItems });
@@ -5011,14 +4979,7 @@ export function useController() {
     return backendSwitch;
   }, [beginActiveNavigation, confirmBackendActiveTab, dispatchTo, isNavigationIntentCurrent, loadSessionDataForTab, navigationCompletionCurrent, reassertVisibleTabAfterStaleNavigation, reconcileTabRuntime, requireRegisteredNavigationIntent, restoreNavigationSource, snapshotNavigationSourceTab, trackBackendActivation]);
 
-  const switchRemoteTab = useRemoteTabSwitch({
-    activeTabIdRef, setActiveTabId, beginNavigation: beginActiveNavigation,
-    requireRegisteredNavigation: requireRegisteredNavigationIntent,
-    navigationCanComplete: navigationCompletionCurrent,
-    navigationIsCurrent: isNavigationIntentCurrent,
-    confirmBackendActiveTab,
-    reassertVisibleTab: reassertVisibleTabAfterStaleNavigation,
-  });
+
 
   const openProjectTab = useCallback(async (workspaceRoot: string, topicId: string, navigationIntentSeq?: number): Promise<TabMeta> => {
     const navigationSeq = navigationIntentSeq ?? beginActiveNavigation();
@@ -5291,7 +5252,7 @@ export function useController() {
     requestHistoryFullContent,
     refreshMeta, pickWorkspace, switchWorkspace, compact, rewind, rewindForTab, rewindForTabDetailed, undoRewindForTab, setModel, setModelForTab, setEffort, setEffortForTab, cancelJob,
     fetchMemory, remember, forget, saveDoc,
-    switchTab, switchRemoteTab, openProjectTab, openGlobalTab, openTopicSession, ensureBlankTab, activateTopic, ensureBlankSurface, createIsolatedWorktree, commitSingleSurfaceNavigation, closeTab, reorderTabs,
+    switchTab, openProjectTab, openGlobalTab, openTopicSession, ensureBlankTab, activateTopic, ensureBlankSurface, createIsolatedWorktree, commitSingleSurfaceNavigation, closeTab, reorderTabs,
     // Invalidate in-flight navigation completions (activateTopic's stale
     // guard) from outside the hook. The App-level navigation queue must call
     // this at ENQUEUE time: a queued click does not run — and so does not

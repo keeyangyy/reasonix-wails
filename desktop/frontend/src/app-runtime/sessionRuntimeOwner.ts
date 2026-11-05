@@ -42,21 +42,21 @@ export async function executeTodoDismissal(
 
 export type ClearSessionPorts = {
   clearSession: () => Promise<void>;
-  clearRemoteSession: (tabId: string) => Promise<void>;
-  retryRemoteHydration: () => Promise<void>;
+  clearRemoteSession?: (tabId: string) => Promise<void>;
+  retryRemoteHydration?: () => Promise<void>;
 };
 
 export async function executeClearSession(
   target: SessionResource,
-  input: { remote: boolean },
+  input: { remote?: boolean },
   ports: ClearSessionPorts,
   authority: SessionOperationAuthority,
 ): Promise<void> {
   authority.checkpoint();
   if (input.remote) {
-    await ports.clearRemoteSession(target.tabId);
+    await ports.clearRemoteSession?.(target.tabId);
     authority.checkpoint();
-    await ports.retryRemoteHydration();
+    await ports.retryRemoteHydration?.();
   } else {
     await ports.clearSession();
   }

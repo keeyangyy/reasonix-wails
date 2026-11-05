@@ -30,14 +30,14 @@ export type TodoPanelCommandsInput = {
   } | undefined | null;
   activeTab: TabMeta | undefined;
   activeTabId: string | undefined;
-  remote: boolean;
-  remoteReady: boolean;
+  remote?: boolean;
+  remoteReady?: boolean;
   controllerReady: boolean;
   sessionKey: string;
   operations: ReturnType<typeof useSessionOperations>;
   t: Translator;
   ports: {
-    remoteSend(text: string): Promise<void>;
+    remoteSend?(text: string): Promise<void>;
     sendToTab(tabId: string, text: string): Promise<void>;
     dismissTodoBatch(tabId: string, batchKey: string): Promise<void>;
   };
@@ -59,7 +59,7 @@ export type TodoPanelCommandsInput = {
  * sidecar-persisted.
  */
 export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
-  const { items, activeTab, activeTabId, remote, t, ports } = input;
+  const { items, activeTab, activeTabId, t, ports } = input;
   const todoEntry = useMemo(() => {
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
@@ -70,7 +70,7 @@ export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
     return null;
   }, [items]);
   const todoItem = todoEntry?.item ?? null;
-  const metaTodos = remote ? undefined : input.meta?.canonicalTodos;
+  const metaTodos = input.meta?.canonicalTodos;
   const todos = useMemo(
     () => resolveTodoPanelTodos(metaTodos, todoItem ? parseTodos(todoItem.args) : undefined),
     [metaTodos, todoItem],
@@ -79,8 +79,8 @@ export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
   const todoKey = useMemo(() => todoDismissalKey(todos), [todos]);
   const todoBatch = useMemo(() => todoBatchKey(todos), [todos]);
   const todoScope = useMemo(
-    () => todoPanelScope({ activeTab, activeTabId, eventChannel: remote ? undefined : input.meta?.eventChannel }),
-    [activeTab, activeTabId, remote, input.meta?.eventChannel],
+    () => todoPanelScope({ activeTab, activeTabId, eventChannel: input.meta?.eventChannel }),
+    [activeTab, activeTabId, input.meta?.eventChannel],
   );
   const dismissedTodo = useMemo(
     () => dismissedTodoKeyForScope(todoScope, dismissedTodoKeys, todoKey),
@@ -88,7 +88,7 @@ export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
   );
   const scopedTodoKey = useMemo(() => scopedTodoDismissalKey(todoScope, todoKey), [todoKey, todoScope]);
   const scopedTodoBatch = useMemo(() => scopedTodoBatchKey(todoScope, todoBatch), [todoBatch, todoScope]);
-  const showTodos = shouldShowTodoPanel(todoKey, dismissedTodo, todos, { batchKey: todoBatch, batches: !remote && input.meta?.sessionPath === activeTab?.sessionPath ? input.meta?.dismissedTodoBatches : undefined });
+  const showTodos = shouldShowTodoPanel(todoKey, dismissedTodo, todos, { batchKey: todoBatch, batches: input.meta?.sessionPath === activeTab?.sessionPath ? input.meta?.dismissedTodoBatches : undefined });
   const dismissTodos = useCommittedCommand(() => {
     if (!scopedTodoKey) return;
     setDismissedTodoKeys((current) => {
@@ -98,7 +98,7 @@ export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
       saveDismissedTodoKeys(next);
       return next;
     });
-    if (!remote && activeTabId && todoBatch) {
+    if (activeTabId && todoBatch) {
       const target = { tabId: activeTabId, sessionKey: input.sessionKey };
       void input.operations(target, "todo-dismiss", {}, async (_input, authority) => (await import("./sessionRuntimeOwner")).executeTodoDismissal(
         target, todoBatch, (tabId, batchKey) => ports.dismissTodoBatch(tabId, batchKey), authority,
@@ -107,17 +107,14 @@ export function useTodoPanelCommands(input: TodoPanelCommandsInput) {
   });
   const handleTodoContinue = useCommittedCommand(() => {
     const targetTabId = todoContinueTarget(activeTabId, activeTabId, {
-      ready: remote ? input.remoteReady : input.controllerReady,
+      ready: input.controllerReady,
       readOnly: Boolean(activeTab?.readOnly),
       running: input.running,
       pendingPrompt: input.pendingPrompt,
     });
     if (!targetTabId) return;
     const prompt = t("todo.continue");
-    if (remote) {
-      void ports.remoteSend(prompt);
-      return;
-    }
+
     void ports.sendToTab(targetTabId, prompt);
   });
 

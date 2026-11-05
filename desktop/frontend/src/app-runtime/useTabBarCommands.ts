@@ -25,7 +25,7 @@ export type TabBarCommandsInput = {
     closeTab(id: string, policy: TabClosePolicy): Promise<boolean>;
     reorderTabs(ids: string[]): Promise<void>;
     switchTab(id: string, tab?: TabMeta, seq?: number): Promise<unknown>;
-    switchRemoteTab(tab: TabMeta, seq?: number): Promise<unknown>;
+    switchRemoteTab?(tab: TabMeta, seq?: number): Promise<unknown>;
     refreshTabMetas(apply?: () => boolean, options?: { afterMutation?: boolean }): Promise<TabMeta[]>;
     refreshBackgroundRuntimes(): Promise<void>;
     cancelActive(): void;
@@ -78,8 +78,7 @@ export function useTabBarCommands(input: TabBarCommandsInput) {
       async (request) => {
         try {
           if (!ports.isNavigationIntentCurrent(request.navigationIntentSeq)) return;
-          if (request.optimisticTab?.remote) await ports.switchRemoteTab(request.optimisticTab, request.navigationIntentSeq);
-          else await ports.switchTab(request.tabId, request.optimisticTab, request.navigationIntentSeq);
+          await ports.switchTab(request.tabId, request.optimisticTab, request.navigationIntentSeq);
           if (!ports.isNavigationIntentCurrent(request.navigationIntentSeq)) return;
           await ports.refreshTabMetas(
             () => ports.isNavigationIntentCurrent(request.navigationIntentSeq),

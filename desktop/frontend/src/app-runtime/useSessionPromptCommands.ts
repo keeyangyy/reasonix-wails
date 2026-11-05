@@ -8,7 +8,7 @@ type Input = {
   target: SessionResource;
   approval?: { id: string; tool: string };
   questionId?: string;
-  remote: boolean;
+  remote?: boolean;
   goal: string;
   toolApprovalMode: ToolApprovalMode;
   ports: PromptPorts;
