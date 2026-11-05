@@ -87,7 +87,7 @@ var (
 // fixed tag whose release content each of our releases overwrites in place,
 // which keeps the updater pointing at this line instead of whichever fork line
 // (studio, legacy 1.39) published most recently.
-const githubManifestFallback = "https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/wails-latest/latest.json"
+const githubManifestFallback = "https://github.com/keeyangyy/reasonix-wails/releases/download/wails-latest/latest.json"
 
 func normalizeUpdateChannel(ch string) string {
 	return config.NormalizeDesktopUpdateChannel(ch)
@@ -308,8 +308,8 @@ func desktopAssetBases(selected, version string, allowLegacyPreview bool) []stri
 	// both the desktop-<version> and v<version> tags.
 	return []string{
 		fmt.Sprintf("%s/%s/", r2Base, tag),
-		fmt.Sprintf("https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/%s/", tag),
-		fmt.Sprintf("https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/%s/", version),
+		fmt.Sprintf("https://github.com/keeyangyy/reasonix-wails/releases/download/%s/", tag),
+		fmt.Sprintf("https://github.com/keeyangyy/reasonix-wails/releases/download/%s/", version),
 	}
 }
 

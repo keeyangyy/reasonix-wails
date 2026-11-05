@@ -23,8 +23,8 @@ func TestValidateCatalogManifestURL(t *testing.T) {
 	}
 	for _, bad := range []string{
 		"https://evil.example/v1.38.54/latest.json",
-		"https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/v1.38.54/other.json",
-		"http://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/v1.38.54/latest.json",
+		"https://github.com/keeyangyy/reasonix-wails/releases/download/v1.38.54/other.json",
+		"http://github.com/keeyangyy/reasonix-wails/releases/download/v1.38.54/latest.json",
 		"https://github.com/attacker/DeepSeek-Reasonix/releases/download/v1.38.54/latest.json",
 		"",
 	} {

@@ -248,7 +248,7 @@ jobs:
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
 
       - name: Require current standalone signing attestation
-        if: ${{ github.repository == 'esengine/DeepSeek-Reasonix' && !inputs.signing_preflight && !inputs.production_signing_smoke && !(inputs.orchestrated && inputs.signing_preflight_verified) }}
+        if: ${{ github.repository == 'keeyangyy/reasonix-wails' && !inputs.signing_preflight && !inputs.production_signing_smoke && !(inputs.orchestrated && inputs.signing_preflight_verified) }}
         env:
           ACTUAL: ${{ vars.SIGNPATH_RELEASE_SIGNING_ATTESTATION }}
           EXPECTED: ${{ steps.contract.outputs.fingerprint }}
@@ -612,7 +612,7 @@ jobs:
           fi
           bash release-control/scripts/validate-desktop-release-manifest.sh \
             "$validation_channel" "$VERSION" \
-            "https://github.com/esengine/DeepSeek-Reasonix/releases/download/${TAG}/" \
+            "https://github.com/keeyangyy/reasonix-wails/releases/download/${TAG}/" \
             dist/latest.json "$NOTES_VERSION"
 
       - name: Download orchestrator-reviewed release notes
@@ -669,7 +669,7 @@ jobs:
   attest-signing-contract:
     name: record standalone SignPath attestation
     needs: [signing-contract, build]
-    if: ${{ always() && !cancelled() && inputs.signing_preflight && !inputs.orchestrated && github.repository == 'esengine/DeepSeek-Reasonix' && needs.signing-contract.result == 'success' && needs.build.result == 'success' }}
+    if: ${{ always() && !cancelled() && inputs.signing_preflight && !inputs.orchestrated && github.repository == 'keeyangyy/reasonix-wails' && needs.signing-contract.result == 'success' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -699,7 +699,7 @@ jobs:
       actions: write # dispatch pages.yml to re-bake the site version
     # Stable keeps GitHub as a fallback when R2 is unavailable. Preview has no
     # GitHub release, so it must fail closed before attempting publication.
-    if: ${{ always() && !cancelled() && needs.resolve.result == 'success' && needs.publish.result == 'success' && github.repository_owner == 'esengine' }}
+    if: ${{ always() && !cancelled() && needs.resolve.result == 'success' && needs.publish.result == 'success' && github.repository_owner == 'keeyangyy' }}
     env:
       HAS_R2: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.R2_ACCOUNT_ID != '' && secrets.R2_BUCKET != '' }}
     steps:

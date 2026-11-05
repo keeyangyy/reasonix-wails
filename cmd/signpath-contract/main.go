@@ -18,7 +18,7 @@ const (
 	contractPath = ".signpath/contracts/release-signing.yml"
 	projectSlug  = "DeepSeek-Reasonix"
 	policySlug   = "release-signing"
-	repository   = "https://github.com/esengine/DeepSeek-Reasonix.git"
+	repository   = "https://github.com/keeyangyy/reasonix-wails.git"
 )
 
 var expectedBranches = []string{"main-v2"}

@@ -17,7 +17,7 @@ import (
 
 // githubCatalogFallback is the version catalog's fixed address. It sits on the
 // same anchor release as the manifest, which every release rewrites.
-const githubCatalogFallback = "https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/wails-latest/versions.json"
+const githubCatalogFallback = "https://github.com/keeyangyy/reasonix-wails/releases/download/wails-latest/versions.json"
 
 // channelOfVersion derives an entry's channel from its version shape, matching
 // how the release workflow decides the field it records in the catalog.
@@ -139,7 +139,7 @@ func (a *App) ListUpdateVersions(selectedChannel string) (*UpdateVersionList, er
 // catalog entry's manifest URL must stay under it: the manifest itself is
 // signature-verified, but an arbitrary address would still let a hostile
 // catalog make the app fetch from somewhere else.
-const releaseDownloadBase = "https://github.com/keeyangyy/DeepSeek-Reasonix/releases/download/"
+const releaseDownloadBase = "https://github.com/keeyangyy/reasonix-wails/releases/download/"
 
 func validateCatalogManifestURL(u string) error {
 	if !strings.HasPrefix(u, releaseDownloadBase) || !strings.HasSuffix(u, "/latest.json") {

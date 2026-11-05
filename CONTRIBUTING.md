@@ -6,7 +6,7 @@ desktop app; it does not adopt Electron.
 
 This guide covers the local development workflow for this repository. Upstream
 project-wide contributions should go to
-[esengine/DeepSeek-Reasonix](https://github.com/esengine/DeepSeek-Reasonix);
+[keeyangyy/reasonix-wails](https://github.com/keeyangyy/reasonix-wails);
 changes specific to the Wails desktop line belong here.
 
 ## Prerequisites
@@ -20,7 +20,7 @@ changes specific to the Wails desktop line belong here.
 ## Getting started
 
 ```bash
-git clone https://github.com/keeyangyy/DeepSeek-Reasonix.git
+git clone https://github.com/keeyangyy/reasonix-wails.git
 cd DeepSeek-Reasonix
 go build ./cmd/reasonix    # builds the CLI binary
 go test ./...              # runs the full test suite

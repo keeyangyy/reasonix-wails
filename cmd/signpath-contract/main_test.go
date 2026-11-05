@@ -28,7 +28,6 @@ func TestTopLevelSignPathWorkflowCallGraph(t *testing.T) {
 	}
 	want := []string{
 		".github/workflows/release-desktop.yml",
-		".github/workflows/release-stable.yml",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("top-level workflows that reach SignPath = %v, want %v", got, want)

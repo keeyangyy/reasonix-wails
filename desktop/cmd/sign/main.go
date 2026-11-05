@@ -212,8 +212,8 @@ func signFiles(files []string) error {
 // tarball under platforms["linux-amd64"].
 func genManifest(dir, version, tag string, notesVersions ...string) error {
 	repo := os.Getenv("GITHUB_REPOSITORY")
-	if repo == "" || repo == "esengine/reasonix" {
-		repo = "esengine/DeepSeek-Reasonix"
+	if repo == "" || repo == "keeyangyy/reasonix-wails" {
+		repo = "keeyangyy/reasonix-wails"
 	}
 	notesVersion := version
 	if len(notesVersions) > 1 {
