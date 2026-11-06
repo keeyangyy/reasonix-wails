@@ -40,7 +40,6 @@ import (
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/provider/openai"
-	"reasonix/internal/serve"
 	"reasonix/internal/sessiontemp"
 	"reasonix/internal/telemetry"
 
@@ -52,8 +51,6 @@ import (
 var (
 	runInteractiveSession = chatREPL
 	cliIsInteractive      = isInteractive
-	runWebCommand         = runWeb
-	openBrowserURL        = openInBrowser
 )
 
 // Run is the CLI entry point; it returns a process exit code.
@@ -123,10 +120,7 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 		return runAgent(rest, version)
 	case "chat", "code": // "code" is the v0.x name for the interactive session
 		return runInteractiveSession(rest, version)
-	case "serve":
-		return runServe(rest)
-	case "web":
-		return runWebCommand(rest)
+
 	case "setup":
 		configureCLIThemeFromConfigForTTYOutput()
 		return setupConfig(rest)
@@ -145,9 +139,7 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 	case "mcp":
 		configureCLIThemeFromConfig()
 		return mcpCommand(rest)
-	case "remote":
-		configureCLIThemeFromConfig()
-		return remoteCommand(rest, version)
+
 	case "plugin":
 		configureCLIThemeFromConfig()
 		return pluginCommand(rest)
@@ -216,7 +208,7 @@ func isDefaultInteractiveFlag(arg string) bool {
 
 func shouldMigrateLegacyConfigForCLI(cmd string) bool {
 	switch cmd {
-	case "", "run", "chat", "code", "serve", "web", "setup", "config", "init", "acp", "mcp", "remote", "plugin", "subagent", "doctor", "bot", "upgrade", "update":
+	case "", "run", "chat", "code", "setup", "config", "init", "acp", "mcp", "plugin", "subagent", "doctor", "bot", "upgrade", "update":
 		return true
 	default:
 		return false
@@ -504,7 +496,6 @@ func runAgent(args []string, version string) int {
 	cont := registerContinueFlag(fs)
 	resume := fs.String("resume", "", "resume by session file path, session ID, or machine session ID (takes precedence over --continue)")
 	copySession := fs.Bool("copy", false, "with --resume/--continue: duplicate the session and continue in the copy (escape hatch when the original is held by another Reasonix process)")
-	takeover := fs.Bool("takeover", false, "with --resume/--continue: when a resident serve on this machine holds the session, take it over instead of refusing")
 	effort := fs.String("effort", "", "session reasoning effort override")
 	permissionMode := fs.String("permission-mode", "ask", "permission mode: manual | ask | auto | acceptEdits | dontAsk | plan | bypassPermissions")
 	autoApprove := fs.BoolP("auto", "y", false, "explicitly auto-approve ordinary writer fallbacks (alias for --permission-mode auto)")
@@ -643,30 +634,11 @@ func runAgent(args []string, version string) int {
 	// silently double-writing. Released after the controller closes.
 	leases := control.NewSessionLeaseKeeper()
 	defer leases.Release()
-	takeoverManager := newCLITakeoverManager(nil, leases)
-	defer func() {
-		if err := takeoverManager.Close(); err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		}
-	}()
 	var resumeSession *agent.Session
-	var takeoverBinding *cliTakeoverBinding
 	if resumePath != "" {
 		var err error
 		resumeSession, err = bindAndLoadCLIResume(leases, resumePath, loadResumableSession)
-		if errors.Is(err, agent.ErrSessionLeaseHeld) && *takeover {
-			takeoverBinding, err = cliTakeoverHeldSession(resumePath, err, leases, takeoverManager)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-				return 1
-			}
-			resumeSession, err = cliPrepareTakeoverCandidate(takeoverBinding, leases)
-			if err != nil {
-				_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-				return 1
-			}
-		}
+
 		if err != nil {
 			if errors.Is(err, agent.ErrSessionLeaseHeld) {
 				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, sessionLeaseResumeRefusal(err))
@@ -683,12 +655,9 @@ func runAgent(args []string, version string) int {
 
 	chain, err := buildRunSink(format, *printOnly, *showThinking, *metricsPath, *trajectoryPath, cfg, reporter)
 	if err != nil {
-		_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
 		return 1
 	}
-	takeoverManager.SetInner(chain.sink)
-	chain.sink = takeoverManager
 	sink, resultOutput, metrics := chain.sink, chain.resultOutput, chain.metrics
 	if resumePath != "" {
 		*model = modelForResumePath(*model, resumePath, cfg)
@@ -719,7 +688,6 @@ func runAgent(args []string, version string) int {
 	}
 	ctrl, err := setupProfileWithOverrides(ctx, *model, *maxSteps, true, sink, overrides)
 	if err != nil {
-		_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 		if resultOutput != nil && format != runOutputText {
 			if encodeErr := resultOutput.Finalize("", started, err); encodeErr != nil {
 				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, encodeErr)
@@ -730,7 +698,6 @@ func runAgent(args []string, version string) int {
 		return 1
 	}
 	defer ctrl.Close()
-	takeoverManager.AttachController(ctrl)
 	SetTaskJobKiller(ctrlKillerAdapter{ctrl})
 	ctrl.ApplyHeadlessApprovalMode(permissions.approval)
 
@@ -739,11 +706,6 @@ func runAgent(args []string, version string) int {
 	// precedence over --continue.
 	// --continue: resume the most recent saved session.
 	if resumePath != "" {
-		if err := takeoverBinding.commitPrevious(takeoverManager); err != nil {
-			_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
 		ctrl.Resume(resumeSession, resumePath)
 	}
 	if ctrl.SessionPath() == "" && ctrl.SessionDir() != "" {
@@ -752,13 +714,10 @@ func runAgent(args []string, version string) int {
 	// Fresh sessions take the lease too (defensive: the path is brand new); a
 	// resumed path is already held, making this a no-op.
 	if err := rebindCLIControllerAuthority(leases, ctrl); err != nil {
-		_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, control.SessionInUseMessage(err)+"; "+control.SessionLeaseCloseHint)
 		return 1
 	}
-	if takeoverBinding != nil {
-		takeoverManager.Activate(takeoverBinding)
-	}
+
 	reclaimCLIRecoveryBranches(ctrl.SessionDir())
 
 	runErr := ctrl.Run(ctx, prompt)
@@ -807,195 +766,6 @@ func runAgent(args []string, version string) int {
 	return completion.exitCode
 }
 
-func runServeWithOptions(args []string, opts serveRunOptions) int {
-	if opts.command == "" {
-		opts.command = "serve"
-	}
-	args, deprecatedMode, err := consumeDeprecatedModeFlags(args, "profile", "preset")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		return 2
-	}
-	fs := flag.NewFlagSet(opts.command, flag.ContinueOnError)
-	model := fs.String("model", "", "provider name (default: config default_model)")
-	maxSteps := fs.Int("max-steps", 0, "one-off max tool-call rounds (0 = automatic)")
-	addr := fs.String("addr", "127.0.0.1:8787", "listen address")
-	resume := fs.String("resume", "", "resume a saved session file")
-	sessionIDValue := ""
-	sessionID := &sessionIDValue
-	if opts.command == "web" {
-		sessionID = fs.String("session-id", "", "bind a fresh Web session identity (used by /web handoff)")
-	}
-	authHelp := "auth mode: none, token, or password (default: config/none)"
-	if opts.command == "web" {
-		authHelp = "auth mode: none, token, or password (default: generated token)"
-	}
-	auth := fs.String("auth", "", authHelp)
-	token := fs.String("token", "", "pre-shared token for auth=token (auto-generated if empty)")
-	password := fs.String("password", "", "password for auth=password (use --hash-password to store a hash instead)")
-	hashPassword := fs.Bool("hash-password", false, "print a bcrypt hash of --password and exit")
-	behindProxy := fs.Bool("behind-proxy", false, "trust X-Forwarded-For / X-Forwarded-Proto headers from a reverse proxy")
-	portFile := fs.String("port-file", "", "write the actual bound listen address (host:port) to this file after binding")
-	tokenFile := fs.String("token-file", "", "read the auth=token pre-shared token from this file (overrides --token; keeps the secret out of argv)")
-	pidFile := fs.String("pid-file", "", "write the server process id to this file")
-	registerServeCapabilityFlags(fs)
-	openBrowser := fs.Bool("open", opts.openBrowser, "open the Web UI in the default browser")
-	noOpen := fs.Bool("no-open", false, "do not open the Web UI in the default browser")
-	if code, ok := parseCommandFlags(fs, args); !ok {
-		return code
-	}
-	authExplicit := false
-	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "auth" {
-			authExplicit = true
-		}
-	})
-	if *resume != "" && *sessionID != "" {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, "--resume and --session-id cannot be used together")
-		return 2
-	}
-	if *sessionID != "" {
-		if err := validateWebSessionID(*sessionID); err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 2
-		}
-	}
-	if err := acceptDeprecatedModeFlag(deprecatedMode); err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		return 2
-	}
-
-	// --hash-password: generate a bcrypt hash and exit.
-	if *hashPassword {
-		if *password == "" {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, "--hash-password requires --password")
-			return 1
-		}
-		h, err := serve.HashPassword(*password)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
-		fmt.Println(h)
-		return 0
-	}
-
-	ctx := context.Background()
-	bc, sessionTag, cfg := newServeBootstrap()
-
-	// Build serve config, merging CLI flags over config file.
-	serveCfg := serveConfigWithCommandDefaults(opts.command, authExplicit, cfg.Serve)
-	// `reasonix web` is a local browser entry point and defaults to a freshly
-	// generated token. `reasonix serve` keeps its existing config-driven default,
-	// and an explicit --auth always wins for both commands.
-	if *auth != "" {
-		serveCfg.AuthMode = *auth
-	}
-	if *token != "" {
-		serveCfg.Token = *token
-	}
-	if *tokenFile != "" {
-		tok, err := readServeTokenFile(*tokenFile)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
-		serveCfg.Token = tok
-	}
-	if *behindProxy {
-		serveCfg.BehindProxy = true
-	}
-	mode, err := serve.NormalizeAuthMode(serveCfg.AuthMode)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		return 1
-	}
-	serveCfg.AuthMode = mode
-	if *password != "" && serveCfg.AuthMode == "password" {
-		// Hash the password at startup so the config never stores plaintext.
-		// If a PasswordHash is already set in config, the CLI password overrides it.
-		h, err := serve.HashPassword(*password)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, "failed to hash password:", err)
-			return 1
-		}
-		serveCfg.PasswordHash = h
-	}
-	if serveCfg.AuthMode == "password" && strings.TrimSpace(serveCfg.PasswordHash) == "" {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, "auth mode password requires --password or serve.password_hash")
-		return 1
-	}
-
-	// Own the active session file for the server's lifetime; the serve
-	// handlers that rebind sessions (/resume, /new, /fork) move the lease
-	// through the same keeper. Released after the controller closes.
-	leases := control.NewSessionLeaseKeeper()
-	defer leases.Release()
-	var resumeSession *agent.Session
-	if *resume != "" {
-		if err := leases.Rebind(*resume); err != nil {
-			if errors.Is(err, agent.ErrSessionLeaseHeld) {
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, control.SessionInUseMessage(err)+"; "+control.SessionLeaseCloseHint)
-			} else {
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			}
-			return 1
-		}
-		var err error
-		resumeSession, err = loadResumableSession(*resume)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
-	}
-	*model = modelForResumePath(*model, *resume, cfg)
-	// Serve always resolves an implicit model from the user-global config,
-	// ignoring project-level default_model overrides. Explicit flags and
-	// resumable session models remain strict and are preserved verbatim.
-	*model = resolveServeModel(*model)
-	// Keep the browser reachable when the selected provider has no saved key.
-	// The loopback-only provider setup surface stores the missing credential and
-	// rebuilds this controller in place before the normal web UI is exposed.
-	ctrl, serveBuildOpts, err := setupCLIMultiSessionProfile(ctx, *model, *maxSteps, deprecatedMode, sessionTag, leases)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		return 1
-	}
-	defer ctrl.Close()
-	SetTaskJobKiller(ctrlKillerAdapter{ctrl})
-
-	// Auto-save target: reuse the resumed file, else a fresh one — same as chat.
-	if *resume != "" {
-		ctrl.Resume(resumeSession, *resume)
-	} else if *sessionID != "" {
-		freshPath, err := freshWebSessionPath(ctrl.SessionDir(), *sessionID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
-		ctrl.SetFreshSessionPath(freshPath)
-	}
-	ctrl.EnsureSessionPath()
-	// Fresh sessions take the lease too (defensive: the path is brand new); a
-	// resumed path is already held, making this a no-op.
-	if err := rebindCLIControllerAuthority(leases, ctrl); err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, control.SessionInUseMessage(err)+"; "+control.SessionLeaseCloseHint)
-		return 1
-	}
-
-	srv := newCLIMultiSessionServer(ctrl, bc, sessionTag, serveCfg, leases, serveBuildOpts)
-	defer srv.Close()
-	return runServeFrontend(ctrl, srv, serveCfg, serveFrontendOptions{
-		command: opts.command, address: *addr,
-		portFile: *portFile, tokenFile: *tokenFile, pidFile: *pidFile,
-		openBrowser: *openBrowser && !*noOpen,
-		hasSession:  *resume != "" || *sessionID != "",
-	})
-}
-
-// chatREPL is an interactive session: a single persistent agent/session and a
-// prompt loop that keeps conversation context across turns. Exit with
-// 'exit'/'quit' or Ctrl-D.
 func chatREPL(args []string, version string) int {
 	args, deprecatedMode, err := consumeDeprecatedModeFlags(args, "profile", "preset")
 	if err != nil {
@@ -1118,29 +888,10 @@ func chatREPL(args []string, version string) int {
 	// and this chat from silently double-writing one transcript.
 	leases := control.NewSessionLeaseKeeper()
 	defer leases.Release()
-	takeoverManager := newCLITakeoverManager(nil, leases)
-	defer func() {
-		if err := takeoverManager.Close(); err != nil {
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		}
-	}()
-	var takeoverBinding *cliTakeoverBinding
 	var startupResumeSession *agent.Session
 	if resumePath != "" {
 		startupResumeSession, err = bindAndLoadCLIResume(leases, resumePath, loadResumableSession)
-		if errors.Is(err, agent.ErrSessionLeaseHeld) && cliSessionTakeoverCandidate(err) && promptSessionTakeover(err) {
-			takeoverBinding, err = cliTakeoverHeldSession(resumePath, err, leases, takeoverManager)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-				return 1
-			}
-			startupResumeSession, err = cliPrepareTakeoverCandidate(takeoverBinding, leases)
-			if err != nil {
-				_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
-				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-				return 1
-			}
-		}
+
 		if err != nil {
 			if errors.Is(err, agent.ErrSessionLeaseHeld) {
 				fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, sessionLeaseResumeRefusal(err))
@@ -1163,8 +914,7 @@ func chatREPL(args []string, version string) int {
 	var sink event.Sink = &eventSink{ch: eventCh}
 	sink = withNotifications(sink, cfg)
 	sink = reporter.Wrap(sink)
-	takeoverManager.SetInner(sink)
-	sink = takeoverManager
+
 	var effortOverride *string
 	if strings.TrimSpace(*effort) != "" {
 		effortOverride = effort
@@ -1187,13 +937,11 @@ func chatREPL(args []string, version string) int {
 		// the wizard would overwrite the user's config (#2856).
 		fmt.Fprintln(os.Stderr, i18n.M.ReconfigureOnUnknownModel)
 		if rc := interactiveSetup(defaultConfigTarget(), defaultEnvTarget()); rc != 0 {
-			_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 			return rc
 		}
 		ctrl, err = setupProfileWithOverrides(ctx, *model, *maxSteps, false, sink, overrides)
 	}
 	if err != nil {
-		_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
 		return 1
 	}
@@ -1203,18 +951,12 @@ func chatREPL(args []string, version string) int {
 	// file so closing/reopening keeps appending to the same history; a fresh
 	// session lands in a new file stamped with the model name.
 	if resumePath != "" {
-		if err := takeoverBinding.commitPrevious(takeoverManager); err != nil {
-			_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
-			fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-			return 1
-		}
 		ctrl.Resume(startupResumeSession, resumePath)
 	}
 	ctrl.EnsureSessionPath()
 	// Fresh sessions take the lease too (defensive: the path is brand new); a
 	// resumed path is already held, making this a no-op.
 	if err := rebindCLIControllerAuthority(leases, ctrl); err != nil {
-		_ = cliReturnFailedTakeover(takeoverBinding, leases, takeoverManager)
 		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, control.SessionInUseMessage(err)+"; "+control.SessionLeaseCloseHint)
 		return 1
 	}
@@ -1265,11 +1007,7 @@ func chatREPL(args []string, version string) int {
 	m.updateWatchdogStatusProvider()
 	m.planMode = permissions.plan
 	m.leases = leases
-	m.takeover = takeoverManager
-	takeoverManager.AttachController(ctrl)
-	if takeoverBinding != nil {
-		takeoverManager.Activate(takeoverBinding)
-	}
+
 	if cfg != nil {
 		m.outputStyle = cfg.Agent.OutputStyle    // shown as the active entry in /output-style
 		m.statuslineCmd = cfg.Statusline.Command // custom status-line command, "" = built-in row
@@ -1334,7 +1072,6 @@ func chatREPL(args []string, version string) int {
 	// keep working; finalized transcript lines are emitted via tea.Println.
 	diagnostics.Milestone("terminal_takeover_begin")
 	p := tea.NewProgram(m)
-	takeoverManager.SetYieldCallback(func() { p.Send(tuiShutdownMsg{}) })
 	diagnostics.StartWatchdog(p)
 	// SSH drop (SIGHUP) or service stop (SIGTERM): persist the conversation
 	// before the terminal goes away, then unwind through the normal close path
@@ -1349,22 +1086,14 @@ func chatREPL(args []string, version string) int {
 	final, runErr := p.Run()
 	signal.Stop(hangup)
 	diagnostics.Milestone("terminal_released")
-	if err := takeoverManager.Close(); err != nil {
-		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, err)
-		if runErr == nil {
-			runErr = err
-		}
-	}
+
 	// Close the active controller plus any retired ones from /model switches.
 	// Retired controllers were stashed rather than closed at switch time
 	// because Controller.Close() runs SessionEnd hooks and kills plugin
 	// subprocesses — operations that corrupt bubbletea's terminal raw mode
 	// when executed while the TUI is alive.
-	var launchWeb bool
-	var launchWebPath, launchWebSessionID, launchWebModelRef string
 	if fm, ok := final.(chatTUI); ok {
 		reportShutdownFailure(fm.shutdownErr)
-		launchWeb = fm.launchWebOnExit
 		for _, oc := range fm.oldControllers {
 			if c, ok := oc.(*control.Controller); ok {
 				reporter.RecordRecovery(c.DrainRecoveryMetrics())
@@ -1372,9 +1101,6 @@ func chatREPL(args []string, version string) int {
 			oc.Close()
 		}
 		if fm.ctrl != nil {
-			launchWebPath = fm.launchWebResumePath
-			launchWebSessionID = fm.launchWebSessionID
-			launchWebModelRef = fm.launchWebModelRef
 			if c, ok := fm.ctrl.(*control.Controller); ok {
 				reporter.RecordRecovery(c.DrainRecoveryMetrics())
 			}
@@ -1391,15 +1117,7 @@ func chatREPL(args []string, version string) int {
 		fmt.Fprintln(os.Stderr, i18n.M.ErrorPrefix, runErr)
 		return 1
 	}
-	if launchWeb {
-		// The Web runtime resumes a materialized TUI transcript or binds the exact
-		// reserved identity for a never-used session. Release the TUI lease before
-		// rebuilding the controller or the handoff would correctly reject its own
-		// session as already in use. The deferred Release remains as a harmless
-		// final guard for every other return path.
-		leases.Release()
-		return runWebCommand(webHandoffArgs(launchWebPath, launchWebSessionID, launchWebModelRef))
-	}
+
 	return 0
 }
 

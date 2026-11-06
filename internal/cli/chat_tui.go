@@ -53,7 +53,6 @@ type chatTUI struct {
 	shutdownErr error // final save's failure; reported after terminal release
 	label       string
 	missing     string // missing-key warning surfaced once in the banner, "" when ready
-	webHandoffState
 	// diagnostics is the process-owned TUI log/watchdog started before terminal
 	// takeover. Nil in unit tests that construct chatTUI without chatREPL.
 	diagnostics      *tuiDiagnostics
@@ -399,9 +398,6 @@ type chatTUI struct {
 	// operation that rebinds the controller to another session file must move
 	// the lease first — see rebindSessionLease / followSessionLease.
 	leases *control.SessionLeaseKeeper
-	// takeover mirrors a session acquired from a resident Serve and blocks
-	// admission while that Serve is reclaiming it.
-	takeover *cliTakeoverManager
 
 	// outputStyle is the active output-style name (config agent.output_style),
 	// shown as the current entry in the /output-style listing. "" = default.
@@ -1920,9 +1916,6 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.followSessionLease()
 		} else {
 			m.ctrl = msg.ctrl
-			if m.takeover != nil {
-				m.takeover.AttachController(msg.ctrl)
-			}
 			m.updateWatchdogStatusProvider()
 			m.label = msg.label
 			m.commands = msg.commands
@@ -4552,10 +4545,6 @@ func elapsedTick(generation uint64) tea.Cmd {
 // output to scrollback; MCP prompt / custom commands resolve to a model turn.
 func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 	typedCmd := strings.TrimSpace(strings.SplitN(input, " ", 2)[0])
-	if m.takeover != nil && m.takeover.Reclaiming() && typedCmd != "/quit" && typedCmd != "/exit" {
-		m.notice("the remote side is taking this session back; new input is disabled")
-		return nil
-	}
 
 	if strings.HasPrefix(typedCmd, "/mcp__") {
 		return m.runMCPPrompt(input)
@@ -4616,8 +4605,7 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 		m.notice(i18n.M.SlashClsDone)
 	case "/resume":
 		m.runResumeCommand(input)
-	case "/takeover":
-		m.runTakeoverCommand(input)
+
 	case "/status":
 		m.echoLocalCommand(input)
 		m.showStatusDetails()
@@ -4738,8 +4726,10 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 	case "/currency":
 		m.echoLocalCommand(input)
 		return m.runCurrencySubcommand(input)
-	case "/help", "/web":
-		return m.runHelpOrWebSlash(input, typedCmd)
+	case "/help":
+		m.echoLocalCommand(input)
+		m.showHelp()
+		return nil
 	case "/memory":
 		m.echoLocalCommand(input)
 		m.showMemory(input)

@@ -104,7 +104,6 @@ func TestLegacyModeFlagsAreHiddenFromCommandHelp(t *testing.T) {
 	}{
 		{name: "run", run: func() int { return runAgent([]string{"--help"}, "dev") }},
 		{name: "chat", run: func() int { return chatREPL([]string{"--help"}, "dev") }},
-		{name: "web", run: func() int { return runWeb([]string{"--help"}) }},
 		{name: "acp", run: func() int { return acpCommand([]string{"--help"}, "dev") }},
 	}
 	for _, tt := range tests {

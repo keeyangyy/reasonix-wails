@@ -52,18 +52,7 @@ func (m *chatTUI) rebindSessionLease(path string) error {
 	if m.leases == nil {
 		return nil
 	}
-	handled := false
-	var err error
-	if m.takeover != nil {
-		handled, err = m.takeover.RebindAway(path)
-	}
-	if err != nil {
-		return err
-	}
-	if !handled {
-		err = m.leases.Rebind(path)
-	}
-	if err != nil {
+	if err := m.leases.Rebind(path); err != nil {
 		return err
 	}
 	return bindChatTUIAuthority(m)
@@ -81,24 +70,27 @@ func (m *chatTUI) commitSessionSwitchWithLoader(path string, load func(string) (
 	if m == nil {
 		return fmt.Errorf("resume candidate unavailable")
 	}
-	binding, err := cliAcquireFreeSession(path, m.leases, m.takeover)
-	if err != nil {
-		return err
+	var previous *control.SessionLeaseKeeper
+	if m.leases != nil {
+		var err error
+		previous, err = m.leases.RebindDetaching(path)
+		if err != nil {
+			return err
+		}
 	}
 	loaded, err := load(path)
 	if err != nil {
-		_ = cliReturnFailedTakeover(binding, m.leases, m.takeover)
+		restoreDetachedLease(previous, m.leases)
 		return err
 	}
 	if m.leases != nil {
 		if err := m.leases.BindSessionAuthority(loaded); err != nil {
-			_ = cliReturnFailedTakeover(binding, m.leases, m.takeover)
+			restoreDetachedLease(previous, m.leases)
 			return err
 		}
 	}
-	if err := binding.commitPrevious(m.takeover); err != nil {
-		_ = cliReturnFailedTakeover(binding, m.leases, m.takeover)
-		return err
+	if previous != nil {
+		previous.RetireDetached()
 	}
 	m.ctrl.Resume(loaded, path)
 	return bindChatTUIAuthority(m)
@@ -219,4 +211,19 @@ func copySessionForWriting(src string) (string, error) {
 		return "", fmt.Errorf("copy session meta: %w", err)
 	}
 	return newPath, nil
+}
+
+// restoreDetachedLease puts the pre-switch lease back after a failed switch and
+// retires the target lease the abandoned attempt had claimed.
+func restoreDetachedLease(previous *control.SessionLeaseKeeper, leases *control.SessionLeaseKeeper) {
+	if leases == nil {
+		return
+	}
+	current := leases.Split()
+	if previous != nil {
+		leases.Adopt(previous)
+	}
+	if current != nil {
+		current.RetireDetached()
+	}
 }

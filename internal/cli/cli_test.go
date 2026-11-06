@@ -123,50 +123,8 @@ func TestRunResumeRejectsCleanupPending(t *testing.T) {
 	}
 }
 
-func TestServeResumeRejectsCleanupPending(t *testing.T) {
-	isolateCLIConfigHome(t)
 
-	path := filepath.Join(t.TempDir(), "pending-serve.jsonl")
-	saveTestSession(t, path, "pending prompt")
-	if err := agent.MarkCleanupPending(path, "delete"); err != nil {
-		t.Fatal(err)
-	}
 
-	errOut := captureStderr(t, func() {
-		if rc := runServe([]string{"--resume", path, "--addr", "127.0.0.1:0"}); rc != 1 {
-			t.Fatalf("serve --resume cleanup-pending rc = %d, want 1", rc)
-		}
-	})
-	if !strings.Contains(errOut, "pending cleanup") {
-		t.Fatalf("serve --resume cleanup-pending stderr = %q, want pending cleanup", errOut)
-	}
-}
-
-func TestServeRejectsUnknownAuthMode(t *testing.T) {
-	isolateCLIConfigHome(t)
-
-	errOut := captureStderr(t, func() {
-		if rc := runServe([]string{"--auth", "tokne", "--addr", "127.0.0.1:0"}); rc != 1 {
-			t.Fatalf("serve --auth tokne rc = %d, want 1", rc)
-		}
-	})
-	if !strings.Contains(errOut, "auth mode must be none, token, or password") {
-		t.Fatalf("serve --auth tokne stderr = %q, want auth mode validation", errOut)
-	}
-}
-
-func TestServePasswordAuthRequiresPasswordMaterial(t *testing.T) {
-	isolateCLIConfigHome(t)
-
-	errOut := captureStderr(t, func() {
-		if rc := runServe([]string{"--auth", "password", "--addr", "127.0.0.1:0"}); rc != 1 {
-			t.Fatalf("serve --auth password without password rc = %d, want 1", rc)
-		}
-	})
-	if !strings.Contains(errOut, "auth mode password requires --password or serve.password_hash") {
-		t.Fatalf("serve --auth password stderr = %q, want password material validation", errOut)
-	}
-}
 
 func TestReserveNativeScrollbackFrameWritesOnlyNewlines(t *testing.T) {
 	var b bytes.Buffer
@@ -430,7 +388,6 @@ func TestRunReportsFlagParseErrors(t *testing.T) {
 		{name: "run invalid value", args: []string{"run", "--max-steps=invalid"}, want: "invalid argument \"invalid\" for \"--max-steps\" flag"},
 		{name: "run missing value", args: []string{"run", "--model"}, want: "flag needs an argument: --model"},
 		{name: "chat unknown flag", args: []string{"chat", "--unknown"}, want: "unknown flag: --unknown"},
-		{name: "serve unknown flag", args: []string{"serve", "--unknown"}, want: "flag provided but not defined: -unknown"},
 	}
 
 	for _, tt := range tests {
@@ -460,13 +417,7 @@ func TestSubcommandHelpReturnsSuccess(t *testing.T) {
 	}{
 		{name: "run", args: []string{"run", "--help"}, want: "Usage of run:"},
 		{name: "chat", args: []string{"chat", "--help"}, want: "Usage of reasonix:"},
-		{name: "serve", args: []string{"serve", "--help"}, want: "Usage of serve:"},
 		{name: "upgrade", args: []string{"upgrade", "--help"}, want: "Usage of upgrade:"},
-		{name: "remote connect", args: []string{"remote", "connect", "--help"}, want: "Usage of remote connect:"},
-		{name: "remote add before name", args: []string{"remote", "add", "--help"}, want: remoteAddUsage},
-		{name: "remote add before target", args: []string{"remote", "add", "box", "--help"}, want: remoteAddUsage},
-		{name: "remote serve before action", args: []string{"remote", "serve", "--help"}, want: remoteServeUsage},
-		{name: "remote serve before name", args: []string{"remote", "serve", "start", "--help"}, want: remoteServeUsage},
 		{name: "subagent create", args: []string{"subagent", "create", "--help"}, want: subagentUsageText},
 		{name: "subagent edit", args: []string{"subagent", "edit", "--help"}, want: subagentUsageText},
 		{name: "subagent delete", args: []string{"subagent", "delete", "--help"}, want: subagentUsageText},
