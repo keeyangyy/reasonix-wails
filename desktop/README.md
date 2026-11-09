@@ -116,27 +116,24 @@ checkout). A bare `go build` without a prior `pnpm build` produces a blank windo
 
 ## Releases & auto-update
 
-Desktop releases ride their own tag namespace, `desktop-v<semver>` (plain `v*`
-tags are the CLI release). Pushing one triggers `.github/workflows/release-desktop.yml`,
-which builds on a native runner per platform (Wails can't cross-compile a
-CGO/WebKit binary), packages each artifact, signs it with minisign, generates a
-`latest.json` manifest, publishes a GitHub release, marks the desktop release as
-GitHub's repository-wide `Latest`, mirrors everything to R2, and attaches the
-current desktop manifest to the matching CLI release for old clients that still
-ask GitHub's repository-wide `latest` release for it.
-The Linux artifact links against WebKitGTK 4.1 (`-tags webkit2_41`), so it needs
-`libwebkit2gtk-4.1-0` at runtime — present by default on Ubuntu 22.04+, Fedora 40+.
+This line is Windows only and uses its own version namespace, `v<major>.<minor>.<patch>`.
+Tagging one triggers `.github/workflows/release-windows.yml`, which builds the
+desktop app, the NSIS installer and the standalone CLI, signs the installer with
+minisign, generates a `latest.json` manifest, publishes a GitHub release, and
+refreshes the `versions.json` catalog on the `wails-latest` anchor.
+
+See [../docs/RELEASING.md](../docs/RELEASING.md) for the tag rules and the
+recommended flow (the `Release (manual)` workflow only tags a commit whose CI
+is green).
 
 ```sh
-git tag desktop-v1.1.0 && git push origin desktop-v1.1.0
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
-The app checks `latest.json` on startup (R2 first, then the
-`crash.reasonix.io` desktop release gateway) and shows an update banner when a
-newer version is published; **Settings → Software update** has a manual check.
-The gateway resolves only the desktop `desktop-v*` release line and never uses
-GitHub's repository-wide `/releases/latest` shortcut, so updater behavior does
-not depend on homepage badge semantics. Self-update behavior by platform:
+The app checks `latest.json` on startup against this repository's own
+`wails-latest` anchor and shows an update banner when a newer version is
+published; **Settings → Software update** has a manual check. Self-update
+behavior on Windows:
 
 - **Linux portable (`.tar.gz`)** — download, verify the minisign signature, replace
   the binaries in the install directory, and relaunch through Guard. No elevation.
@@ -157,11 +154,9 @@ not depend on homepage badge semantics. Self-update behavior by platform:
 
 ### Code signing — first launch
 
-- **Windows** — stable builds carry an Authenticode signature (SignPath, approved
-  per release; `release-desktop.yml` verifies every payload binary through
-  `scripts/verify-windows-authenticode.ps1` and fails the release otherwise). A
-  brand-new version can still show SmartScreen until the signature accumulates
-  reputation: *More info → Run anyway*.
+- **Windows** — builds are not Authenticode-signed yet, so SmartScreen shows a
+  first-run warning: *More info → Run anyway*. Release assets are protected by a
+  Minisign signature that installed clients verify before applying an update.
 - **macOS** — still unsigned and un-notarized. Open
   `Reasonix-darwin-universal.dmg`, drag Reasonix into Applications, then clear the
   quarantine attribute when Gatekeeper reports the app "is damaged" or is from an

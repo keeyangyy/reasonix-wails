@@ -1,152 +1,97 @@
 # Releasing Reasonix
 
-Reasonix has one user-facing release line: the official `X.Y.Z` version. The
-release engine keeps the proven Stable publication topology: three immutable
-Git tags on one `main-v2` commit and one protected orchestrator.
+This fork ships one user-facing release line: Windows x64 desktop, distributed
+from `keeyangyy/reasonix-wails`. There is no npm package, no Homebrew tap, no
+CLI multi-platform matrix and no R2/CDN mirror.
 
-| Surface | Immutable tag | Public result |
-| --- | --- | --- |
-| CLI | `vX.Y.Z` | GitHub Release and Homebrew |
-| npm | `npm-vX.Y.Z` | root and platform packages; `latest`, `canary`, and `next` compatibility aliases |
-| Desktop | `desktop-vX.Y.Z` | signed GitHub Release, immutable R2 directory, and `latest/latest.json` |
+## What a release contains
 
-The three tags are implementation identities, not user-selectable channels.
-They must always resolve to the same commit and may never be moved or deleted.
+| Asset | Notes |
+| --- | --- |
+| `Reasonix-windows-amd64-installer.exe` | NSIS installer, versionless name (the updater requires it) |
+| `Reasonix-windows-amd64-installer.exe.minisig` | Minisign signature for the installer |
+| `Reasonix-windows-amd64-portable.zip` | Portable archive |
+| `reasonix-cli-windows-amd64.exe` | Standalone CLI, same version stamp |
+| `latest.json` | Update manifest for this exact tag |
 
-The Go SDK module (`sdk/go`) is versioned independently of the three product
-surfaces: its tags look like `sdk/go/vX.Y.Z` (first: `sdk/go/v1.0.0`) and
-point at the release commit that first shipped the corresponding Extension
-Protocol major. SDK tags do not trigger product releases, do not move, and
-do not change the three-tag contract above.
+Every release also writes `latest.json` and `versions.json` onto the fixed
+`wails-latest` anchor release, which is what installed clients poll.
 
-## Daily release flow
+## Tag convention
 
-The normal developer path has one version input, one reviewed Notes PR, one
-terminal command, and one environment approval:
+`vMAJOR.MINOR.PATCH` for a stable release, `vMAJOR.MINOR.PATCH-beta.N` for a
+pre-release. The numbers belong to this line; they have nothing to do with the
+upstream 1.x series.
 
-1. Open Actions → **Prepare release** and enter `X.Y.Z`.
-2. Review and merge the generated bilingual release-notes PR.
-3. From an authenticated maintainer checkout, run:
+Exactly three numeric segments are required: the NSIS installer derives
+`VIProductVersion` from `${version}.0`, so a four-segment tag such as
+`v0.1.0.1` would become an invalid five-segment version and fail the build. A
+`-beta.N` suffix is stripped before it reaches NSIS, so `v0.1.0-beta.1` builds
+as `0.1.0`.
 
-   ```sh
-   ./scripts/release-stable.sh X.Y.Z
-   ```
+## Recommended flow
 
-4. Approve the resulting **Release stable** run once in the `release`
-   environment.
-5. Wait for its postflight to verify CLI, npm, Desktop, R2, Homebrew, and the
-   changelog.
+1. Merge everything to `main` and let the **CI** workflow run on that exact
+   commit.
+2. Actions → **Release (manual)**, enter `X.Y.Z` (no leading `v`).
+3. The workflow waits for the CI run on `HEAD` to finish. A red run is retried
+   once; if it is still red the release aborts and **no tag is created**.
+4. On green it creates the annotated tag `vX.Y.Z`, creates the GitHub Release
+   as a **draft**, then dispatches **Release Windows**.
+5. **Release Windows** builds the desktop app, installer and CLI, uploads the
+   assets, publishes the release, signs the installer, writes `latest.json`,
+   and refreshes the `wails-latest` anchor catalog.
+6. The release is never public without its assets: the draft is flipped only
+   after the upload step.
 
-If repository policy prevents Actions from opening the Notes PR, the workflow
-still pushes `release-notes/vX.Y.Z` and prints this recoverable handoff:
+Pushing a tag directly also works — `release-windows.yml` listens to
+`v[0-9]*` — but it skips the "CI must be green first" gate. Use the manual flow
+unless you are deliberately re-publishing an existing tag.
+
+## Manual publish / recovery
+
+To rebuild or re-upload assets for a tag that already exists:
 
 ```sh
-gh pr create --repo esengine/DeepSeek-Reasonix \
-  --base main-v2 --head release-notes/vX.Y.Z --fill
+gh workflow run release-windows.yml -f tag=v0.1.0
 ```
 
-Do not rerun Notes generation merely because PR creation was denied.
+The verify job refuses any tag whose shape is not `vX.Y.Z(-beta.N)?`, and any
+tag that is not an ancestor of `origin/main`. Assets are uploaded with
+`--clobber`, so re-running is safe and idempotent; it does not move or delete
+the tag.
 
-## What the tag helper proves
+For a release whose build failed after the draft was created, re-dispatch and
+let the same job finish the upload and publish steps.
 
-`scripts/release-stable.sh` fails before creating any public ref unless:
+## Signing
 
-- the version is canonical `MAJOR.MINOR.PATCH`;
-- remote `main-v2` is the commit that introduces or updates the complete,
-  reviewed Stable catalog record;
-- exact-commit `main-v2` CI completed successfully;
-- `vX.Y.Z`, `npm-vX.Y.Z`, and `desktop-vX.Y.Z` are all absent.
+The installer and the update manifest are signed with Minisign. The workflow
+reads `MINISIGN_PRIVATE_KEY` and `MINISIGN_PASSWORD` from repository secrets
+and runs `desktop/cmd/sign`; no local `minisign` CLI is needed.
 
-It then pushes a no-op guard for that exact `main-v2` SHA and all three
-lightweight tags with one atomic Git transaction. If `main-v2` advanced while
-CI was running, the complete transaction is rejected and no version tag is
-consumed. A partial tag set is therefore not a normal failure mode. The
-`vX.Y.Z` event starts the existing protected Stable relay; maintainers do not
-dispatch child CLI, npm, or Desktop publishers.
+Clients verify against the public key baked into the desktop binary and the
+repository's own anchor, so a release signed with any other key will be
+rejected by installed clients rather than silently accepted.
 
-## Publication and approval
-
-The protected Stable workflow re-resolves all three tags to one SHA on
-`main-v2` history, revalidates that normal candidates introduced their reviewed
-Notes and passed exact-SHA push CI, and runs the cache guard before requesting
-the sole human approval. `main-v2` may safely advance after the atomic tag
-transaction without invalidating that candidate. After approval it performs a
-no-publication SignPath preflight, then runs CLI, npm, and Desktop publishers
-against the immutable candidate.
-
-The npm publisher advances `latest`, `canary`, and `next` to the same official
-version. `canary` and `next` remain only so historical scripts continue to
-install a supported build; they are not testing channels and are not advertised.
-
-No custom GitHub App, App private key, repository-owner setting change, manual
-tag UI, or child-workflow approval is required.
-
-## Recovery
-
-For a partial Stable publication, open **Release stable** on protected
-`main-v2`, enter the existing `vX.Y.Z`, select only the missing surfaces, and
-approve `release` once. Recovery accepts only an immutable three-tag set that
-remains on `main-v2` history. It must reuse matching public content and fail
-closed on conflicting checksums, signatures, manifests, npm provenance, or R2
-objects.
-
-Never move, delete, or recreate a published tag. Ship product corrections as a
-higher patch version.
-
-## Retired prerelease paths
-
-Normal Preview, Canary, and RC publication entrypoints are disabled. Historical
-tags, Releases, package versions, changelog pages, and the final bridge endpoints
-remain available for compatibility, but they do not appear in current download
-navigation or release preparation.
-
-Old CLI and Desktop channel settings resolve to the official line. Frozen
-Preview endpoints continue to lead old clients to the bridge build, which can
-then upgrade to the current official release.
-
-## First release after cutover
-
-For the first release after this change, independently prove:
-
-- the three tags resolve to the reviewed Notes merge SHA;
-- both GitHub Releases contain their complete expected assets;
-- npm root and all six platform packages report that SHA and
-  `latest == canary == next`;
-- R2 immutable and latest manifests are byte-identical and every URL works;
-- Homebrew and reasonix.io show the same version;
-- old bridge clients can upgrade to the official release.
-
-The release is incomplete until every public surface reaches a terminal,
-verified state.
+Authenticode signing is **not** configured. Windows SmartScreen will warn on
+first run until an OV/EV certificate is added.
 
 ## Version catalog and the update panel
 
-The release line publishes a version catalog so installed clients can list and
-install a specific past version, not only whatever `latest` points at.
+`wails-latest` holds `latest.json` (always the newest published release) and
+`versions.json` (the full catalog the update panel lists from). Both are
+overwritten by every release; the per-tag release keeps its own immutable
+`latest.json` because catalog entries point at `<tag>/latest.json`.
 
-`release-notes/releases.json` is the catalog (`internal/productdocs` embeds and
-reads it). It is generated by the `Prepare release` workflow
-(`.github/workflows/prepare-release-notes.yml`), which runs
-`scripts/generate-release-notes.mjs --version <v> --to origin/main-v2` and commits
-`release-notes/releases.json` on a `release-notes/v<version>` branch for review.
+The panel shows the five most recent versions plus up to three most recent
+stable ones. A pre-release tag is recorded with the `beta` channel, a stable
+tag with `stable`.
 
-Because that generator is pinned to `origin/main-v2`, a fork line that releases
-from a different branch does not get its versions added automatically. Those
-lines must either run the generator against their own branch or accept that the
-catalog stays at the last version generated on `main-v2`; the panel then lists
-only what the catalog holds.
+## Before the first public release
 
-The desktop update panel reads that catalog and shows a version list — the five
-most recent versions plus up to three most recent stable ones — with each row's
-channel badge, date, current marker, and a per-version install action. The list
-payload carries `canSelfUpdate`, `manualReason`, `installMode`, and
-`requiresElevation` so the panel can describe how this specific installation
-updates. Installing an explicit version reports progress without an `UpdateInfo`
-(the explicit path has none), and waits for elevation when the mode requires it.
-
-Clients on the beta channel accept pre-releases: the updater version pattern
-matches both `vX.Y.Z` and `vX.Y.Z-beta.N`, so a beta build is a valid target
-rather than being filtered out by a stable-only check.
-
-Desktop auto-update for this line verifies against its own repository's fixed
-anchor and its own minisign key, rather than the upstream release gateway.
+- Configure `MINISIGN_PRIVATE_KEY` and `MINISIGN_PASSWORD` repository secrets.
+- Confirm `wails-latest` exists and points at this line, not the upstream
+  1.38.x line.
+- Verify the `CI` workflow has actually run on `main` (it is the only gate the
+  manual flow trusts).

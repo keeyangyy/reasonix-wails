@@ -34,23 +34,3 @@ Reports declare the protocol, and aggregation rejects older protocols.
 navigation, frame settling, GC and heap capture/analysis. Short profiling runs
 are diagnostic only and cannot pass the complete screening gate. A green gate
 still does not prove offline heap-retainer attribution.
-
-## Signed release artifacts
-
-The successful stable SignPath preflight hands its full native matrix to the
-desktop publisher. The publisher revalidates authorization, candidate identity,
-signing contract and cache/docs guards, then verifies and publishes the same
-signed bytes without rebuilding or signing them again. CLI and npm publication
-still wait for the entire preflight; no public surface starts early.
-
-Each platform bundle binds file sizes and SHA-256 hashes to candidate/control
-SHAs, version, tag, channel, signing fingerprint, run, invocation and producer
-attempt. Missing/extra platforms, conflicting identities, symlinks, duplicate
-filenames or modified bytes stop publication. These transport hashes supplement
-the existing Authenticode/minisign checks; they are not signature verification.
-
-A failed-job retry may reuse earlier successful platforms from the same run
-and invocation. A rebuilt platform replaces only its own fully verified bundle.
-New workflow runs prepare a new artifact set. Standalone recovery still builds
-and validates its own full matrix. pnpm dependencies are cached by lockfile;
-signed release artifacts are transported as artifacts, never dependency caches.

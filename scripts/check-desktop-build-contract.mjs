@@ -10,7 +10,7 @@ const read = (relativePath) =>
 const frontendPackage = JSON.parse(read("desktop/frontend/package.json"));
 const wailsConfig = JSON.parse(read("desktop/wails.json"));
 const ciWorkflow = read(".github/workflows/ci.yml");
-const releaseWorkflow = read(".github/workflows/release-desktop.yml");
+const releaseWorkflow = read(".github/workflows/build-windows.yml");
 const readme = read("README.md");
 const desktopReadme = read("desktop/README.md");
 const desktopBuildScript = read("scripts/desktop-build.sh");
@@ -39,7 +39,7 @@ assert.equal(
   "pnpm install --config.confirmModulesPurge=false",
 );
 
-for (const jobName of ["desktop-prepare", "desktop-go", "desktop-frontend", "desktop-browser", "desktop-macos", "desktop-windows"]) {
+for (const jobName of ["desktop-prepare", "desktop-go", "desktop-frontend", "desktop-browser", "desktop-windows"]) {
   assert.deepEqual(nodeVersions(jobBody(ciWorkflow, jobName)), ["24"]);
 }
 
@@ -65,7 +65,7 @@ for (const [name, content] of [
   ["README.md", readme],
   ["desktop/README.md", desktopReadme],
 ]) {
-  assert.match(content, /npm i(?:nstall)? -g pnpm@10/);
+  assert.match(content, /pnpm 10/);
   assert.match(content, /make wails-install/);
   assert.doesNotMatch(
     content,
@@ -74,8 +74,7 @@ for (const [name, content] of [
   );
 }
 
-assert.match(readme, /#### CLI/);
-assert.match(readme, /#### Desktop/);
+assert.match(desktopReadme, /npm i(?:nstall)? -g pnpm@10/);
 assert.match(desktopBuildScript, /make wails-install/);
 assert.doesNotMatch(
   desktopBuildScript,

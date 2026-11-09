@@ -1,7 +1,7 @@
 name: Release (manual)
 
 # One-shot release pipeline: triggers manually with a semver, waits for the
-# official CI of the current wails-mine commit to turn green, then creates the
+# official CI of the current main commit to turn green, then creates the
 # annotated tag and the GitHub Release. A tag is therefore never created for
 # a commit whose CI is red — the previous "push, tag, walk away for an hour"
 # failure mode is impossible: the run ends either with a published release or
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: wails-mine
+          ref: main
           fetch-depth: 0
 
       - name: Resolve target commit
@@ -124,7 +124,7 @@ jobs:
           # release must never be visible without its assets. release-windows.yml
           # publishes it once both assets are uploaded.
           if [ -n "$NOTES" ]; then
-            gh release create "v$VERSION" --draft --target wails-mine --title "$RELEASE_TITLE" --notes "$NOTES"
+            gh release create "v$VERSION" --draft --target main --title "$RELEASE_TITLE" --notes "$NOTES"
           else
             # Auto-summary of every change since this line's previous release
             # tag (commits carry the detail; the notes give the overview). The
@@ -145,7 +145,7 @@ jobs:
               git log "$RANGE" --no-merges --pretty=format:'- %s' 2>/dev/null || true
               echo
             } > /tmp/release-notes.md
-            gh release create "v$VERSION" --draft --target wails-mine --title "$RELEASE_TITLE" --notes-file /tmp/release-notes.md
+            gh release create "v$VERSION" --draft --target main --title "$RELEASE_TITLE" --notes-file /tmp/release-notes.md
           fi
 
       - name: Dispatch Windows artifact pipeline

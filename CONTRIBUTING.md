@@ -184,11 +184,11 @@ ci: add golangci-lint and govulncheck
 
 ## Submitting changes
 
-1. Create a feature branch from `wails-mine`
+1. Create a feature branch from `main`
 2. Make your changes with tests
 3. Ensure `go test ./...` passes
 4. Ensure `gofmt -l .` shows no changes
-5. Submit a pull request to `wails-mine`
+5. Submit a pull request to `main`
 
 Changes that also apply upstream are welcome there as a separate PR; keep this
 repository's diff focused on the Wails desktop line.
