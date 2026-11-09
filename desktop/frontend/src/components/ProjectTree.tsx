@@ -1715,7 +1715,7 @@ export function ProjectTree({
             aria-expanded={folderDisclosure.ariaExpanded}
           >
             <span className={folderDisclosure.iconStackClassName}>
-              folderDisclosure.isOpen ? <FolderOpen size={14} className="project-tree__folder-icon" /> : <Folder size={14} className="project-tree__folder-icon" />
+              {folderDisclosure.isOpen ? <FolderOpen size={14} className="project-tree__folder-icon" /> : <Folder size={14} className="project-tree__folder-icon" />}
             </span>
             <span className="project-tree__folder-color" aria-hidden="true" />
             <span className={`project-tree__folder-label${!hasChildren ? " project-tree__folder-label--empty" : ""}`}>
