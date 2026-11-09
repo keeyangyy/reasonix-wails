@@ -141,8 +141,6 @@ func TestSetActiveTabDoesNotResetPlannerSession(t *testing.T) {
 	}
 }
 
-
-
 func TestKeepOnlyVisibleTabDetachesRunningHiddenTab(t *testing.T) {
 	isolateDesktopUserDirs(t)
 	dir := config.SessionDir()

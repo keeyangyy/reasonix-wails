@@ -91,7 +91,6 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 		t.Fatalf("Windows payload must copy the already-stamped launcher (stamp=%d copy=%d)", launcherStamp, payloadCopy)
 	}
 
-
 	windowsData, err := os.ReadFile("build/windows/installer/project.nsi")
 	if err != nil {
 		t.Fatal(err)

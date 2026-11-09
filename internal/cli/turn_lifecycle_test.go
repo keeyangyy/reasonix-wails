@@ -144,7 +144,6 @@ func TestStartControllerTurnQueuesThroughSessionPort(t *testing.T) {
 	}
 }
 
-
 func TestStartTurnWithRawQueuesMaterializablePrompt(t *testing.T) {
 	ctrl := &runningQueueController{SessionAPI: control.New(control.Options{})}
 	m := newChatTUI(ctrl, "", make(chan event.Event, 1), 80)

@@ -41,7 +41,6 @@ func (m legacyResearchArchive) loadGoalText(string) (string, error) {
 
 var (
 	errLegacyArchiveUnavailable = errString("legacy research archive is unavailable for this workspace")
-	errLegacyArchiveMissingGoal = errString("legacy research archive is missing goal text")
 )
 
 type errString string

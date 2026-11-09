@@ -35,7 +35,6 @@ func TestWindowsICOUsesBlueFullCanvasRoundedBackground(t *testing.T) {
 	}
 }
 
-
 func assertFullCanvasRoundedIcon(t *testing.T, img image.Image, size int) {
 	t.Helper()
 

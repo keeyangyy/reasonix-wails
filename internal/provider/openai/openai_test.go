@@ -2332,7 +2332,7 @@ func TestNormaliseUsageAnthropicStyleFallback(t *testing.T) {
 				CompletionTokens: 393,
 				TotalTokens:      188500,
 				CacheHitTokens:   188086, CacheReported: true,
-				CacheMissTokens:  21,
+				CacheMissTokens: 21,
 			},
 		},
 		{
@@ -2353,7 +2353,7 @@ func TestNormaliseUsageAnthropicStyleFallback(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      150,
 				CacheHitTokens:   30, CacheReported: true,
-				CacheMissTokens:  70,
+				CacheMissTokens: 70,
 			},
 		},
 		{
@@ -2364,7 +2364,7 @@ func TestNormaliseUsageAnthropicStyleFallback(t *testing.T) {
 				CompletionTokens: 50,
 				TotalTokens:      150,
 				CacheHitTokens:   40, CacheReported: true,
-				CacheMissTokens:  60,
+				CacheMissTokens: 60,
 			},
 		},
 	}

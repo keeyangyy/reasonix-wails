@@ -22,7 +22,6 @@ func TestParseDesktopLaunchArgsStripsLegacySafeMode(t *testing.T) {
 	}
 }
 
-
 func TestLifecycleDiagnosticsUsePreWailsOwnershipGate(t *testing.T) {
 	mainSource, err := os.ReadFile("main.go")
 	if err != nil {

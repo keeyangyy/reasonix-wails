@@ -123,9 +123,6 @@ func TestRunResumeRejectsCleanupPending(t *testing.T) {
 	}
 }
 
-
-
-
 func TestReserveNativeScrollbackFrameWritesOnlyNewlines(t *testing.T) {
 	var b bytes.Buffer
 	reserveNativeScrollbackFrame(&b, 3)

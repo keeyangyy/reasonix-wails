@@ -108,4 +108,3 @@ func TestWindowsPackagerRejectsMissingOrPartialRequiredPayloadManifest(t *testin
 		})
 	}
 }
-

@@ -52,7 +52,6 @@ func TestResolveMarkdownImageForTabWorkspaceAndRemotePolicy(t *testing.T) {
 		t.Fatalf("local URL/open href boundary = %+v", local)
 	}
 
-
 	if blocked := app.ResolveMarkdownImageForTab("", "http://localhost/private.png"); blocked.ErrorCode != "blocked-remote" || blocked.URL != "" {
 		t.Fatalf("localhost image was not blocked: %+v", blocked)
 	}

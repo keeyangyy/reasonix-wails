@@ -22,14 +22,6 @@ func bindAndLoadCLIResume(leases *control.SessionLeaseKeeper, path string, load 
 	return load(path)
 }
 
-func cliControllerHasActiveRuntimeWork(ctrl control.SessionAPI) bool {
-	if ctrl == nil {
-		return false
-	}
-	status := ctrl.RuntimeStatus()
-	return status.Running || status.PendingPrompt || status.BackgroundJobs > 0
-}
-
 // sessionLeaseResumeRefusal is the startup-time refusal for `reasonix
 // [--resume|--continue]` and `reasonix run --resume/--continue`: it names the
 // holder and offers the two ways out (close the holder, or continue in a

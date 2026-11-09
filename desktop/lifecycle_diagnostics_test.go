@@ -111,7 +111,6 @@ func TestDesktopDiagnosticsSkipsNonPrimaryLaunchModes(t *testing.T) {
 		version = oldVersion
 	})
 
-
 	version = "dev"
 	dev := NewApp()
 	prepareDesktopDiagnostics(dev)
