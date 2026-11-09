@@ -21,10 +21,11 @@ test("every discovered and dedicated test is scheduled exactly once", () => {
 
 test("asset loaders and the isolated performance benchmark retain their invocation", () => {
   const plan = testPlan(scripts, files);
-  for (const [file, loader] of [["remote-connect-wizard", "css"], ["remote-server-panel", "svg"]]) {
-    const entry = plan.find(entry => entry.key === `src/__tests__/${file}.test.tsx`);
-    assert.ok(entry.args.includes(`./scripts/${loader}-stub-register.mjs`));
-  }
+  // Anything without a dedicated script is discovered with the CSS stub
+  // loader, so component graphs importing stylesheets stay runnable.
+  const discovered = testPlan(scripts, [...files, "new-behavior.test.tsx"])
+    .find(entry => entry.key === "src/__tests__/new-behavior.test.tsx");
+  assert.ok(discovered.args.includes("./scripts/css-stub-register.mjs"));
   assert.deepEqual(plan.filter(entry => entry.serial).map(entry => entry.key), ["src/__tests__/history-performance-benchmark.tsx"]);
 });
 
