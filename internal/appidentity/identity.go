@@ -16,8 +16,4 @@ const (
 	// that shared the upstream "Reasonix" identity. Kept for migration code
 	// that needs to recognise (not adopt) shortcuts from that generation.
 	legacyWailsAppUserModelID = "Reasonix"
-
-	// productShortcutName is the only .lnk this build creates or repairs.
-	// Upstream "Reasonix.lnk" is intentionally left untouched.
-	productShortcutName = "Reasonix Wails.lnk"
 )

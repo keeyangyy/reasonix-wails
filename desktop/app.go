@@ -292,11 +292,6 @@ type App struct {
 	// It is process-local by design: shutdown closes every detached controller.
 	detachedSessions map[string]*WorkspaceTab
 
-	// serveProbeUntil suppresses serve probing after a failed handshake
-	// (rotated token file); guarded by serveProbeMu.
-	serveProbeUntil map[string]time.Time
-	serveProbeMu    sync.Mutex
-
 	// sharedHosts holds one *plugin.Host per workspace root, shared by all
 	// controllers/tabs in that root so MCP subprocesses (CodeGraph, etc.) are
 	// spawned once instead of N times. Lifecycle: first Acquire creates the

@@ -260,12 +260,11 @@ type desktopLaunchOptions struct {
 func parseDesktopLaunchArgs(args []string) desktopLaunchOptions {
 	var out desktopLaunchOptions
 	for _, arg := range args {
-		switch {
-		case arg == "--safe-mode" || arg == "-safe-mode":
+		switch arg {
+		case "--safe-mode", "-safe-mode":
 			out.LegacySafeModeArg = true
-		case arg == "launch" || arg == "--detach":
+		case "launch", "--detach":
 			// Legacy launch tokens from old shortcuts. They produce no behavior.
-
 		}
 	}
 	return out

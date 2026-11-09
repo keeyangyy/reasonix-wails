@@ -221,10 +221,6 @@ func (a *App) goSafe(site string, fn func()) {
 	}()
 }
 
-func (a *App) goRemoteTabSafe(site string, fn func()) {
-	a.goSafe(site, fn)
-}
-
 // flushPendingCrash drains a Go panic captured on a prior run and POSTs it, then
 // clears it. Runs at launch alongside the ping; honours the telemetry opt-out by
 // dropping the file unsent.

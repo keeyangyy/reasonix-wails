@@ -93,14 +93,6 @@ func (a *App) ResolveMarkdownImageForTab(tabID, source string) MarkdownImageView
 	}
 }
 
-func mustURLPath(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return ""
-	}
-	return u.Path
-}
-
 func resolveMarkdownDataImage(source string) MarkdownImageView {
 	if int64(len(source)) > markdownDataImageMaxEncodedBytes {
 		return MarkdownImageView{ErrorCode: "too-large"}

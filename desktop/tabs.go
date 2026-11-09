@@ -2327,15 +2327,6 @@ func enrichTabMeta(meta TabMeta) TabMeta {
 	return meta
 }
 
-func enrichTabMetas(metas []TabMeta) []TabMeta {
-	for i := range metas {
-		if metas[i].Active {
-			metas[i].GitBranch = workspaceGitBranchForMeta(metas[i].WorkspaceRoot)
-		}
-	}
-	return metas
-}
-
 func (a *App) tabMeta(tab *WorkspaceTab, active bool) TabMeta {
 	runtimeView := a.sessionRuntimeViewLocked(tab)
 	sessionPath := tab.currentSessionPath()
@@ -3480,34 +3471,6 @@ func (a *App) keepOnlyVisibleTab(tabID string) (TabMeta, error) {
 	// rescan every session directory and expose partial catalog generations.
 	a.emitProjectTreeRuntimeChangedWithLegacy()
 	return enrichTabMeta(meta), nil
-}
-
-func (a *App) applySingleSurfaceTabPolicy() error {
-	a.singleSurfaceMu.Lock()
-	defer a.singleSurfaceMu.Unlock()
-
-	a.mu.RLock()
-	tabID := a.activeTabID
-	if tabID == "" || a.tabs[tabID] == nil {
-		for _, id := range a.tabOrder {
-			if a.tabs[id] != nil {
-				tabID = id
-				break
-			}
-		}
-		if tabID == "" {
-			for id := range a.tabs {
-				tabID = id
-				break
-			}
-		}
-	}
-	a.mu.RUnlock()
-	if tabID == "" {
-		return nil
-	}
-	_, err := a.keepOnlyVisibleTab(tabID)
-	return err
 }
 
 func (a *App) removeVisibleTabRuntimeAdmissionHeld(tab *WorkspaceTab) {

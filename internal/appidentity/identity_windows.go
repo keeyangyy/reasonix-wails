@@ -23,6 +23,10 @@ const (
 	stgmReadWrite         = 0x2
 	vtLPWSTR              = 31
 	windowsPathBuffer     = 32768
+
+	// productShortcutName is the only .lnk this build creates or repairs.
+	// Upstream "Reasonix.lnk" is intentionally left untouched.
+	productShortcutName = "Reasonix Wails.lnk"
 )
 
 var (
