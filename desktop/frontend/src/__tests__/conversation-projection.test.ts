@@ -23,7 +23,7 @@ assert.equal(view.composer.cwd, "local-cwd");
 assert.equal(view.composer.turnTokens, 999);
 assert.equal(view.composer.turnStartAt, 111);
 assert.equal(view.composer.currency, "USD");
-assert.deepEqual(view.composer.pinnedFiles, local.meta.pinnedFiles);
+assert.deepEqual(view.composer.pinnedFiles, local.meta?.pinnedFiles);
 assert.equal(view.composer.attachmentInputEnabled, true);
 assert.equal(view.composer.imageInputEnabled, true);
 assert.equal(view.composer.imageUnderstandingEnabled, true);
