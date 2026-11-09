@@ -999,7 +999,6 @@ jobs:
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
             .github/workflows/prepare-release-notes.yml \
             .github/workflows/docs-impact.yml \
-            .github/workflows/transcript-native-smoke.yml \
             .github/workflows/ci.yml
           node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
           bash scripts/update-versions-index.test.sh
