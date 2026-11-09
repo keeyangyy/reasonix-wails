@@ -2,9 +2,9 @@ name: App memory screening
 
 on:
   pull_request:
-    branches: [wails-mine]
+    branches: [main]
   push:
-    branches: [wails-mine]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

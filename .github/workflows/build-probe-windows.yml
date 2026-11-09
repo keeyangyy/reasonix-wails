@@ -1,6 +1,6 @@
 name: Build Windows test artifact
 
-# Diagnostics-enabled Windows build for the v1.38.* fork line.
+# Diagnostics-enabled Windows build for the Reasonix Wails line.
 #
 # Why this is not build-windows.yml: the diagnostics recorder only exists in
 # test/preview/canary builds (`isFrontendDiagnosticsBuild` returns false for
@@ -11,7 +11,7 @@ name: Build Windows test artifact
 # MANUAL only. It produces a 14-day artifact you install by hand:
 #
 #   gh workflow run build-probe-windows.yml
-#   gh workflow run build-probe-windows.yml -f version=v1.38.20-test.1
+#   gh workflow run build-probe-windows.yml -f version=v0.1.0-test.1
 #
 # The version keeps three numeric segments before any "-" suffix
 # (desktop-build.sh strips the suffix for the NSIS VIProductVersion), so
@@ -23,9 +23,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version stamped into the test build (e.g. v1.38.20-test.1)"
+        description: "Version stamped into the test build (e.g. v0.1.0-test.1)"
         required: false
-        default: "v1.38.20-test.1"
+        default: "v0.1.0-test.1"
         type: string
 
 concurrency:
@@ -80,8 +80,8 @@ jobs:
           VERSION="${{ github.event.inputs.version }}"
           if [ -z "$VERSION" ]; then
             case "$GITHUB_REF_NAME" in
-              dev|dev/*) VERSION="v1.38.20-dev.${{ github.run_number }}" ;;
-              *)         VERSION="v1.38.20-test.${{ github.run_number }}" ;;
+              dev|dev/*) VERSION="v0.1.0-dev.${{ github.run_number }}" ;;
+              *)         VERSION="v0.1.0-test.${{ github.run_number }}" ;;
             esac
           fi
           ../scripts/desktop-build.sh windows/amd64 "$VERSION" canary

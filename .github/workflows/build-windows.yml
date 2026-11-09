@@ -1,19 +1,18 @@
 name: Build Windows artifact
 
-# On-demand Windows build for the v1.38.* line.
+# On-demand Windows build for the Reasonix Wails line.
 #
-# Why this exists: the upstream `desktop-windows` CI job builds a Wails
-# executable purely for its native startup smoke and never publishes an
-# artifact, and the upstream release pipeline (release-desktop.yml) requires 11
+# Why this exists: CI builds the desktop app only for its native startup smoke
+# and never publishes an artifact, and the upstream release pipeline needed 11
 # signing/CDN secrets this fork does not have.
 #
 # Trigger is MANUAL only. Day-to-day validation is covered by the upstream
-# ci.yml, which still runs on every push to main-v2 - running a second build
+# ci.yml, which still runs on every push to main - running a second build
 # here on push would duplicate that work. Use this workflow when you actually
 # need a runnable Windows build to test on a real desktop:
 #
 #   gh workflow run build-windows.yml
-#   gh workflow run build-windows.yml -f version=v1.38.22
+#   gh workflow run build-windows.yml -f version=v0.1.0
 #
 # Tag-driven releases live in release-windows.yml.
 
@@ -21,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version stamped into the build (e.g. v1.38.21)"
+        description: "Version stamped into the build (e.g. v0.1.0)"
         required: false
-        default: "v1.38.21"
+        default: "v0.1.0"
         type: string
   workflow_call:
     inputs:
@@ -75,6 +74,14 @@ jobs:
         timeout-minutes: 40
         run: ../scripts/desktop-build.sh windows/amd64 "${{ inputs.version }}" stable
 
+      - name: Build CLI binary
+        working-directory: .
+        timeout-minutes: 10
+        run: |
+          go build -trimpath \
+            -ldflags="-s -w -X main.version=${{ inputs.version }}" \
+            -o dist/reasonix-cli-windows-amd64.exe ./cmd/reasonix
+
       - name: List produced artifacts
         run: ls -la ../dist
 
@@ -85,5 +92,6 @@ jobs:
           path: |
             dist/Reasonix-windows-amd64.zip
             dist/Reasonix-windows-amd64-installer.exe
+            dist/reasonix-cli-windows-amd64.exe
           if-no-files-found: error
           retention-days: 14

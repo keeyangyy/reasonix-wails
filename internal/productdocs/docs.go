@@ -768,7 +768,7 @@ func detectDocumentLanguage(name, content string) string {
 func documentAudience(name string) string {
 	stem := strings.TrimSuffix(strings.TrimSuffix(name, ".md"), ".zh-CN")
 	switch strings.ToUpper(stem) {
-	case "RELEASING", "SIGNPATH_WINDOWS_ADMIN_SOP", "PRODUCTION_CHECKLIST", "THEME_ASSETS":
+	case "RELEASING", "PRODUCTION_CHECKLIST", "THEME_ASSETS":
 		return "maintainer"
 	case "CHECKPOINTS", "GOAL_ENFORCEMENT", "SESSION_REFERENCE_ARCHITECTURE", "SPEC", "TASK_CONTRACT", "TOOL_CONTRACT":
 		return "developer"

@@ -20,7 +20,7 @@ make_fixture() {
   printf '%s\n' "$fixture_pin" > "$fixture/.wails-version"
   printf 'github.com/wailsapp/wails/v2 %s\n' "$fixture_pin" > "$fixture/desktop/go.mod"
   printf 'run: go install "%s@$(cat "$GITHUB_WORKSPACE/.wails-version")"\n' "$wails_module" > "$fixture/.github/workflows/ci.yml"
-  cp "$fixture/.github/workflows/ci.yml" "$fixture/.github/workflows/release-desktop.yml"
+
   cp "$fixture/.github/workflows/ci.yml" "$fixture/.github/workflows/transcript-native-smoke.yml"
   printf 'go install "%s@$wails_pin"\nwails version\n' "$wails_module" > "$fixture/prod_test"
   printf 'Run `make wails-install`.\n' > "$fixture/desktop/README.md"

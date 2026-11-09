@@ -8,9 +8,6 @@ const files = execFileSync("git", ["ls-files", "README.md", "docs/*.md"], {
 }).trim().split("\n").filter(Boolean);
 const migrationReferences = new Set([
   "docs/RELEASING.md",
-  "docs/SIGNPATH_WINDOWS_ADMIN_SOP.md",
-  "docs/CLI.md",
-  "docs/CLI.zh-CN.md",
 ]);
 const rules = [
   [/release-channel-switch/, "public release channel selector"],

@@ -1,24 +1,22 @@
 name: Release Windows
 
-# Tag-driven Windows release for the v1.38.* line.
+# Tag-driven Windows release for the Reasonix Wails line.
 #
-# Scope: this fork ships Windows x64 only. The upstream pipeline
-# (release-stable.yml -> release-desktop.yml) publishes CLI + npm + a four
-# platform desktop matrix behind an approval gate and 11 SignPath/Apple/R2
-# secrets; none of that applies here, and release-stable-trigger.yml is guarded
-# off in this repository so upstream tags cannot dispatch it.
+# Scope: this fork ships Windows x64 only - the desktop app, its NSIS
+# installer, and the CLI binary. Upstream's multi-platform matrix behind
+# SignPath/Apple/R2 signing is not part of this line.
 #
-# Tag convention: v1.38.NN, or the pre-release form v1.38.NN-beta.M, where 1.38
-# is the upstream baseline the fork tracks and NN is the fork's own increment.
+# Tag convention: vMAJOR.MINOR.PATCH, or the pre-release form vX.Y.Z-beta.N.
+# The numbers are this line's own version, unrelated to the upstream 1.x line.
 # Three numeric segments are required: the NSIS installer builds
 # VIProductVersion from `${version}.0` (see
 # desktop/build/windows/installer/project.nsi), so a four-segment tag such as
-# v1.38.2.1 would produce an invalid five-segment version and fail the build.
+# v0.1.0.1 would produce an invalid five-segment version and fail the build.
 # The -beta.M suffix is stripped before it reaches NSIS (scripts/desktop-build.sh
-# does numver="${numver%%-*}"), so v1.38.54-beta.1 builds as the valid 1.38.54.
+# does numver="${numver%%-*}"), so v0.1.0-beta.1 builds as the valid 0.1.0.
 #
-#   git tag v1.38.21 && git push origin v1.38.21
-#   git tag v1.38.54-beta.1 && git push origin v1.38.54-beta.1
+#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.1.0-beta.1 && git push origin v0.1.0-beta.1
 #
 # Produces a GitHub Release with the portable archive and the NSIS installer.
 
@@ -31,7 +29,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to publish (e.g. v1.38.21)"
+        description: "Existing tag to publish (e.g. v0.1.0)"
         required: true
         type: string
 
@@ -70,8 +68,8 @@ jobs:
           # Only a tag on this fork's own line may publish. The v[0-9]* glob
           # above also matches the other lines' tags, and a tag on a commit no
           # CI run here ever gated must never ship artifacts.
-          if ! git merge-base --is-ancestor HEAD origin/wails-mine; then
-            echo "::error::$RELEASE_TAG is not on origin/wails-mine" >&2
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$RELEASE_TAG is not on origin/main" >&2
             exit 1
           fi
           echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
@@ -118,6 +116,7 @@ jobs:
           # download is self-describing instead of looking like a bare zip.
           zip_asset="Reasonix-windows-amd64-portable.zip"
           exe_asset="Reasonix-windows-amd64-installer.exe"
+          cli_asset="reasonix-cli-windows-amd64.exe"
           mv dist/Reasonix-windows-amd64.zip "dist/${zip_asset}"
           # release-manual.yml creates this release as a draft before the
           # Windows build starts, so it is never public without its assets.
@@ -130,7 +129,7 @@ jobs:
           else
             echo "Release $RELEASE_TAG already exists; uploading/overwriting assets."
           fi
-          gh release upload "$RELEASE_TAG" "dist/${zip_asset}" "dist/${exe_asset}" --clobber
+          gh release upload "$RELEASE_TAG" "dist/${zip_asset}" "dist/${exe_asset}" "dist/${cli_asset}" --clobber
           # Publish only now that both assets are attached.
           gh release edit "$RELEASE_TAG" --draft=false
 
@@ -167,8 +166,8 @@ jobs:
           # badge -- which the studio and legacy 1.39 lines also claim.
           if ! gh release view wails-latest >/dev/null 2>&1; then
             gh release create wails-latest --latest=false \
-              --title "wails-mine update anchor" \
-              --notes "Update-check anchor for the wails-mine (1.38.x) line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
+              --title "Reasonix Wails update anchor" \
+              --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
           fi
           # The anchor always describes the newest published release, pre-release
           # or not: this line runs a single update channel and the client accepts

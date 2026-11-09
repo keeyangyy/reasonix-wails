@@ -20,7 +20,6 @@ function shellStep(body, name) {
     .replace(/^          /gm, "");
 }
 const ci = workflow("ci");
-const release = workflow("release-desktop");
 
 test("required desktop aggregate rejects every failed, cancelled or unexpectedly skipped child", () => {
   const script = shellStep(job(ci, "desktop"), "Verify desktop validation jobs");
@@ -34,44 +33,7 @@ test("required desktop aggregate rejects every failed, cancelled or unexpectedly
   assert.notEqual(run({ ...success, SHOULD_RUN: "false" }), 0);
 });
 
-test("reuse skips only build work and still gates every publisher on validation", () => {
-  const context = {
-    inputs: { preflight_artifact_prefix: "desktop-123-1-preflight", orchestrated: true, signing_preflight_verified: true, signing_preflight: false, production_signing_smoke: false },
-    needs: { resolve: { result: "success" }, "cache-guard": { result: "success" }, "signing-contract": { result: "success" }, build: { result: "skipped" } },
-  };
-  assert.equal(condition(job(release, "build"), context), false);
-  assert.equal(condition(job(release, "publish"), context), true);
-  for (const key of ["resolve", "cache-guard", "signing-contract", "build"]) {
-    for (const result of ["failure", "cancelled"]) {
-      const changed = structuredClone(context);
-      changed.needs[key].result = result;
-      assert.equal(condition(job(release, "publish"), changed), false, `${key}=${result}`);
-    }
-  }
-  for (const key of ["orchestrated", "signing_preflight_verified"]) {
-    assert.equal(condition(job(release, "publish"), { ...context, inputs: { ...context.inputs, [key]: false } }), false);
-  }
-  for (const key of ["signing_preflight", "production_signing_smoke"]) {
-    assert.equal(condition(job(release, "publish"), { ...context, inputs: { ...context.inputs, [key]: true } }), false);
-  }
-  const fresh = structuredClone(context);
-  fresh.inputs.preflight_artifact_prefix = "";
-  assert.equal(condition(job(release, "build"), fresh), true);
-  assert.equal(condition(job(release, "publish"), fresh), false);
-  fresh.needs.build.result = "success";
-  assert.equal(condition(job(release, "publish"), fresh), true);
-});
 
-test("reuse never moves artifact verification past public mutation or trusts candidate scripts", () => {
-  const publisher = job(release, "publish");
-  assert.ok(publisher.indexOf("Verify complete signed artifact handoff") < publisher.indexOf("name: Publish GitHub release"));
-  assert.ok(publisher.includes("node release-control/scripts/desktop-release-artifacts.mjs collect"));
-  assert.ok(publisher.includes("ref: ${{ github.workflow_sha }}"));
-  assert.ok(!publisher.includes("merge-multiple: true"));
-  const stable = workflow("release-stable");
-  assert.ok(job(stable, "desktop").includes("preflight_artifact_prefix: ${{ needs.signpath-preflight.outputs.artifact_prefix }}"));
-  for (const name of ["desktop", "cli", "npm"]) assert.ok(job(stable, name).includes("needs: [authorize, signpath-preflight]"));
-});
 
 test("all Linux consumers use the prepared build and reject a failed preparation", () => {
   const context = { github: { event_name: "pull_request" },
