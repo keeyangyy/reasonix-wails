@@ -16,8 +16,8 @@ func TestEmbeddedPublicKeyParses(t *testing.T) {
 	if err := key.UnmarshalText([]byte(publicKey)); err != nil {
 		t.Fatalf("embedded public key does not parse: %v", err)
 	}
-	if got := fmt.Sprintf("%016X", key.ID()); got != "238315CA90ACADED" {
-		t.Fatalf("embedded public key ID = %s, want 238315CA90ACADED", got)
+	if got := fmt.Sprintf("%016X", key.ID()); got != "8448B039F1334132" {
+		t.Fatalf("embedded public key ID = %s, want 8448B039F1334132", got)
 	}
 }
 
