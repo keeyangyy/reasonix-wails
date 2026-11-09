@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Cheap path gate for pull requests. PRs confined to docs/site/release-notes
+  # Cheap path gate for pull requests. PRs confined to docs/release-notes
   # (or top-level Markdown) skip the heavy Go jobs, and PRs that cannot affect
   # the desktop module skip the desktop jobs. Job-level `if` reports skipped,
   # which satisfies the required status checks (lint, race, test) — a
@@ -55,14 +55,13 @@ jobs:
           if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
             files=$(git diff --name-only "$base" HEAD)
             if [ -n "$files" ]; then
-              code=false; desktop=false; site=false; sdk=false
+              code=false; desktop=false; sdk=false
               # Root-module CI: desktop/ is a separate module, so only the
               # clearly unrelated paths below can skip it.
-              if echo "$files" | grep -qvE '^(docs/|site/|release-notes/|desktop/|workers/|[^/]+\.md$)'; then code=true; fi
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|desktop/|benchmarks/|[^/]+\.md$)'; then code=true; fi
               # desktop/ imports the root kernel via `replace reasonix => ../`,
               # so only this clearly-unrelated set is safe to skip.
-              if echo "$files" | grep -qvE '^(docs/|site/|release-notes/|workers/|benchmarks/|npm/|[^/]+\.md$)'; then desktop=true; fi
-              if echo "$files" | grep -q '^site/'; then site=true; fi
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|[^/]+\.md$)'; then desktop=true; fi
               # sdk/go is a nested module invisible to root `go test ./...`;
               # its DTOs are generated from internal/extension/protocol, so
               # both paths must trigger the sdk job.
@@ -1007,28 +1006,6 @@ jobs:
           node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
           bash scripts/update-versions-index.test.sh
           node scripts/check-single-release-public-contract.mjs
-
-  # The site/ auth client has security-sensitive redirect-validation logic
-  # (safeNext) covered by node:test unit tests. Those tests use only Node
-  # builtins, so no `npm install` is needed — run them directly on every PR so
-  # a regression in redirect validation fails the build instead of shipping.
-  site:
-    needs: changes
-    # fork does not ship the official site; this job never runs.
-    if: false
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: site
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
-      - name: test
-        run: npm test
 
   govulncheck:
     needs: changes

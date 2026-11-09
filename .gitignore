@@ -2,7 +2,6 @@
 /bin/
 /dist/
 /stage/
-/npm/.stage/
 /reasonix
 /reasonix.exe
 /e2ebench
@@ -11,9 +10,6 @@
 /desktop/desktop.exe
 
 # Website (Astro) build output
-/site/dist/
-/site/.astro/
-/site/_preview.png
 
 # Go test/build scratch
 *.test
@@ -70,7 +66,6 @@ desktop/**/.reasonix/
 Thumbs.db
 .idea/
 .vscode/
-/site/public/av/
 
 benchmarks/context-maintenance-e2e/run/
 
@@ -80,7 +75,6 @@ temp/
 # Official theme art intermediate outputs / caches
 scripts/official-theme-art/out/
 scripts/official-theme-art/__pycache__/
-site/.generated/
 
 # Committed pointer at REASONIX.md; overrides a global CLAUDE.md ignore rule.
 !/CLAUDE.md

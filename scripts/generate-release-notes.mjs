@@ -89,8 +89,7 @@ export function inferPullTargetHints(labels, files) {
   if (explicitlyCLI) add("cli");
   if (hasPath(/^desktop\//)) add("desktop");
   if (hasPath(/^(?:internal\/cli\/|cmd\/)/)) add("cli");
-  if (hasPath(/^site\//)) add("site");
-  if (hasPath(/^(?:workers\/|\.github\/|scripts\/|release-notes\/)/)) add("service");
+  if (hasPath(/^(?:\.github\/|scripts\/|release-notes\/)/)) add("service");
 
   const hasSharedProductCode = files.some((path) =>
     /^(?:internal\/|sdk\/|npm\/)/.test(path) &&

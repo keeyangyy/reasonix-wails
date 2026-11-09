@@ -53,12 +53,9 @@ while IFS= read -r file; do
 		internal/productdocs/*|\
 		internal/provider/*|\
 		internal/recovery/*|\
-		internal/remote/*|\
 		internal/sandbox/*|\
-		internal/serve/*|\
 		internal/skill/*|\
 		internal/tool/*|\
-		npm/*|\
 		.goreleaser.yaml|\
 		scripts/desktop-build.sh)
 			user_visible+=("$file")

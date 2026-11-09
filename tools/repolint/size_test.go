@@ -22,7 +22,6 @@ func TestSizeRuleCoversTypeScript(t *testing.T) {
 		{"tsx under the ceiling", "desktop/frontend/src/components/Small.tsx", linesOf(100), ""},
 		{"front-end test dir", "desktop/frontend/src/__tests__/big.test.ts", linesOf(900), ruleTestSize},
 		{"spec suffix", "desktop/frontend/src/lib/big.spec.ts", linesOf(900), ruleTestSize},
-		{"worker ts", "workers/crash-report/src/big.ts", linesOf(900), ruleFileSize},
 		{"go file keeps its rule", "internal/agent/big.go", goLinesOf(900), ruleFileSize},
 		{"locale table is exempt", "desktop/frontend/src/locales/zh.ts", linesOf(3000), ""},
 	} {

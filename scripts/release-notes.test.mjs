@@ -126,7 +126,6 @@ test("release target hints prefer explicit product labels and identify shared or
   assert.deepEqual(inferPullTargetHints(["desktop"], ["internal/sessioncatalog/catalog.go"]), ["desktop"]);
   assert.deepEqual(inferPullTargetHints(["desktop", "tui"], ["desktop/app.go", "internal/cli/cli.go"]), ["desktop", "cli"]);
   assert.deepEqual(inferPullTargetHints([], ["internal/agent/agent.go"]), ["desktop", "cli"]);
-  assert.deepEqual(inferPullTargetHints([], ["workers/crash-report/src/index.ts"]), ["service"]);
 });
 
 test("validation rejects bilingual drift", () => {

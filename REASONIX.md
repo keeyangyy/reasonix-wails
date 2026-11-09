@@ -124,7 +124,7 @@ also touches `internal/config/`, `internal/memory/`, `internal/outputstyle/`,
 `internal/skill/`, or `internal/boot/`, add `System-prompt-review: <note>` —
 that field additionally rejects `none` and `n/a`, so it must name a reviewer.
 
-User-visible diffs (`cmd/reasonix/`, `desktop/`, `npm/`, and most of
+User-visible diffs (`cmd/reasonix/`, `desktop/`, and most of
 `internal/`; tests and lockfiles are exempt) require one of these, chosen by
 whether the same PR edited `docs/*.md`:
 
