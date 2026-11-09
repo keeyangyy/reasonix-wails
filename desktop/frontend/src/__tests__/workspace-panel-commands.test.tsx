@@ -4,8 +4,7 @@ import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 import { useWorkspacePanelCommands } from "../app-runtime/useWorkspacePanelCommands";
 import { loadWorkspacePanelOpen, saveWorkspacePanelOpen, useLayoutStore } from "../store/layout";
-import { useRemoteStore } from "../store/remote";
-import type { RemoteHostView } from "../lib/types";
+
 
 const dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
 Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage,
@@ -48,22 +47,13 @@ try {
   assert.equal(commands.openRightDockMode, first.openRightDockMode);
   await act(async () => commands.toggleWorkspacePanel());
   assert.equal(useLayoutStore.getState().rightDockMode, "files");
-  const hosts = [{ id: "offline" }, { id: "online" }] as RemoteHostView[];
-  await act(async () => {
-    useRemoteStore.getState().setHosts(hosts);
-    useRemoteStore.getState().applyStatus({ hostId: "online", state: "connected" });
-    commands.openRemoteDock();
-  });
-  assert.equal(useRemoteStore.getState().explorerHostId, "online");
-  assert.equal(useRemoteStore.getState().explorerOpen, false, "request is consumed by the same dock owner");
-  assert.equal(useLayoutStore.getState().rightDockMode, "remote");
+
   await act(async () => { commands.restoreWorkspaceDockWidths(640, 0); });
   assert.equal(restoredWidth, 640, "dock width restore clamps through the owner and writes the layout store port");
-  await act(async () => useRemoteStore.getState().setHosts([]));
-  assert.equal(useLayoutStore.getState().rightDockMode, "files");
+
   await act(async () => root.unmount());
   const before = { closes, widthClears, layout: useLayoutStore.getState() };
   first.openRightDockMode("changed"); first.toggleWorkspaceMaximized(); first.closeWorkspacePanel();
   assert.deepEqual({ closes, widthClears, layout: useLayoutStore.getState() }, before, "disposed entries cannot change layout or project preferences");
-  console.log("workspace commands: scoped restoration, Creation, preview/maximize, remote requests and synchronous disposal passed");
+  console.log("workspace commands: scoped restoration, Creation, preview/maximize and synchronous disposal passed");
 } finally { dom.window.close(); }

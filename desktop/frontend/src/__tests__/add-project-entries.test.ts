@@ -1,7 +1,7 @@
 // Run: tsx src/__tests__/add-project-entries.test.ts
-// Source-contract test: the add-project entry points must offer the remote
-// connection action next to the local one, and the removed sidebar quick
-// button must stay gone.
+// Source-contract test: the add-project entry points offer only local
+// actions now that the remote workspace surface is gone, and the removed
+// sidebar quick button must stay gone.
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -29,15 +29,14 @@ const locales = ["en", "zh", "zh-TW"].map((name) =>
   readFileSync(resolve(here, `../locales/${name}.ts`), "utf8"),
 );
 
-// Workbench "+" menu: three items, remote opens the wizard flow.
+// Workbench "+" menu: local actions only; the remote wizard is gone.
 ok(
-  /onRemote: \(\) => \{ closeMenu\(\); openRemoteConnectFlow\(\); \}/.test(treeSource) &&
-    /key: "remote-connection"[\s\S]*?onSelect: onRemote/.test(addControlsSource),
-  "workbench + menu offers the remote connection item wired to the wizard flow",
+  !/openRemoteConnectFlow/.test(treeSource) && !/remote-connection/.test(addControlsSource),
+  "workbench + menu no longer offers a remote connection item",
 );
 ok(
-  /key: "blank-project"[\s\S]*?key: "open-local-folder"[\s\S]*?key: "remote-connection"/.test(addControlsSource),
-  "workbench + menu keeps blank project and existing folder before remote connection",
+  /key: "blank-project"[\s\S]*?key: "open-local-folder"/.test(addControlsSource),
+  "workbench + menu keeps blank project before open-local-folder",
 );
 
 // Classic/creation "+": no longer a direct picker; renders a menu that
@@ -51,17 +50,16 @@ ok(
   "classic/creation + menu is the two-item local/remote list",
 );
 
-// Empty state: primary local + secondary remote.
+// Empty state: the local action only.
 ok(
-  /project-tree__empty-primary[\s\S]*?ProjectTreeRemoteAction[\s\S]*?openRemoteConnectFlow/.test(treeSource) &&
-    /project-tree__empty-secondary/.test(addControlsSource),
-  "empty state pairs the local action with a remote connection action",
+  !/ProjectTreeRemoteAction/.test(treeSource) && !/project-tree__empty-secondary/.test(addControlsSource),
+  "empty state offers only the local action",
 );
 
-// The wizard mounts through the creation hook, outside the startup bundle.
+// The remote wizard is not mounted by the creation hook anymore.
 ok(
-  /lazy\(\(\) => import\("\.\/RemoteConnectWizardEntry"\)/.test(hookSource),
-  "remote wizard loads lazily through useProjectCreation",
+  !/RemoteConnectWizardEntry/.test(hookSource),
+  "useProjectCreation no longer loads a remote wizard",
 );
 
 // Removed sidebar quick button: gone from App.tsx and no locale key remains.

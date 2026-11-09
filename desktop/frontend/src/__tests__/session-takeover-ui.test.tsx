@@ -51,31 +51,16 @@ window.go = { main: { App: {
   },
 } as Partial<AppBindings> as AppBindings } };
 
-const [{ createRoot }, { LocaleProvider }, { RemoteReclaimBanner }, { SessionTakeoverDialog }] = await Promise.all([
+const [{ createRoot }, { LocaleProvider }, { SessionTakeoverDialog }] = await Promise.all([
   import("react-dom/client"),
   import("../lib/i18n"),
-  import("../components/RemoteReclaimBanner"),
   import("../components/SessionTakeoverDialog"),
 ]);
 
 const host = document.getElementById("root");
 if (!host) throw new Error("missing root");
 const root = createRoot(host);
-const reclaimed: string[] = [];
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
-const renderBanner = (tabId: string, busyTabId: string | null = null) => act(async () => {
-  root.render(<LocaleProvider><RemoteReclaimBanner tabId={tabId} busyTabId={busyTabId} onReclaim={(id) => reclaimed.push(id)} /></LocaleProvider>);
-});
-
-await renderBanner("tab-a");
-await act(async () => document.querySelector<HTMLButtonElement>(".banner button")?.click());
-await renderBanner("tab-b");
-await act(async () => document.querySelector<HTMLButtonElement>(".banner button")?.click());
-ok(reclaimed.length === 0, "switching A to B requires B's own first confirmation click");
-await act(async () => document.querySelector<HTMLButtonElement>(".banner button")?.click());
-ok(reclaimed.length === 1 && reclaimed[0] === "tab-b", "second click reclaims only the armed tab");
-await renderBanner("tab-b", "tab-a");
-ok(document.querySelector<HTMLButtonElement>(".banner button")?.disabled === true, "any reclaim in progress disables the active reclaim button");
 
 let closes = 0;
 await act(async () => {
