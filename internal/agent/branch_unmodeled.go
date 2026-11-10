@@ -13,8 +13,8 @@ import (
 // so an omitempty zero value still counts as a field this build owns.
 var branchMetaKnownJSONFields = func() map[string]struct{} {
 	out := map[string]struct{}{}
-	t := reflect.TypeOf(BranchMeta{})
-	for i := 0; i < t.NumField(); i++ {
+	t := reflect.TypeFor[BranchMeta]()
+	for i := range t.NumField() {
 		tag := t.Field(i).Tag.Get("json")
 		name, _, _ := strings.Cut(tag, ",")
 		if name == "" || name == "-" {
