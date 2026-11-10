@@ -1,6 +1,6 @@
 # Reasonix 机器人使用指南
 
-<a href="../README.zh-CN.md">README</a>
+<a href="../README.md">README</a>
 &nbsp;·&nbsp;
 <a href="./BOT_GUIDE.md">English</a>
 &nbsp;·&nbsp;

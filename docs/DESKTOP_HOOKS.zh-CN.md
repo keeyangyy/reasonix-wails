@@ -1,6 +1,6 @@
 # 桌面端 Hooks 使用说明
 
-<a href="../README.zh-CN.md">README</a>
+<a href="../README.md">README</a>
 &nbsp;·&nbsp;
 <a href="./GUIDE.zh-CN.md">使用指南</a>
 &nbsp;·&nbsp;

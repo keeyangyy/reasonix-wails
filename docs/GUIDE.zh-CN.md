@@ -3,7 +3,7 @@
 Provider 模型能力元数据见
 [`MODEL_CAPABILITIES.zh-CN.md`](./MODEL_CAPABILITIES.zh-CN.md)。
 
-<a href="../README.zh-CN.md">README</a>
+<a href="../README.md">README</a>
 &nbsp;·&nbsp;
 <a href="./GUIDE.md">English</a>
 &nbsp;·&nbsp;
