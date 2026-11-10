@@ -328,12 +328,25 @@ func projectLogicalSessions(records []SessionRecord) []SessionRecord {
 		}
 	}
 	for groupID, anchor := range anchors {
-		if strings.TrimSpace(anchor.topicID) == "" {
-			// Stable internal topic so rootless recovery storms still collapse.
-			anchor.topicID = "recovery:" + groupID
-			if anchor.topicTitle == "" {
-				anchor.topicTitle = groupID
+		if strings.TrimSpace(anchor.topicID) != "" {
+			continue
+		}
+		if anchor.rootIndex >= 0 && !records[anchor.rootIndex].Recovered {
+			// An ordinary conversation that never recorded a topic id: keep it as
+			// its own row and title it from its preview. The "recovery:" id and
+			// the transcript filename belong to a rootless recovery storm; reusing
+			// them here turns unrelated conversations into rows that look like
+			// broken files and hides their real titles.
+			anchor.topicID = "session:" + groupID
+			if strings.TrimSpace(anchor.topicTitle) == "" {
+				anchor.topicTitle = strings.TrimSpace(records[anchor.rootIndex].Preview)
 			}
+			continue
+		}
+		// Stable internal topic so rootless recovery storms still collapse.
+		anchor.topicID = "recovery:" + groupID
+		if anchor.topicTitle == "" {
+			anchor.topicTitle = groupID
 		}
 	}
 	for i := range records {

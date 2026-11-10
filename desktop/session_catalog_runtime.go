@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -123,6 +124,7 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 	for _, node := range runtimeNodes {
 		runtimeByTopic[node.TopicID] = node
 	}
+	sessionTopics := a.metadataSessionTopics(scope, workspaceRoot)
 	out := []ProjectNode{}
 	seen := map[string]bool{}
 	for sortOrder, topicID := range pinnedTopicIDs(orderedTopicIDs(ids, titles), pinnedIDs) {
@@ -136,6 +138,16 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 		title := strings.TrimSpace(titles[topicID])
 		if title == "" {
 			title = defaultTopicTitle
+		}
+		// A topic row with no real title and no live tab is a shell: legacy
+		// Studio forks and abandoned blank sessions leave IDs behind in
+		// desktop-projects.json that never had a conversation in this client.
+		// Keep them out of the sidebar unless the catalog still knows a session
+		// for the topic, so an in-flight new session is never hidden.
+		if _, live := runtimeByTopic[topicID]; !live && isDefaultTopicTitle(title) && sessionTopics != nil {
+			if _, ownsConversation := sessionTopics[topicID]; !ownsConversation {
+				continue
+			}
 		}
 		kind := "topic"
 		if scope != "project" {
@@ -172,6 +184,42 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 func (a *App) runtimeOnlyProjectTopics(scope, workspaceRoot string) []ProjectNode {
 	nodes, _ := a.runtimeOnlyProjectTopicsWithSessions(scope, workspaceRoot)
 	return nodes
+}
+
+// metadataSessionTopics returns the topics that still own a conversation, or
+// nil when the catalog cannot vouch for this workspace: no catalog, a degraded
+// read, or a projection whose directory signature no longer matches the disk.
+// nil means "do not filter" — a stale projection calling a freshly written
+// session missing must never hide a conversation the user can still open.
+func (a *App) metadataSessionTopics(scope, workspaceRoot string) map[string]struct{} {
+	catalog := a.sessionCatalog.Load()
+	if catalog == nil {
+		return nil
+	}
+	ctx, cancel := a.catalogReadContext()
+	defer cancel()
+	targets := 0
+	for _, target := range a.sessionCatalogTargets() {
+		if target.Scope != scope || (scope == "project" && !sameProjectRoot(target.WorkspaceRoot, workspaceRoot)) {
+			continue
+		}
+		if _, err := os.Stat(target.Path); err != nil {
+			continue
+		}
+		targets++
+		fresh, err := catalog.DirectoryProjectionFresh(ctx, target.Path)
+		if err != nil || !fresh {
+			return nil
+		}
+	}
+	if targets == 0 {
+		return nil
+	}
+	topics, err := catalog.TopicsWithSessions(ctx, scope, workspaceRoot)
+	if err != nil {
+		return nil
+	}
+	return topics
 }
 
 // runtimeOnlyProjectTopicsWithSessions also reports each runtime topic's known
