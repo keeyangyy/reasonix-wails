@@ -338,7 +338,7 @@ func (t *sdkSessionTransport) build(ctx context.Context, generation uint64) (*ma
 			"mimeTypes": []any{AppsMimeType},
 		})
 	}
-	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "reasonix", Version: mcpClientVersion()}, &mcpsdk.ClientOptions{
+	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "reasonix-wails", Version: mcpClientVersion()}, &mcpsdk.ClientOptions{
 		Capabilities:       capabilities,
 		ElicitationHandler: elicitationHandler,
 		ToolListChangedHandler: func(_ context.Context, req *mcpsdk.ToolListChangedRequest) {

@@ -18,7 +18,7 @@ func TestOpenCodeGoHeadersScopedStableAndPrivate(t *testing.T) {
 			if id == "" || strings.Contains(id, "private") || i > 0 && id != previous {
 				t.Fatalf("unstable/private session ID: %q", id)
 			}
-			if req.Header.Get("User-Agent") != "Reasonix" {
+			if req.Header.Get("User-Agent") != "Reasonix-Wails" {
 				t.Fatal("missing client identity")
 			}
 			previous = id

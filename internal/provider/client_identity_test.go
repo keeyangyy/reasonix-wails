@@ -11,8 +11,8 @@ func TestApplyClientIdentityUsesBuildVersion(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodPost, "https://api.deepseek.com/chat/completions", nil)
 	ApplyClientIdentity(req)
-	if got := req.Header.Get("User-Agent"); got != "Reasonix/9.8.7" {
-		t.Fatalf("User-Agent = %q, want Reasonix/9.8.7", got)
+	if got := req.Header.Get("User-Agent"); got != "Reasonix-Wails/9.8.7" {
+		t.Fatalf("User-Agent = %q, want Reasonix-Wails/9.8.7", got)
 	}
 }
 
@@ -34,13 +34,13 @@ func TestApplyClientHeadersPrefersOpenCodeContract(t *testing.T) {
 
 	opencode, _ := http.NewRequest(http.MethodPost, "https://opencode.ai/zen/go/v1/responses", nil)
 	ApplyClientHeaders(opencode, "https://opencode.ai/zen/go/v1", NewClientIdentityHeaders())
-	if got := opencode.Header.Get("User-Agent"); got != "Reasonix" {
-		t.Fatalf("opencode User-Agent = %q, want the bare Reasonix identity", got)
+	if got := opencode.Header.Get("User-Agent"); got != "Reasonix-Wails" {
+		t.Fatalf("opencode User-Agent = %q, want the bare Reasonix-Wails identity", got)
 	}
 
 	other, _ := http.NewRequest(http.MethodPost, "https://api.deepseek.com/chat/completions", nil)
 	ApplyClientHeaders(other, "https://api.deepseek.com", NewClientIdentityHeaders())
-	if got := other.Header.Get("User-Agent"); got != "Reasonix/9.8.7" {
-		t.Fatalf("generic User-Agent = %q, want Reasonix/9.8.7", got)
+	if got := other.Header.Get("User-Agent"); got != "Reasonix-Wails/9.8.7" {
+		t.Fatalf("generic User-Agent = %q, want Reasonix-Wails/9.8.7", got)
 	}
 }
