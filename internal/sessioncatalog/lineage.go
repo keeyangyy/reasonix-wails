@@ -195,11 +195,9 @@ func promoteCanonicalLeavesWithContent(records []SessionRecord, cache *recoveryC
 		}
 		records[candidate].RecoveryRole = RecoveryRoleAdopted
 		records[candidate].RecoveryCanonical = true
-		// Once one leaf contains the entire group, every other recovery
-		// member is an ancestor/equivalent copy covered by that canonical.
-		// Marking them covered is what lets History and explicit cleanup
-		// converge an old chain instead of leaving hundreds of non-canonical
-		// "diverged" rows that preserve no unique content.
+		// Once one leaf contains the whole group, every other member is a covered
+		// ancestor/equivalent copy; marking them covered lets History and cleanup
+		// converge an old chain instead of keeping non-canonical diverged rows.
 		for _, i := range idxs {
 			if i == candidate {
 				continue
@@ -245,38 +243,7 @@ func projectLogicalSessions(records []SessionRecord) []SessionRecord {
 			records[i].RecoveryGroupID = firstNonEmpty(records[i].ParentID, agent.BranchID(records[i].Path))
 		}
 	}
-	// Walk parent chains so intermediate recovery files also share the root id.
-	for i := range records {
-		if !records[i].Recovered {
-			continue
-		}
-		groupID := strings.TrimSpace(records[i].RecoveryGroupID)
-		seen := map[string]struct{}{}
-		parentID := strings.TrimSpace(records[i].ParentID)
-		for parentID != "" {
-			if _, loop := seen[parentID]; loop {
-				break
-			}
-			seen[parentID] = struct{}{}
-			parentIndex, ok := byID[parentID]
-			if !ok {
-				groupID = firstNonEmpty(groupID, parentID)
-				break
-			}
-			parent := records[parentIndex]
-			if !parent.Recovered {
-				groupID = parentID
-				break
-			}
-			parentID = strings.TrimSpace(parent.ParentID)
-			if parent.RecoveryGroupID != "" {
-				groupID = parent.RecoveryGroupID
-			}
-		}
-		if groupID != "" {
-			records[i].RecoveryGroupID = groupID
-		}
-	}
+	resolveRecoveryGroupChains(records, byID)
 
 	type groupAnchor struct {
 		topicID    string
@@ -332,11 +299,9 @@ func projectLogicalSessions(records []SessionRecord) []SessionRecord {
 			continue
 		}
 		if anchor.rootIndex >= 0 && !records[anchor.rootIndex].Recovered {
-			// An ordinary conversation that never recorded a topic id: keep it as
-			// its own row and title it from its preview. The "recovery:" id and
-			// the transcript filename belong to a rootless recovery storm; reusing
-			// them here turns unrelated conversations into rows that look like
-			// broken files and hides their real titles.
+			// An ordinary conversation that never recorded a topic id keeps its own
+			// row, titled from its preview: reusing the recovery id or transcript
+			// filename would make real conversations look like broken files.
 			anchor.topicID = "session:" + groupID
 			if strings.TrimSpace(anchor.topicTitle) == "" {
 				anchor.topicTitle = strings.TrimSpace(records[anchor.rootIndex].Preview)
@@ -373,6 +338,50 @@ func projectLogicalSessions(records []SessionRecord) []SessionRecord {
 		}
 	}
 
+	assignOrdinarySessionVisibility(records)
+	return records
+}
+
+// resolveRecoveryGroupChains walks parent chains so intermediate recovery
+// files share the root group id rather than only their direct parent.
+func resolveRecoveryGroupChains(records []SessionRecord, byID map[string]int) {
+	// Walk parent chains so intermediate recovery files also share the root id.
+	for i := range records {
+		if !records[i].Recovered {
+			continue
+		}
+		groupID := strings.TrimSpace(records[i].RecoveryGroupID)
+		seen := map[string]struct{}{}
+		parentID := strings.TrimSpace(records[i].ParentID)
+		for parentID != "" {
+			if _, loop := seen[parentID]; loop {
+				break
+			}
+			seen[parentID] = struct{}{}
+			parentIndex, ok := byID[parentID]
+			if !ok {
+				groupID = firstNonEmpty(groupID, parentID)
+				break
+			}
+			parent := records[parentIndex]
+			if !parent.Recovered {
+				groupID = parentID
+				break
+			}
+			parentID = strings.TrimSpace(parent.ParentID)
+			if parent.RecoveryGroupID != "" {
+				groupID = parent.RecoveryGroupID
+			}
+		}
+		if groupID != "" {
+			records[i].RecoveryGroupID = groupID
+		}
+	}
+}
+
+// assignOrdinarySessionVisibility marks exactly one ordinary-list row per
+// recovery group, preferring the live root and then the canonical leaf.
+func assignOrdinarySessionVisibility(records []SessionRecord) {
 	preferred := PreferredOrdinarySessionPaths(records)
 	for i := range records {
 		_, records[i].OrdinaryVisible = preferred[strings.TrimSpace(records[i].Path)]
@@ -423,7 +432,6 @@ func projectLogicalSessions(records []SessionRecord) []SessionRecord {
 			records[i].OrdinaryVisible = i == best
 		}
 	}
-	return records
 }
 
 func recoveryLineageGroups(records []SessionRecord) (map[string][]int, map[string]int) {
@@ -489,10 +497,8 @@ func uniqueLongestRecovery(records []SessionRecord, idxs []int, content map[int]
 		return 0, false
 	}
 	// Turns/preview metadata is repaired asynchronously and must not decide
-	// lineage. Doing so made the first scan permanently label every legacy fork
-	// diverged when its sidecar still had turns_state=unknown. Instead, find the
-	// leaves that actually cover every recovered member. Equivalent leaves are
-	// safe to collapse and use a deterministic activity/path tie-breaker.
+	// lineage; instead find the leaves that actually cover every recovered
+	// member, collapsing equivalent leaves with a deterministic tie-break.
 	maxLen := -1
 	for _, index := range idxs {
 		if snapshot, ok := content[index]; ok && snapshot.Len() > maxLen {

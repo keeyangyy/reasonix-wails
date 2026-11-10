@@ -56,7 +56,7 @@ func TestGenManifest(t *testing.T) {
 		"Reasonix-darwin-arm64.zip",
 		"Reasonix-darwin-amd64.zip",
 		"Reasonix-darwin-universal.dmg",
-		"Reasonix-windows-amd64.exe", // updater channel: one self-updating exe
+		"Reasonix-windows-amd64.exe",           // updater channel: one self-updating exe
 		"Reasonix-windows-amd64-installer.exe", // first-install convenience, not the channel
 		"Reasonix-windows-arm64.exe",
 		"Reasonix-windows-arm64-installer.exe",

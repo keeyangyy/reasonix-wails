@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -139,11 +138,9 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 		if title == "" {
 			title = defaultTopicTitle
 		}
-		// A topic row with no real title and no live tab is a shell: legacy
-		// Studio forks and abandoned blank sessions leave IDs behind in
-		// desktop-projects.json that never had a conversation in this client.
-		// Keep them out of the sidebar unless the catalog still knows a session
-		// for the topic, so an in-flight new session is never hidden.
+		// A titleless topic with no live tab is a shell left by legacy Studio
+		// forks; hide it unless the catalog still knows a session for the topic,
+		// so an in-flight new session is never hidden.
 		if _, live := runtimeByTopic[topicID]; !live && isDefaultTopicTitle(title) && sessionTopics != nil {
 			if _, ownsConversation := sessionTopics[topicID]; !ownsConversation {
 				continue
@@ -184,42 +181,6 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 func (a *App) runtimeOnlyProjectTopics(scope, workspaceRoot string) []ProjectNode {
 	nodes, _ := a.runtimeOnlyProjectTopicsWithSessions(scope, workspaceRoot)
 	return nodes
-}
-
-// metadataSessionTopics returns the topics that still own a conversation, or
-// nil when the catalog cannot vouch for this workspace: no catalog, a degraded
-// read, or a projection whose directory signature no longer matches the disk.
-// nil means "do not filter" — a stale projection calling a freshly written
-// session missing must never hide a conversation the user can still open.
-func (a *App) metadataSessionTopics(scope, workspaceRoot string) map[string]struct{} {
-	catalog := a.sessionCatalog.Load()
-	if catalog == nil {
-		return nil
-	}
-	ctx, cancel := a.catalogReadContext()
-	defer cancel()
-	targets := 0
-	for _, target := range a.sessionCatalogTargets() {
-		if target.Scope != scope || (scope == "project" && !sameProjectRoot(target.WorkspaceRoot, workspaceRoot)) {
-			continue
-		}
-		if _, err := os.Stat(target.Path); err != nil {
-			continue
-		}
-		targets++
-		fresh, err := catalog.DirectoryProjectionFresh(ctx, target.Path)
-		if err != nil || !fresh {
-			return nil
-		}
-	}
-	if targets == 0 {
-		return nil
-	}
-	topics, err := catalog.TopicsWithSessions(ctx, scope, workspaceRoot)
-	if err != nil {
-		return nil
-	}
-	return topics
 }
 
 // runtimeOnlyProjectTopicsWithSessions also reports each runtime topic's known
@@ -545,10 +506,9 @@ func (a *App) listProjectTopics(req ProjectTopicPageRequest) (ProjectTopicPage, 
 	if err != nil {
 		return page, err
 	}
-	// Metadata is a continuity source while some directories are pending or
-	// degraded. Once every target has completed, the catalog is authoritative:
-	// retaining metadata-only shells would resurrect recovery copies or deleted
-	// sessions that the completed scan deliberately folded/removed.
+	// Metadata bridges directories that are pending or degraded; once every
+	// target completes, the catalog is authoritative and metadata-only shells
+	// would resurrect folded or deleted sessions.
 	if !availability.complete {
 		page = a.mergeMetadataTopics(req, page)
 	}
@@ -585,10 +545,9 @@ func (a *App) withLiveTopics(catalog *sessioncatalog.Catalog, req ProjectTopicPa
 		if indexed[node.TopicID] {
 			continue
 		}
-		// A restored tab may still carry a legacy topic ID for a recovery
-		// session the catalog re-anchored onto the root logical topic. That
-		// logical row already represents the conversation, so a second
-		// runtime-only row would break the one-row ordinary-list contract.
+		// A restored tab may carry a legacy topic ID for a session the catalog
+		// re-anchored onto the root topic; that row already represents the
+		// conversation, so a second runtime-only row would duplicate it.
 		if liveTopicProjectedOnPage(ctx, catalog, sessionsByTopic[node.TopicID], indexed) {
 			continue
 		}

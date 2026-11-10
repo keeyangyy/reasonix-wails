@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -38,11 +37,10 @@ type BranchMeta struct {
 	TopicID          string    `json:"topic_id,omitempty"`
 	TopicTitle       string    `json:"topic_title,omitempty"`
 	CustomTitle      string    `json:"custom_title,omitempty"`
-	// Archived is written by the Studio line: it removes a finished conversation
-	// from the everyday list without deleting its transcript. This build has no
-	// archive UI, so it only honours the flag — and must never clear it, or the
-	// conversation reappears in the other line's sidebar.
-	Archived bool `json:"archived,omitempty"`
+	// Archived is written by the Studio line and must never be cleared here, or
+	// the conversation reappears in that line's sidebar. This build has no
+	// archive UI, so it only honours the flag.
+	Archived bool   `json:"archived,omitempty"`
 	Model    string `json:"model,omitempty"`
 	// Effort is the session-scoped reasoning effort override (/effort level).
 	// Empty means "auto" (the provider default). Session ownership is what keeps
@@ -357,11 +355,9 @@ func saveBranchMetaContext(ctx context.Context, sessionPath string, m BranchMeta
 	if err != nil {
 		return err
 	}
-	// Re-read the raw sidecar: this struct only models this line's fields, and a
-	// plain rewrite would drop the ones it does not know (the Studio line's
-	// archived/pinned/auto_archived_at/finished_at/viewed_at/superseded/
-	// imported_from, or anything a newer writer adds). Re-attaching them keeps
-	// one line from erasing the other's markers on every save.
+	// Re-read the raw sidecar and keep the keys this struct does not model, so a
+	// save from this line never erases the other line's markers (archived,
+	// pinned, superseded, or anything a newer writer adds).
 	if raw, rawErr := fileencoding.ReadFileUTF8(metaPath); rawErr == nil {
 		if merged, ok := preserveUnmodeledBranchMetaFields(b, raw); ok {
 			b = merged
@@ -372,80 +368,13 @@ func saveBranchMetaContext(ctx context.Context, sessionPath string, m BranchMeta
 	return atomicWriteFileContext(ctx, metaPath, ".branch.*.tmp", "branch-meta", b, 0o600, false)
 }
 
-// branchMetaKnownJSONFields is every JSON key this struct can emit. An
-// omitempty zero value is absent from the encoding but is still a field this
-// build owns, so ownership is decided by the tags, never by what the current
-// value happened to serialize.
-var branchMetaKnownJSONFields = func() map[string]struct{} {
-	out := map[string]struct{}{}
-	t := reflect.TypeOf(BranchMeta{})
-	for i := 0; i < t.NumField(); i++ {
-		tag := t.Field(i).Tag.Get("json")
-		name, _, _ := strings.Cut(tag, ",")
-		if name == "" || name == "-" {
-			continue
-		}
-		out[name] = struct{}{}
-	}
-	return out
-}()
-
-// preserveUnmodeledBranchMetaFields appends JSON fields present in the sidecar
-// but not modeled by BranchMeta, before the closing brace, so the struct's field
-// order is unchanged. ok is false when the merge cannot be done safely
-// (undecodable input, unexpected shape), in which case the caller keeps its
-// plain encoding.
-func preserveUnmodeledBranchMetaFields(encoded, previous []byte) ([]byte, bool) {
-	if len(previous) == 0 || len(encoded) == 0 {
-		return nil, false
-	}
-	var previousFields map[string]json.RawMessage
-	if err := json.Unmarshal(previous, &previousFields); err != nil {
-		return nil, false
-	}
-	unknown := make([]string, 0, len(previousFields))
-	for key := range previousFields {
-		if _, known := branchMetaKnownJSONFields[key]; !known {
-			unknown = append(unknown, key)
-		}
-	}
-	if len(unknown) == 0 {
-		return nil, false
-	}
-	sort.Strings(unknown)
-	trimmed := bytes.TrimRight(encoded, "\n")
-	if len(trimmed) < 2 || trimmed[len(trimmed)-1] != '}' {
-		return nil, false
-	}
-	body := bytes.TrimRight(trimmed[:len(trimmed)-1], " \t\r\n")
-	empty := len(body) > 0 && body[len(body)-1] == '{'
-	var buf bytes.Buffer
-	buf.Write(body)
-	for i, key := range unknown {
-		keyJSON, err := json.Marshal(key)
-		if err != nil {
-			return nil, false
-		}
-		if i > 0 || !empty {
-			buf.WriteByte(',')
-		}
-		buf.WriteString("\n  ")
-		buf.Write(keyJSON)
-		buf.WriteString(": ")
-		buf.Write(previousFields[key])
-	}
-	buf.WriteString("\n}\n")
-	return buf.Bytes(), true
-}
-
 func preserveBranchMetaPersistence(next *BranchMeta, existing BranchMeta) {
 	if next == nil {
 		return
 	}
-	// This build has no archive UI, so it never clears the flag on purpose: an
-	// archived conversation must stay archived when this line saves it. A
-	// caller-built struct carries Archived=false and would otherwise unarchive
-	// the conversation in the Studio sidebar on every rename or auto-title.
+	// This build never clears the archive flag on purpose: a caller-built struct
+	// carries Archived=false, and saving it would unarchive the conversation in
+	// the Studio sidebar on every rename or auto-title.
 	next.Archived = next.Archived || existing.Archived
 	next.DismissedTodoBatches = MergeDismissedTodoBatches(existing.DismissedTodoBatches, next.DismissedTodoBatches)
 	if existing.Revision > next.Revision {

@@ -6,11 +6,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io/fs"
 	"path"
 	"regexp"
@@ -531,16 +529,6 @@ func loadCatalogWithReleaseNotes(docsFS, releaseNotesFS fs.FS) (*catalog, error)
 		c.avgLen = 1
 	}
 	return c, nil
-}
-
-func writeDigestRecord(destination hash.Hash, name string, data []byte) {
-	var size [8]byte
-	binary.BigEndian.PutUint64(size[:], uint64(len(name)))
-	_, _ = destination.Write(size[:])
-	_, _ = destination.Write([]byte(name))
-	binary.BigEndian.PutUint64(size[:], uint64(len(data)))
-	_, _ = destination.Write(size[:])
-	_, _ = destination.Write(data)
 }
 
 func (c *catalog) addDocument(doc *document) error {
