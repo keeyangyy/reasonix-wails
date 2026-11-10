@@ -56,10 +56,10 @@ func TestGenManifest(t *testing.T) {
 		"Reasonix-darwin-arm64.zip",
 		"Reasonix-darwin-amd64.zip",
 		"Reasonix-darwin-universal.dmg",
-		"Reasonix-windows-amd64-installer.exe",
-		"Reasonix-windows-amd64-portable.zip", // portable download, not the updater channel
+		"Reasonix-windows-amd64.exe", // updater channel: one self-updating exe
+		"Reasonix-windows-amd64-installer.exe", // first-install convenience, not the channel
+		"Reasonix-windows-arm64.exe",
 		"Reasonix-windows-arm64-installer.exe",
-		"Reasonix-windows-arm64.zip", // portable download, not the updater channel
 		"Reasonix-linux-amd64.tar.gz",
 		"Reasonix-linux-amd64.deb",            // human download, not the updater channel
 		"Reasonix-linux-amd64.tar.gz.minisig", // must be skipped
@@ -99,7 +99,7 @@ func TestGenManifest(t *testing.T) {
 	if !ok {
 		t.Fatal("windows-amd64 missing")
 	}
-	wantURL := "https://github.com/keeyangyy/reasonix-wails/releases/download/desktop-v1.2.0/Reasonix-windows-amd64-installer.exe"
+	wantURL := "https://github.com/keeyangyy/reasonix-wails/releases/download/desktop-v1.2.0/Reasonix-windows-amd64.exe"
 	if win.URL != wantURL {
 		t.Fatalf("windows url = %q, want %q", win.URL, wantURL)
 	}
@@ -109,14 +109,14 @@ func TestGenManifest(t *testing.T) {
 	if win.SHA256 == "" || win.Size == 0 {
 		t.Fatalf("windows asset missing digest/size: %+v", win)
 	}
-	// The Windows updater channel is the per-arch -installer.exe; the portable .zip
-	// must not shadow the windows-arm64 key.
+	// The Windows updater channel is the bare self-updating exe; the installer
+	// must not shadow the key.
 	arm, ok := m.Platforms["windows-arm64"]
 	if !ok {
 		t.Fatal("windows-arm64 missing")
 	}
-	if !strings.HasSuffix(arm.URL, "/Reasonix-windows-arm64-installer.exe") {
-		t.Fatalf("windows-arm64 url = %q, want the installer, not the portable zip", arm.URL)
+	if !strings.HasSuffix(arm.URL, "/Reasonix-windows-arm64.exe") {
+		t.Fatalf("windows-arm64 url = %q, want the bare exe, not the installer", arm.URL)
 	}
 	// The Linux portable channel stays the .tar.gz; the co-located .deb lands
 	// only in native_packages so older clients keep resolving platforms["linux-amd64"].
@@ -140,10 +140,10 @@ func TestGenManifest(t *testing.T) {
 	if deb.Sig != deb.URL+".minisig" || deb.SHA256 == "" || deb.Size == 0 {
 		t.Fatalf("native linux asset incomplete: %+v", deb)
 	}
-	if len(m.Downloads) != 2 {
-		t.Fatalf("want 2 website downloads, got %d: %+v", len(m.Downloads), m.Downloads)
+	if len(m.Downloads) != 1 {
+		t.Fatalf("want 1 website download, got %d: %+v", len(m.Downloads), m.Downloads)
 	}
-	for _, name := range []string{"Reasonix-darwin-universal.dmg", "Reasonix-windows-amd64-portable.zip"} {
+	for _, name := range []string{"Reasonix-darwin-universal.dmg"} {
 		asset, ok := m.Downloads[name]
 		if !ok {
 			t.Fatalf("website download %q missing", name)

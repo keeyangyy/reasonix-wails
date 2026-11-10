@@ -17,47 +17,44 @@ func writePortableFixture(t *testing.T, dir, name, content string) {
 	}
 }
 
-func TestVerifyWindowsPortableVersionedLayout(t *testing.T) {
+func TestVerifyWindowsPortableSingleExeLayout(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("portable verification script requires a POSIX shell with GNU find")
+		t.Skip("portable verification script requires a POSIX shell")
 	}
 	verify := filepath.Join("..", "scripts", "verify-windows-portable.sh")
-	good := t.TempDir()
-	// versioned-v1 root entries
-	writePortableFixture(t, good, "reasonix-launcher.exe", "launcher")
-	writePortableFixture(t, good, "Reasonix.exe", "launcher")
-	ver := filepath.Join(good, "versions", "v1.20.0")
-	if err := os.MkdirAll(ver, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"reasonix-wails.exe", "reasonix-update-helper.exe"} {
-		writePortableFixture(t, ver, name, name)
-	}
-	if err := os.WriteFile(filepath.Join(good, "current.json"), []byte(`{
-  "schemaVersion": 1,
-  "activeVersion": "v1.20.0",
-  "activeDir": "versions/v1.20.0"
-}
-`), 0o644); err != nil {
+
+	// A plausible desktop build: PE magic and a size above the sanity floor.
+	dir := t.TempDir()
+	good := filepath.Join(dir, "Reasonix-windows-amd64.exe")
+	body := make([]byte, 11<<20)
+	body[0], body[1] = 'M', 'Z'
+	if err := os.WriteFile(good, body, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if out, err := exec.Command("bash", verify, good).CombinedOutput(); err != nil {
-		t.Fatalf("valid versioned portable failed: %v\n%s", err, out)
+		t.Fatalf("valid single-exe portable failed: %v\n%s", err, out)
 	}
 
-	// Flat Guard layout must be rejected.
-	flat := t.TempDir()
-	for _, name := range []string{
-		"reasonix-wails.exe",
-		"reasonix-guard.exe",
-		"reasonix-update-helper.exe",
-		"reasonix-launcher.exe",
-		"Reasonix.exe",
-	} {
-		writePortableFixture(t, flat, name, name)
+	// The old versioned tree must be rejected.
+	tree := t.TempDir()
+	treeExe := filepath.Join(tree, "Reasonix-windows-amd64.exe")
+	if err := os.WriteFile(treeExe, body, 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if out, err := exec.Command("bash", verify, flat).CombinedOutput(); err == nil {
-		t.Fatalf("flat portable with guard should fail, output=%s", out)
+	if err := os.MkdirAll(filepath.Join(tree, "versions", "v1.20.0"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("bash", verify, treeExe).CombinedOutput(); err == nil {
+		t.Fatalf("a versioned portable tree must fail, output=%s", out)
+	}
+
+	// A text stub is not a packaged build.
+	stub := filepath.Join(t.TempDir(), "Reasonix-windows-amd64.exe")
+	if err := os.WriteFile(stub, []byte("not a build"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("bash", verify, stub).CombinedOutput(); err == nil {
+		t.Fatalf("a stub executable must fail, output=%s", out)
 	}
 }
 
@@ -103,29 +100,30 @@ func TestDesktopPackagesPreserveNativePlatformLaunchers(t *testing.T) {
 		`!define REASONIX_UNINST_FINALIZE 'cmd.exe /C copy /Y "%1" "reasonix-uninstall.exe" >NUL'`,
 		`!uninstfinalize '${REASONIX_UNINST_FINALIZE}'`,
 		`File "/oname=uninstall.exe" "${ARG_REASONIX_SIGNED_UNINSTALLER}"`,
-		`StrCpy $R9 "$INSTDIR\versions\.installer-v${INFO_PRODUCTVERSION}-$R8"`,
-		`File "/oname=${REASONIX_LAYOUT_INSTALLER}" "${REASONIX_GUARD}"`,
-		`nsExec::ExecToLog /OEM`,
-		`Reasonix layout activator output:`,
-		`--activate-staging "$R9" --no-relaunch`,
-		`CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0`,
-		`CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0`,
+		`Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"`,
+		`CreateShortCut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" "" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" 0`,
+		`CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" "" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" 0`,
 		`StrCmp $ReasonixStageMode "1" reasonix_stage_payload`,
-		`File "/oname=${REASONIX_GUARD}" "${REASONIX_GUARD}"`,
+		`WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"`,
 	} {
 		if !strings.Contains(windows, want) {
-			t.Errorf("Windows installer missing versioned-layout contract %q", want)
+			t.Errorf("Windows installer missing single-exe contract %q", want)
 		}
 	}
-	if strings.Contains(windows, `FileOpen $0 "$INSTDIR\current.json" w`) ||
-		strings.Contains(windows, `SetOutPath "$INSTDIR\versions\v${INFO_PRODUCTVERSION}"`) {
-		t.Fatal("normal Windows installer must not write the live version or current.json in place")
+	// The single-exe install must not resurrect the versioned layout it replaces.
+	for _, unwanted := range []string{
+		`FileOpen $0 "$INSTDIR\current.json" w`,
+		`SetOutPath "$INSTDIR\versions\v${INFO_PRODUCTVERSION}"`,
+		`StrCpy $R9 "$INSTDIR\versions\.installer-v${INFO_PRODUCTVERSION}-$R8"`,
+		`--activate-staging "$R9" --no-relaunch`,
+		`nsExec::ExecToLog /OEM`,
+	} {
+		if strings.Contains(windows, unwanted) {
+			t.Errorf("Windows installer still publishes the versioned layout: %q", unwanted)
+		}
 	}
-	if strings.Contains(windows, `ExecWait '"$PLUGINSDIR\${REASONIX_LAYOUT_INSTALLER}"`) {
-		t.Fatal("Windows installer must not discard layout activator stdout/stderr")
-	}
-	if strings.Contains(windows, `CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\versions\v${INFO_PRODUCTVERSION}\${PRODUCT_EXECUTABLE}" 0`) ||
-		strings.Contains(windows, `CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\versions\v${INFO_PRODUCTVERSION}\${PRODUCT_EXECUTABLE}" 0`) {
-		t.Fatal("Windows shortcut icon must not point into a version directory that retention removes")
+	if strings.Contains(windows, `CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}"`) ||
+		strings.Contains(windows, `CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}"`) {
+		t.Fatal("Windows shortcuts must target the single installed exe, not a launcher")
 	}
 }

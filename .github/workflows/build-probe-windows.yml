@@ -93,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: reasonix-windows-amd64-test-portable-${{ github.event.inputs.version || format('rn{0}', github.run_number) }}
-          path: dist/Reasonix-windows-amd64.zip
+          path: dist/Reasonix-windows-amd64.exe
           if-no-files-found: error
           retention-days: 14
 

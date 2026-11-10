@@ -139,11 +139,7 @@ ShowInstDetails show # This will always show the installation details.
     WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "${INFO_COMPANYNAME}"
     WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
     WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
-    !if /FileExists "${REASONIX_LAUNCHER}"
-    WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${REASONIX_LAUNCHER}"
-    !else
-    WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    !endif
+    WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"
     WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
     WriteRegStr HKCU "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
     # Persist the resolved install path so a subsequent update picks it up
@@ -340,11 +336,10 @@ Section
     !insertmacro wails.setShellContext
 
     ; /REASONIXSTAGE=1: flat six-member payload for 1.18–1.19.1 helpers (and
-    ; the new helper's staging extract). Do not write shortcuts/uninstaller.
-    ; Normal install: versioned-v1 layout under versions/v${INFO_PRODUCTVERSION}/
-    ; with a permanent thin launcher at InstallRoot. Guard is only present in
-    ; STAGE payloads (as the one-shot legacy migrator) and is not persisted on
-    ; a normal install.
+    ; older helpers' staging extract). Do not write shortcuts/uninstaller.
+    ; Normal install: one exe at InstallRoot (see reasonix_normal_install).
+    ; Guard/launcher/update helper survive only in STAGE payloads so an older
+    ; client can still stage a release; a normal install never persists them.
     StrCmp $ReasonixStageMode "1" reasonix_stage_payload
     !insertmacro wails.webview2runtime
     Call reasonix.waitForExecutableUnlock
@@ -371,61 +366,24 @@ reasonix_stage_payload:
     Goto reasonix_section_done
 
 reasonix_normal_install:
-    ; Extract into an install-local temporary directory, then let the signed Go
-    ; activator validate the complete release unit, transactionally publish the
-    ; version/root entries, and strictly atomically replace current.json last.
-    ; The normal/recovery installer therefore shares the same commit protocol as
-    ; automatic updates instead of writing live files or current.json in place.
-    System::Call 'kernel32::GetCurrentProcessId() i .R8'
-    CreateDirectory "$INSTDIR\versions"
-    StrCpy $R9 "$INSTDIR\versions\.installer-v${INFO_PRODUCTVERSION}-$R8"
-    RMDir /r "$R9"
-    CreateDirectory "$R9"
-    SetOutPath "$R9"
-    !insertmacro wails.files
-    !if /FileExists "${REASONIX_UPDATE_HELPER}"
-    File "/oname=${REASONIX_UPDATE_HELPER}" "${REASONIX_UPDATE_HELPER}"
-    !else
-    !warning "${REASONIX_UPDATE_HELPER} was not found; Windows auto-update will fail safely until the helper is installed."
-    !endif
-    !if /FileExists "${REASONIX_LAUNCHER}"
-    File "/oname=${REASONIX_LAUNCHER}" "${REASONIX_LAUNCHER}"
-    !endif
-
-    SetOutPath "$PLUGINSDIR"
-    !if /FileExists "${REASONIX_GUARD}"
-    File "/oname=${REASONIX_LAYOUT_INSTALLER}" "${REASONIX_GUARD}"
-    !else
-    !error "${REASONIX_GUARD} was not found; normal installs require the signed layout activator."
-    !endif
-    DetailPrint "Reasonix layout activator output:"
-    nsExec::ExecToLog /OEM '"$PLUGINSDIR\${REASONIX_LAYOUT_INSTALLER}" --install-root "$INSTDIR" --version "v${INFO_PRODUCTVERSION}" --activate-staging "$R9" --no-relaunch'
-    Pop $0
-    StrCmp $0 "0" reasonix_layout_activated
-    DetailPrint "Reasonix layout activation failed with exit code $0; the previous version remains active."
-    RMDir /r "$R9"
-    SetErrorLevel 1
-    Abort "Reasonix could not activate the verified release. The previous version was left unchanged."
-
-reasonix_layout_activated:
-    RMDir /r "$R9"
+    ; Single-exe install: one self-contained $INSTDIR\Reasonix.exe. It carries
+    ; the embedded frontend and replaces itself in place on update, so there is
+    ; no launcher, version directory, pointer file or update helper to publish.
+    ; The old multi-file layout (launcher / guard / helper / versions) is
+    ; removed here so an upgrade never leaves two release units behind.
     SetOutPath "$INSTDIR"
+    !insertmacro wails.files
+    Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}"
 
-    ; Remove flat leftovers from prior 1.18–1.19 installs when overwriting.
-    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    Delete "$INSTDIR\${REASONIX_GUARD}"
     Delete "$INSTDIR\${REASONIX_UPDATE_HELPER}"
+    Delete "$INSTDIR\${REASONIX_GUARD}"
+    Delete "$INSTDIR\${REASONIX_LAUNCHER}"
+    Delete "$INSTDIR\current.json"
+    Delete "$INSTDIR\.reasonix-activate.lock"
+    RMDir /r "$INSTDIR\versions"
 
-    !if /FileExists "${REASONIX_LAUNCHER}"
-    ; Keep both target and icon on the stable launcher. Pointing IconLocation at
-    ; versions\vX\reasonix-wails.exe leaves a blank shortcut as soon as version
-    ; retention removes that directory after a later update.
-    CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0
-    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_LAUNCHER}" "" "$INSTDIR\${REASONIX_LAUNCHER}" 0
-    !else
-    CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\versions\v${INFO_PRODUCTVERSION}\${PRODUCT_EXECUTABLE}"
-    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\versions\v${INFO_PRODUCTVERSION}\${PRODUCT_EXECUTABLE}"
-    !endif
+    CreateShortCut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" "" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" 0
+    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" "" "$INSTDIR\${REASONIX_PORTABLE_ENTRY}" 0
 
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols

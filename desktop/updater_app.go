@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -16,6 +17,12 @@ import (
 	"reasonix/internal/installlayout"
 	"reasonix/internal/repair"
 )
+
+// updateRelaunchParentPIDEnv carries the exiting process's PID into the
+// relaunched single-exe build. Wails' single-instance lock would otherwise
+// treat the new process as a second instance and quit it, so the child waits
+// for the parent to exit before it starts Wails.
+const updateRelaunchParentPIDEnv = "REASONIX_UPDATE_RELAUNCH_PARENT_PID"
 
 // updater_app.go is the auto-updater's bound command surface — the App methods the
 // frontend calls — mirroring settings_app.go's "one file per concern" split. The
@@ -385,7 +392,8 @@ func (a *App) installPortableUpdate(requestID string, meta *cachedUpdate, data [
 	a.emitProgress(requestID, meta.Channel, meta.Version, "installing", meta.Size, meta.Size, "")
 	var preparedUpdate *repair.UpdateTransaction
 	versionedPortable := (runtime.GOOS == "windows" || runtime.GOOS == "linux") && installlayout.HasCurrent(currentInstallDir())
-	if (runtime.GOOS == "windows" || runtime.GOOS == "linux") && !versionedPortable {
+	singleExe := runtime.GOOS == "windows" && !versionedPortable && singleExeInstall()
+	if (runtime.GOOS == "windows" || runtime.GOOS == "linux") && !versionedPortable && !singleExe {
 		// Back up the complete legacy release unit (main binary plus launcher
 		// and migration siblings) so rollback never leaves a mixed-version
 		// install. Deb installs deliberately skip this because package-manager
@@ -445,11 +453,20 @@ func (a *App) installPortableUpdate(requestID string, meta *cachedUpdate, data [
 	a.emitProgress(requestID, meta.Channel, meta.Version, "done", meta.Size, meta.Size, "")
 
 	// Persist the conversation and stop subprocesses before handing off (same as
-	// shutdown). On Linux the binary is now replaced, so relaunch it; on Windows and
-	// macOS the installer/helper we launched takes over once we exit.
+	// shutdown). On Linux and on single-exe Windows installs the binary is now
+	// replaced, so relaunch it; on versioned Windows and macOS the installer or
+	// helper we launched takes over once we exit.
 	a.shutdown(a.ctx)
 	if runtime.GOOS == "linux" {
 		_ = relaunchThroughLauncher()
+	}
+	if singleExe {
+		// The new process must not start while this one still holds the
+		// single-instance lock, or Wails treats it as a second instance and
+		// quits it. Hand our PID over so it waits for us to exit first.
+		_ = relaunchThroughLauncherWithEnv(map[string]string{
+			updateRelaunchParentPIDEnv: strconv.Itoa(os.Getpid()),
+		})
 	}
 	os.Exit(0)
 	return nil

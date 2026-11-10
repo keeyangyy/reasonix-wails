@@ -17,22 +17,25 @@ reasonix crash report   # when available in your build
 - **doctor repair** applies safe, explicit repairs the user opts into.
 - Crash reports remain opt-in and never force a degraded product mode.
 
-## Install layout (v1.20+)
+## Install layout
 
-Windows and Linux use a versioned install root:
+The desktop ships as **one self-contained executable**:
 
 ```text
-InstallRoot/
-  reasonix-launcher[.exe]
-  Reasonix.exe                 # Windows portable / Start Menu alias
-  current.json
-  versions/<version>/
-    reasonix-desktop[.exe]
-    reasonix-update-helper[.exe]
+InstallRoot/                    # portable: anywhere the user unzipped it
+  Reasonix.exe                  # installer: %LOCALAPPDATA%\Programs\Reasonix-Wails
 ```
 
-The thin launcher only reads `current.json` and starts the active desktop. It
-never selects a previous version or enters Safe Mode.
+It carries the embedded frontend and updates itself in place: the new build is
+downloaded and verified, the running file is renamed aside
+(`Reasonix.exe.reasonix-update-aside-<id>`), the download takes its name, and
+the app restarts. A failed swap restores the previous file, so an install never
+ends up half-updated. No launcher, version directory, pointer file or update
+helper is involved.
+
+An older install that still has `reasonix-launcher.exe`, `current.json` or
+`versions/` is the previous multi-file layout. Running the current installer
+once replaces it with the single exe and removes those leftovers.
 
 ## Upgrading from 1.18–1.19.x
 
@@ -69,10 +72,9 @@ not finished (`pending update already exists`, `awaiting startup health`, or
    `Reasonix.app.reasonix-update-backup` that TCC will not let the app remove
    may still require the official installer path.
 
-If the Windows installer reports `Reasonix layout activation failed`, expand
-the installer details and copy the lines under `Reasonix layout activator
-output:`. Current installers preserve the activator's concrete error instead of
-showing only exit code 1.
+If the Windows installer reports that Reasonix is still running, close Reasonix
+fully and run the installer again. The installer waits about a minute for the
+executable to be released before giving up.
 
 ## macOS
 

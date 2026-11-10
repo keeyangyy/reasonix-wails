@@ -224,12 +224,15 @@ func TestDesktopBuildScriptCompilesAndPackagesWindowsUpdateHelper(t *testing.T) 
 	packager := string(packageData)
 	for _, want := range []string{
 		`cp "$PAYLOAD/$UPDATE_HELPER" "$INSTALLER_DIR/$UPDATE_HELPER"`,
-		`cp "$PAYLOAD/$UPDATE_HELPER" "$portable_staging/versions/$version_label/$UPDATE_HELPER"`,
-		`"$ROOT/scripts/verify-windows-portable.sh" "$portable_staging"`,
+		`cp "$PAYLOAD/$BINNAME.exe" "$dist_exe"`,
+		`"$ROOT/scripts/verify-windows-portable.sh" "$dist_exe"`,
 	} {
 		if !strings.Contains(packager, want) {
 			t.Fatalf("package-windows-desktop.sh missing %q", want)
 		}
+	}
+	if strings.Contains(packager, "portable_staging") {
+		t.Fatal("package-windows-desktop.sh must not rebuild the versioned portable tree")
 	}
 }
 

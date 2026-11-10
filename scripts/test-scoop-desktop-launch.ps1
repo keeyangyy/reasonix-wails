@@ -59,22 +59,11 @@ try {
         throw "Refusing to overwrite an existing shortcut: $shortcutPath"
     }
 
-    New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "versions\$activeVersion") | Out-Null
+    New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $scoopHome) | Out-Null
 
-    $launcherPath = Join-Path $packageRoot "reasonix-launcher.exe"
-    Push-Location $repoRoot
-    try {
-        Invoke-Native -FilePath "go" -ArgumentList @(
-            "build", "-trimpath", "-ldflags", "-s -w -H windowsgui -X main.version=$appVersion",
-            "-o", $launcherPath, "./cmd/reasonix-launcher"
-        )
-    } finally {
-        Pop-Location
-    }
-
     $fixtureSource = Join-Path $fixtureRoot "desktop-fixture.go"
-    $desktopPath = Join-Path $packageRoot "versions\$activeVersion\reasonix-wails.exe"
+    $desktopPath = Join-Path $packageRoot "Reasonix.exe"
     Write-Utf8NoBom -Path $fixtureSource -Content @'
 package main
 
@@ -100,14 +89,6 @@ func main() {
     Invoke-Native -FilePath "go" -ArgumentList @(
         "build", "-trimpath", "-ldflags", "-s -w -H windowsgui", "-o", $desktopPath, $fixtureSource
     )
-
-    Write-Utf8NoBom -Path (Join-Path $packageRoot "current.json") -Content @"
-{
-  "schemaVersion": 1,
-  "activeVersion": "$activeVersion",
-  "activeDir": "versions/$activeVersion"
-}
-"@
 
     Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $archivePath -CompressionLevel Optimal
     $archiveHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
@@ -150,7 +131,7 @@ func main() {
   "url": "$archiveUrl",
   "hash": "$archiveHash",
   "shortcuts": [
-    ["reasonix-launcher.exe", "$shortcutName", "launch --detach"]
+    ["Reasonix.exe", "$shortcutName"]
   ]
 }
 "@
@@ -178,11 +159,11 @@ func main() {
     }
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($shortcutPath)
-    $expectedTarget = Join-Path $currentPath "reasonix-launcher.exe"
+    $expectedTarget = Join-Path $currentPath "Reasonix.exe"
     if (![string]::Equals($shortcut.TargetPath, $expectedTarget, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unexpected shortcut target. Expected '$expectedTarget', got '$($shortcut.TargetPath)'."
     }
-    if ($shortcut.Arguments -ne "launch --detach") {
+    if (![string]::IsNullOrEmpty($shortcut.Arguments)) {
         throw "Unexpected shortcut arguments: '$($shortcut.Arguments)'."
     }
 
@@ -197,7 +178,7 @@ func main() {
 
     $launch = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
     $versionPath = Join-Path $scoopRoot "apps\$appName\$appVersion"
-    $expectedDesktop = Join-Path $versionPath "versions\$activeVersion\reasonix-wails.exe"
+    $expectedDesktop = Join-Path $versionPath "Reasonix.exe"
     if (![string]::Equals($launch.executable, $expectedDesktop, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unexpected desktop executable. Expected '$expectedDesktop', got '$($launch.executable)'."
     }

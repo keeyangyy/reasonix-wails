@@ -360,3 +360,107 @@ func windowsUpdateHelperStartError(err error) error {
 	}
 	return fmt.Errorf("start Windows update helper: process creation failed")
 }
+
+// windowsFileHeldOpen reports whether Windows refused a rename because another
+// process still holds the file open: antivirus scanning it, a sync client
+// reading it, or the loader mapping the running image for a moment longer.
+func windowsFileHeldOpen(err error) bool {
+	return errors.Is(err, windows.ERROR_SHARING_VIOLATION) ||
+		errors.Is(err, windows.ERROR_LOCK_VIOLATION) ||
+		errors.Is(err, windows.ERROR_ACCESS_DENIED)
+}
+
+// singleExeAsideWaits are the pauses between tries at renaming the running
+// executable aside. Windows allows a running image to be renamed but not
+// overwritten, so a single-exe update can succeed while security software
+// holds the file briefly. The sequence matches the waits magpie uses.
+var singleExeAsideWaits = []time.Duration{
+	100 * time.Millisecond,
+	200 * time.Millisecond,
+	400 * time.Millisecond,
+	800 * time.Millisecond,
+	1500 * time.Millisecond,
+	1500 * time.Millisecond,
+	1500 * time.Millisecond,
+}
+
+// applyWindowsSingleExe replaces the running executable with a downloaded one
+// in place. The process keeps running from the old image, which the repair
+// transaction renames aside, and the staged download takes its name. A failed
+// publish restores the previous file, so the install never ends up as a
+// mixed-version tree. The caller relaunches and exits.
+func applyWindowsSingleExe(downloadPath, expectedSHA256, targetVersion string) error {
+	exe := currentExecutablePath()
+	if exe == "" {
+		return fmt.Errorf("update: current executable path is unavailable")
+	}
+	downloadPath = strings.TrimSpace(downloadPath)
+	if downloadPath == "" {
+		return fmt.Errorf("update: downloaded executable path is empty")
+	}
+	data, err := os.ReadFile(downloadPath)
+	if err != nil {
+		return fmt.Errorf("update: read downloaded executable: %w", err)
+	}
+	sum := sha256.Sum256(data)
+	if expectedSHA256 != "" && !strings.EqualFold(hex.EncodeToString(sum[:]), expectedSHA256) {
+		return fmt.Errorf("update: downloaded executable checksum changed")
+	}
+	prepared, err := repair.PrepareFileUpdate(version, targetVersion, exe)
+	if err != nil {
+		return fmt.Errorf("update: prepare single-exe transaction: %w", err)
+	}
+	claimed, releaseClaim, err := repair.ClaimPendingFileUpdateExact(
+		prepared.ToVersion,
+		prepared.CreatedAt,
+		repair.UpdateTransactionID(prepared),
+		exe,
+		[]string{exe},
+		2*time.Minute,
+	)
+	if err != nil {
+		return fmt.Errorf("update: claim single-exe transaction: %w", err)
+	}
+	released := false
+	defer func() {
+		if !released {
+			releaseClaim()
+		}
+	}()
+	receipt, publishErr := publishSingleExeWithRetry(claimed, exe, data)
+	// Cancel takes the pending lock itself; the claim must be released first.
+	releaseClaim()
+	released = true
+	if publishErr != nil {
+		// The publish restored the previous image before failing, so the
+		// transaction holds nothing to roll back; retire it rather than leave a
+		// pending update that startup would offer to "recover".
+		if cancelErr := repair.CancelPendingUpdateExact(claimed); cancelErr != nil {
+			return errors.Join(publishErr, fmt.Errorf("update: cancel single-exe transaction: %w", cancelErr))
+		}
+		return publishErr
+	}
+	if _, err := repair.RecordClaimedFileUpdateInstalled(claimed, receipt); err != nil {
+		return fmt.Errorf("update: record installed single exe: %w", err)
+	}
+	return nil
+}
+
+func publishSingleExeWithRetry(
+	claimed *repair.UpdateTransaction,
+	exe string,
+	data []byte,
+) (repair.FileUpdateInstallReceipt, error) {
+	var receipt repair.FileUpdateInstallReceipt
+	var err error
+	for attempt := 0; ; attempt++ {
+		receipt, err = repair.PublishClaimedFileUpdateMemberExact(claimed, exe, data, 0o700)
+		if err == nil {
+			return receipt, nil
+		}
+		if attempt >= len(singleExeAsideWaits) || !windowsFileHeldOpen(err) {
+			return receipt, fmt.Errorf("update: publish single exe: %w", err)
+		}
+		time.Sleep(singleExeAsideWaits[attempt])
+	}
+}

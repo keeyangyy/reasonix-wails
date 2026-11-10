@@ -1182,6 +1182,11 @@ func applyWindowsFile(path, expectedSHA256, targetVersion string, prepared *repa
 			targetVersion,
 		)
 	}
+	// Single-exe installs replace the running image in place. There is no
+	// helper to hand off to and no NSIS payload to stage.
+	if singleExeInstall() {
+		return applyWindowsSingleExe(path, expectedSHA256, targetVersion)
+	}
 	if prepared == nil {
 		return fmt.Errorf("update: prepared transaction is unavailable")
 	}
@@ -1192,6 +1197,38 @@ func applyWindowsFile(path, expectedSHA256, targetVersion string, prepared *repa
 		currentLauncherPath(),
 		prepared,
 	)
+}
+
+// singleExeInstall reports whether this install is one executable in one
+// directory: no launcher, no update helper, no versioned pointer. That is the
+// layout both the single-exe portable archive and the single-exe NSIS install
+// create.
+func singleExeInstall() bool {
+	return isSingleExeInstall(currentExecutablePath())
+}
+
+func isSingleExeInstall(exe string) bool {
+	if exe == "" {
+		return false
+	}
+	dir := filepath.Dir(exe)
+	present := 0
+	for _, name := range []string{
+		installlayout.DesktopBinaryName(),
+		installlayout.LauncherBinaryName(),
+		installlayout.PortableAliasName(),
+		installlayout.UpdateHelperBinaryName(),
+		"reasonix-guard.exe",
+	} {
+		if name == "" {
+			continue
+		}
+		info, err := os.Lstat(filepath.Join(dir, name))
+		if err == nil && info.Mode().IsRegular() {
+			present++
+		}
+	}
+	return present <= 1
 }
 
 func currentExecutablePath() string {

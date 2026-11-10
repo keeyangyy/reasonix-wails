@@ -15,22 +15,22 @@ reasonix crash report   # 视构建是否包含而定
 - **doctor repair**：在用户明确选择后做安全修复。
 - 崩溃上报仍为用户授权后发送，且不会改变下次启动模式。
 
-## 安装布局（v1.20+）
+## 安装布局
 
-Windows / Linux 使用版本目录：
+桌面端只发**一个自包含的可执行文件**：
 
 ```text
-InstallRoot/
-  reasonix-launcher[.exe]
-  Reasonix.exe                 # Windows 便携/开始菜单别名
-  current.json
-  versions/<version>/
-    reasonix-desktop[.exe]
-    reasonix-update-helper[.exe]
+InstallRoot/                    # 便携版：解压到任意位置
+  Reasonix.exe                  # 安装版：%LOCALAPPDATA%\Programs\Reasonix-Wails
 ```
 
-薄启动器只读取 `current.json` 并启动当前 Desktop，**不会**自动选旧版本或进入
-安全模式。
+界面已内嵌在这个文件里；它原地自我更新：下载并校验新版本 → 把正在运行的旧文件
+改名让位（`Reasonix.exe.reasonix-update-aside-<id>`）→ 新文件顶替该名字 → 重启。
+替换失败会把旧文件放回去，不会留下半更新状态。全程没有启动器、版本目录、指针文件
+或更新助手。
+
+仍带 `reasonix-launcher.exe`、`current.json` 或 `versions/` 的旧安装属于上一代多文件
+布局：用当前安装包覆盖安装一次，就会换成单 exe 并清掉这些残留。
 
 ## 从 1.18–1.19.x 升级
 
@@ -56,9 +56,8 @@ InstallRoot/
 4. macOS 还需在「系统设置 → 隐私与安全性 → App 管理」中允许 Reasonix；若
    `Reasonix.app.reasonix-update-backup` 因 TCC 无法删除，请改走官方安装包覆盖路径。
 
-如果 Windows 安装器显示 `Reasonix layout activation failed`，请展开安装详情并复制
-`Reasonix layout activator output:` 下方的内容。当前安装器会保留 activator 的具体错误，
-不再只显示 exit code 1。
+如果 Windows 安装器提示 Reasonix 仍在运行，请完全退出 Reasonix 后重新运行安装器。
+安装器会等待大约一分钟让可执行文件释放，超时才会放弃。
 
 ## macOS
 
