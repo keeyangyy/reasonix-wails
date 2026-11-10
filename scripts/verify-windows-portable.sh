@@ -1,101 +1,47 @@
 #!/usr/bin/env bash
-# Verify the Windows portable release unit (versioned-v1) before packaging.
-# This must run on the Windows staging directory: NTFS treats file names
-# case-insensitively, so Reasonix.exe and reasonix.exe silently overwrite each
-# other even though a source-level packaging test sees two different strings.
+# Verify the Windows portable release unit before publishing: it must be one
+# self-contained executable, not a directory tree. The artifact is the same
+# binary the NSIS installer places at InstallRoot, and it replaces itself in
+# place on update, so a stray companion file would silently become a second
+# release member.
 set -euo pipefail
 
-staging="${1:?usage: verify-windows-portable.sh STAGING_DIR}"
-[ -d "$staging" ] || { echo "Windows portable staging directory is missing: $staging" >&2; exit 1; }
+artifact="${1:?usage: verify-windows-portable.sh PATH_TO_EXE}"
+[ -f "$artifact" ] || { echo "Windows portable executable is missing: $artifact" >&2; exit 1; }
+[ -s "$artifact" ] || { echo "Windows portable executable is empty: $artifact" >&2; exit 1; }
 
-# Root entry points for versioned-v1 (no Guard, no flat desktop/helper).
-required_root=(
-	"Reasonix.exe"
-	"reasonix-launcher.exe"
-	"current.json"
-)
-
-for expected in "${required_root[@]}"; do
-	[ -e "$staging/$expected" ] || {
-		echo "Windows portable root entry is missing: $expected" >&2
-		exit 1
-	}
-done
-
-# Exactly one active version directory under versions/v*.
-version_dirs=()
-if [ -d "$staging/versions" ]; then
-	while IFS= read -r d; do
-		version_dirs+=("$d")
-	done < <(ls -1d "$staging/versions"/v* 2>/dev/null || true)
-fi
-if [ "${#version_dirs[@]}" -lt 1 ]; then
-	echo "Windows portable versions/ tree is missing an active version directory" >&2
+# A packaged desktop build is tens of megabytes; a few kilobytes means the
+# build step copied the wrong file (a text stub or a leftover marker).
+size=$(wc -c <"$artifact" | tr -d '[:space:]')
+if [ "$size" -lt 10485760 ]; then
+	echo "Windows portable executable is implausibly small: $size bytes" >&2
 	exit 1
 fi
 
-# current.json must point at a real version directory.
-active_dir=$(python3 - <<'PY' "$staging/current.json" 2>/dev/null || true
-import json,sys
-p=sys.argv[1]
-with open(p) as f:
-    d=json.load(f)
-print(d.get("activeDir",""))
-PY
-)
-if [ -z "$active_dir" ]; then
-	# Fallback without python: require versions/v* with required members
-	active_dir=""
-	for d in "${version_dirs[@]}"; do
-		base=$(basename "$d")
-		if [ -f "$d/reasonix-wails.exe" ] && [ -f "$d/reasonix-update-helper.exe" ]; then
-			active_dir="versions/$base"
-			break
-		fi
-	done
-fi
-[ -n "$active_dir" ] || {
-	echo "Windows portable current.json activeDir is empty or unreadable" >&2
-	exit 1
-}
-version_path="$staging/$active_dir"
-[ -d "$version_path" ] || {
-	echo "Windows portable activeDir does not exist: $active_dir" >&2
-	exit 1
-}
-for name in reasonix-wails.exe reasonix-update-helper.exe; do
-	[ -f "$version_path/$name" ] || {
-		echo "Windows portable version member is missing: $active_dir/$name" >&2
-		exit 1
-	}
-done
-
-# Guard must not persist in a normal portable layout.
-if [ -e "$staging/reasonix-guard.exe" ] || [ -e "$staging/reasonix-wails.exe" ]; then
-	echo "Windows portable must not ship flat reasonix-guard.exe or reasonix-wails.exe at InstallRoot" >&2
+# Windows PE images start with 'MZ'. Checking it here catches an archive, a
+# launcher stub or a corrupted copy before it reaches users.
+magic=$(od -An -tx1 -N2 "$artifact" | tr -d '[:space:]')
+if [ "$magic" != "4d5a" ]; then # "MZ"
+	echo "Windows portable executable is not a PE image (magic=$magic)" >&2
 	exit 1
 fi
 
-# Reasonix.exe is the portable alias of the thin launcher.
-cmp -s "$staging/Reasonix.exe" "$staging/reasonix-launcher.exe" || {
-	echo "Reasonix.exe is not the packaged GUI launcher" >&2
+# The layout is one file. Refuse an artifact that sits in a versioned tree, so
+# a stale packaging pass cannot publish the old multi-file structure under the
+# new name.
+dir=$(dirname "$artifact")
+if [ -f "$dir/current.json" ] || [ -d "$dir/versions" ]; then
+	echo "Windows portable executable must not ship beside current.json/versions" >&2
 	exit 1
-}
+fi
 
-# Case-insensitive collision check among root exes.
-actual=()
-for path in "$staging"/*.exe; do
-	[ -f "$path" ] || continue
-	name="${path##*/}"
-	folded=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
-	if [ "${#actual[@]}" -gt 0 ]; then
-		for previous in "${actual[@]}"; do
-			previous_folded=$(printf '%s' "$previous" | tr '[:upper:]' '[:lower:]')
-			if [ "$folded" = "$previous_folded" ]; then
-				echo "Windows portable names collide case-insensitively: $previous and $name" >&2
-				exit 1
-			fi
-		done
-	fi
-	actual+=("$name")
-done
+base=$(basename "$artifact")
+case "$base" in
+*.exe) ;;
+*)
+	echo "Windows portable executable must use an .exe name, got $base" >&2
+	exit 1
+	;;
+esac
+
+echo "==> Windows portable executable verified: $base ($size bytes)"

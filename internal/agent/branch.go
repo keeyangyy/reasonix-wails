@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -36,7 +37,11 @@ type BranchMeta struct {
 	TopicID          string    `json:"topic_id,omitempty"`
 	TopicTitle       string    `json:"topic_title,omitempty"`
 	CustomTitle      string    `json:"custom_title,omitempty"`
-	Model            string    `json:"model,omitempty"`
+	// Archived is written by the Studio line and must never be cleared here, or
+	// the conversation reappears in that line's sidebar. This build has no
+	// archive UI, so it only honours the flag.
+	Archived bool   `json:"archived,omitempty"`
+	Model    string `json:"model,omitempty"`
 	// Effort is the session-scoped reasoning effort override (/effort level).
 	// Empty means "auto" (the provider default). Session ownership is what keeps
 	// a conversation switch from reviving a stale tab-level selection.
@@ -350,6 +355,15 @@ func saveBranchMetaContext(ctx context.Context, sessionPath string, m BranchMeta
 	if err != nil {
 		return err
 	}
+	// Re-read the raw sidecar and keep the keys this struct does not model, so a
+	// save from this line never erases the other line's markers (archived,
+	// pinned, superseded, or anything a newer writer adds).
+	if raw, rawErr := fileencoding.ReadFileUTF8(metaPath); rawErr == nil {
+		if merged, ok := preserveUnmodeledBranchMetaFields(b, raw); ok {
+			b = merged
+		}
+	}
+	b = bytes.TrimRight(b, "\n")
 	b = append(b, '\n')
 	return atomicWriteFileContext(ctx, metaPath, ".branch.*.tmp", "branch-meta", b, 0o600, false)
 }
@@ -358,6 +372,10 @@ func preserveBranchMetaPersistence(next *BranchMeta, existing BranchMeta) {
 	if next == nil {
 		return
 	}
+	// This build never clears the archive flag on purpose: a caller-built struct
+	// carries Archived=false, and saving it would unarchive the conversation in
+	// the Studio sidebar on every rename or auto-title.
+	next.Archived = next.Archived || existing.Archived
 	next.DismissedTodoBatches = MergeDismissedTodoBatches(existing.DismissedTodoBatches, next.DismissedTodoBatches)
 	if existing.Revision > next.Revision {
 		next.Revision = existing.Revision

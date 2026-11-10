@@ -1182,6 +1182,11 @@ func applyWindowsFile(path, expectedSHA256, targetVersion string, prepared *repa
 			targetVersion,
 		)
 	}
+	// Single-exe installs replace the running image in place. There is no
+	// helper to hand off to and no NSIS payload to stage.
+	if singleExeInstall() {
+		return applyWindowsSingleExe(path, expectedSHA256, targetVersion)
+	}
 	if prepared == nil {
 		return fmt.Errorf("update: prepared transaction is unavailable")
 	}

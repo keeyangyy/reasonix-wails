@@ -593,7 +593,7 @@ var ChineseTraditional = Messages{
 設定：
   優先順序：flag > ./reasonix.toml > <Reasonix home>/config.toml > 內建預設值
   金鑰透過 api_key_env 從環境變數注入（如 DEEPSEEK_API_KEY）。
-  執行 'reasonix setup' 生成設定；詳見 docs/SPEC.md。
+  執行 'reasonix setup' 生成設定；詳見 docs/spec/SPEC.md。
 `,
 	RenameUsage:                "用法：/rename <新名稱>  或  /rename <序號> <新名稱>",
 	RenameNoSession:            "當前沒有活躍會話可重新命名",

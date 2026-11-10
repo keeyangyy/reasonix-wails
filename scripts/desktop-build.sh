@@ -5,8 +5,14 @@
 #
 # Output lands in <repo>/dist/ with stable, platform-keyed names that
 # desktop/cmd/sign's `manifest` subcommand maps back to update.PlatformKey:
-#   Windows: Reasonix-windows-<arch>-installer.exe       (NSIS per-user installer; updater channel)
-#            Reasonix-windows-<arch>.zip                 (portable human download)
+#   Windows: Reasonix-windows-<arch>.exe                 (single-exe updater channel)
+#            Reasonix-windows-<arch>-installer.exe       (NSIS per-user first install)
+#
+# The portable release is one self-contained exe: the desktop binary under its
+# product name carries the embedded frontend and replaces itself in place on
+# update, so no launcher, version directory, pointer file or update helper is
+# shipped. The installer only performs the first install and puts the same exe
+# at InstallRoot.
 #
 # Usage: scripts/desktop-build.sh windows/<arch> <version> [channel]
 #   e.g. scripts/desktop-build.sh windows/amd64 v0.1.0

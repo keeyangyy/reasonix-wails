@@ -65,3 +65,60 @@ func (c *Catalog) HasWorkspaceRecords(ctx context.Context, scope, workspaceRoot 
 		scope, c.workspaceRootKey(scope, workspaceRoot)).Scan(&n)
 	return err == nil && n > 0
 }
+
+// DirectoryProjectionFresh reports whether the projected directory signature
+// still matches what the directory holds now. A projection that is behind the
+// disk has no opinion about which topics own a conversation: it would call a
+// freshly written session "missing" simply because no scan has run since.
+func (c *Catalog) DirectoryProjectionFresh(ctx context.Context, path string) (bool, error) {
+	if c == nil || c.db == nil {
+		return false, nil
+	}
+	path = cleanCatalogAccessPath(path)
+	if path == "" {
+		return false, nil
+	}
+	var signature, state string
+	err := c.db.QueryRowContext(ctx, `SELECT signature,state FROM catalog_directories WHERE path_key=?`,
+		c.pathKey(path)).Scan(&signature, &state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if state != "ready" {
+		return false, nil
+	}
+	current, err := directorySignature(path)
+	if err != nil {
+		return false, err
+	}
+	return current == signature, nil
+}
+
+// TopicsWithSessions reports every topic of a workspace that still owns at
+// least one projected session. Desktop uses one call per sidebar read instead
+// of asking about each topic row in turn.
+func (c *Catalog) TopicsWithSessions(ctx context.Context, scope, workspaceRoot string) (map[string]struct{}, error) {
+	out := map[string]struct{}{}
+	if c == nil || c.db == nil {
+		return out, nil
+	}
+	scope, workspaceRoot = normalizeScope(scope, workspaceRoot)
+	rows, err := c.db.QueryContext(ctx, `SELECT DISTINCT topic_id FROM catalog_sessions
+		WHERE scope=? AND workspace_root_key=? AND missing_since=0 AND topic_id<>''`,
+		scope, c.workspaceRootKey(scope, workspaceRoot))
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var topicID string
+		if err := rows.Scan(&topicID); err != nil {
+			return out, err
+		}
+		out[topicID] = struct{}{}
+	}
+	return out, rows.Err()
+}

@@ -90,7 +90,7 @@ jobs:
         with:
           name: reasonix-windows-amd64-${{ inputs.version }}
           path: |
-            dist/Reasonix-windows-amd64.zip
+            dist/Reasonix-windows-amd64.exe
             dist/Reasonix-windows-amd64-installer.exe
             dist/reasonix-cli-windows-amd64.exe
           if-no-files-found: error

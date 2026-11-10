@@ -23,7 +23,7 @@ func NewCacheSessionID() string { return "reasonix-" + rand.Text() }
 
 // NewClientIdentityHeaders groups immutable transport identity by client lifetime.
 func NewClientIdentityHeaders() http.Header {
-	return http.Header{"User-Agent": []string{"Reasonix"}, "X-Opencode-Session": []string{NewCacheSessionID()}}
+	return http.Header{"User-Agent": []string{"Reasonix-Wails"}, "X-Opencode-Session": []string{NewCacheSessionID()}}
 }
 
 // ApplyClientHeaders identifies the client on every wire adapter: the opencode

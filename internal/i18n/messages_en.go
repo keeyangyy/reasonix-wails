@@ -652,6 +652,6 @@ Examples:
 Configuration:
   Resolution: flag > ./reasonix.toml > <Reasonix home>/config.toml > built-in defaults
   Secrets come from the environment via api_key_env (e.g. DEEPSEEK_API_KEY).
-  Run 'reasonix setup' to scaffold a config; see docs/SPEC.md.
+  Run 'reasonix setup' to scaffold a config; see docs/spec/SPEC.md.
 `,
 }

@@ -133,6 +133,9 @@ func prepareDesktopProcess() {
 
 func main() {
 	prepareDesktopProcess()
+	// A self-updated single exe starts while the process it replaced is still
+	// exiting; wait so Wails' single-instance lock does not quit this one.
+	waitForUpdateRelaunchParent()
 	// Detached macOS self-update child: wait for the old PID, hold the shared
 	// repair mutation lock, then swap the .app bundle. Must run before Wails.
 	if handled, exitCode := maybeRunMacUpdateHandoff(os.Args[1:]); handled {

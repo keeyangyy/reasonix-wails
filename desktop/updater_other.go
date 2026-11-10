@@ -21,3 +21,9 @@ func startWindowsUpdateHandoff(name, _, dir, _ string, _ *repair.UpdateTransacti
 func startWindowsVersionedUpdateHandoff(name, _, dir, _, _ string) error {
 	return installerCommand(name, dir).Start()
 }
+
+// applyWindowsSingleExe exists only so updater.go compiles off Windows; the
+// single-exe install path is Windows-only (see updater_app.go).
+func applyWindowsSingleExe(name, _, _ string) error {
+	return installerCommand(name, "").Start()
+}

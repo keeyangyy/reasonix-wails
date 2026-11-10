@@ -111,13 +111,12 @@ jobs:
         run: |
           set -euo pipefail
           # Asset names carry no version: the release tag and latest.json
-          # already identify the version, and the updater requires the
-          # versionless installer name. The portable archive is renamed so a
-          # download is self-describing instead of looking like a bare zip.
-          zip_asset="Reasonix-windows-amd64-portable.zip"
-          exe_asset="Reasonix-windows-amd64-installer.exe"
+          # already identify the version. The updater channel is one bare
+          # self-updating exe; the NSIS installer is a first-install
+          # convenience and is not part of the manifest's platform map.
+          exe_asset="Reasonix-windows-amd64.exe"
+          installer_asset="Reasonix-windows-amd64-installer.exe"
           cli_asset="reasonix-cli-windows-amd64.exe"
-          mv dist/Reasonix-windows-amd64.zip "dist/${zip_asset}"
           # release-manual.yml creates this release as a draft before the
           # Windows build starts, so it is never public without its assets.
           # Create it here too when this workflow is dispatched on its own.
@@ -129,7 +128,7 @@ jobs:
           else
             echo "Release $RELEASE_TAG already exists; uploading/overwriting assets."
           fi
-          gh release upload "$RELEASE_TAG" "dist/${zip_asset}" "dist/${exe_asset}" "dist/${cli_asset}" --clobber
+          gh release upload "$RELEASE_TAG" "dist/${exe_asset}" "dist/${installer_asset}" "dist/${cli_asset}" --clobber
           # Publish only now that both assets are attached.
           gh release edit "$RELEASE_TAG" --draft=false
 
@@ -141,20 +140,17 @@ jobs:
           MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euo pipefail
-          # The installer keeps its versionless name from the upload step, so
-          # the updater's required filename and the manifest input are the same
-          # file — no second copy is made.
-          # The manifest input directory must hold only the updater artifact:
-          # the portable .zip would add a downloads group to the manifest, and
-          # this line publishes no such group.
+          # The bare exe is the updater artifact, so the updater's required
+          # filename and the manifest input are the same file — no second copy
+          # is made. The installer is signed too but stays out of the manifest.
           rm -rf manifest-input
           mkdir -p manifest-input
-          cp dist/Reasonix-windows-amd64-installer.exe manifest-input/
-          ( cd desktop && go run ./cmd/sign sign ../dist/Reasonix-windows-amd64-installer.exe )
+          cp dist/Reasonix-windows-amd64.exe manifest-input/
+          ( cd desktop && go run ./cmd/sign sign ../dist/Reasonix-windows-amd64.exe )
           ( cd desktop && go run ./cmd/sign manifest ../manifest-input "$RELEASE_TAG" "$RELEASE_TAG" )
           gh release upload "$RELEASE_TAG" \
-            dist/Reasonix-windows-amd64-installer.exe \
-            dist/Reasonix-windows-amd64-installer.exe.minisig \
+            dist/Reasonix-windows-amd64.exe \
+            dist/Reasonix-windows-amd64.exe.minisig \
             --clobber
           # The version catalog points each entry at <tag>/latest.json, so the
           # same manifest has to exist on the version's own release too — the

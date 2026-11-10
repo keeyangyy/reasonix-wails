@@ -7,7 +7,7 @@ const files = execFileSync("git", ["ls-files", "README.md", "docs/*.md"], {
   encoding: "utf8",
 }).trim().split("\n").filter(Boolean);
 const migrationReferences = new Set([
-  "docs/RELEASING.md",
+  "docs/ops/RELEASING.md",
 ]);
 const rules = [
   [/release-channel-switch/, "public release channel selector"],

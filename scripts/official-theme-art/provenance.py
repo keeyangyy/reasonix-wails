@@ -1,4 +1,4 @@
-"""Emit docs/THEME_ASSETS.md + .zh-CN.md — provenance & licence ledger for the
+"""Emit docs/guide/THEME_ASSETS.md + .zh-CN.md — provenance & licence ledger for the
 official theme assets. Reads hashes from out/report.json (produced by build.py).
 """
 from __future__ import annotations
@@ -91,7 +91,7 @@ def main():
         f.write("\n".join(en))
     with open(os.path.join(DOCS, "THEME_ASSETS.zh-CN.md"), "w") as f:
         f.write("\n".join(zh))
-    print("wrote docs/THEME_ASSETS.md + .zh-CN.md")
+    print("wrote docs/guide/THEME_ASSETS.md + .zh-CN.md")
 
 
 if __name__ == "__main__":

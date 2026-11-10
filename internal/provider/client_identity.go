@@ -24,9 +24,10 @@ func ClientVersion() string {
 }
 
 // ClientUserAgent is the identity a model request presents to the endpoint and
-// any gateway in front of it: Reasonix/<version>.
+// any gateway in front of it: Reasonix-Wails/<version>. The fork keeps its own
+// product token so provider-side version stats never mix with upstream 1.x.
 func ClientUserAgent() string {
-	return "Reasonix/" + ClientVersion()
+	return "Reasonix-Wails/" + ClientVersion()
 }
 
 // ApplyClientIdentity sets ClientUserAgent unless a User-Agent is already set,

@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -17,11 +18,14 @@ import (
 	"reasonix/internal/repair"
 )
 
-// updater_app.go is the auto-updater's bound command surface — the App methods the
-// frontend calls — mirroring settings_app.go's "one file per concern" split. The
-// transport-free logic lives in updater.go; this file is the Wails glue: it streams
-// download progress as "updater:progress" events and routes macOS to the manual
-// download path unless the macOS build was Developer ID signed and notarized.
+// updateRelaunchParentPIDEnv carries the exiting process's PID into the
+// relaunched single-exe build: Wails' single-instance lock would otherwise
+// quit the child as a second instance, so it waits for us to exit first.
+const updateRelaunchParentPIDEnv = "REASONIX_UPDATE_RELAUNCH_PARENT_PID"
+
+// updater_app.go is the auto-updater's bound command surface: Wails glue that
+// streams "updater:progress" events, with transport-free logic in updater.go and
+// macOS routed to the manual path unless the build is signed and notarized.
 
 var errUpdateManualRequired = errors.New("update: manual update required")
 var errUpdateInProgress = errors.New("update: another download or install is already in progress")
@@ -275,10 +279,9 @@ func (a *App) installUpdateRequest(selectedChannel, expectedVersion, requestID s
 func (a *App) reconcilePendingUpdateForRequest(requestID string, meta *cachedUpdate) error {
 	if pendingUpdateExistsForInstall() {
 		a.emitProgress(requestID, meta.Channel, meta.Version, "recovering", meta.Size, meta.Size, "")
-		// A user-initiated update proves the desktop reached a usable UI. Retire
-		// an eligible superseded app-bundle or flat-layout transaction here as
-		// well as in the delayed post-DOM health task, so an immediate click never
-		// has to fail once and ask the user to retry.
+		// A user-initiated update proves the desktop reached a usable UI, so retire
+		// an eligible superseded transaction here as well as in the delayed health
+		// task; an immediate click should never fail once and ask for a retry.
 		if archived, archiveErr := archiveSupersededPendingUpdateForInstall(); archiveErr != nil {
 			slog.Debug("desktop: superseded update was not eligible for automatic archival", "err", archiveErr)
 		} else if archived {
@@ -385,7 +388,8 @@ func (a *App) installPortableUpdate(requestID string, meta *cachedUpdate, data [
 	a.emitProgress(requestID, meta.Channel, meta.Version, "installing", meta.Size, meta.Size, "")
 	var preparedUpdate *repair.UpdateTransaction
 	versionedPortable := (runtime.GOOS == "windows" || runtime.GOOS == "linux") && installlayout.HasCurrent(currentInstallDir())
-	if (runtime.GOOS == "windows" || runtime.GOOS == "linux") && !versionedPortable {
+	singleExe := runtime.GOOS == "windows" && !versionedPortable && singleExeInstall()
+	if (runtime.GOOS == "windows" || runtime.GOOS == "linux") && !versionedPortable && !singleExe {
 		// Back up the complete legacy release unit (main binary plus launcher
 		// and migration siblings) so rollback never leaves a mixed-version
 		// install. Deb installs deliberately skip this because package-manager
@@ -413,10 +417,9 @@ func (a *App) installPortableUpdate(requestID string, meta *cachedUpdate, data [
 	}
 	if err != nil {
 		if runtime.GOOS == "linux" {
-			// applyLinux replaces the legacy migration member before the main
-			// binary swap, so a failure can already have produced a mixed
-			// install. Restore the recorded release unit immediately; if that
-			// fails, retain the transaction for explicit repair/reconciliation.
+			// applyLinux replaces the migration member before the main swap, so a
+			// failure can leave a mixed install: restore the recorded release unit
+			// now, or retain the transaction for explicit repair.
 			if preparedUpdate != nil {
 				if _, rollbackErr := repair.RollbackPendingUpdateExact(preparedUpdate); rollbackErr != nil {
 					err = errors.Join(err, fmt.Errorf("restore prepared release unit: %w", rollbackErr))
@@ -444,12 +447,20 @@ func (a *App) installPortableUpdate(requestID string, meta *cachedUpdate, data [
 
 	a.emitProgress(requestID, meta.Channel, meta.Version, "done", meta.Size, meta.Size, "")
 
-	// Persist the conversation and stop subprocesses before handing off (same as
-	// shutdown). On Linux the binary is now replaced, so relaunch it; on Windows and
-	// macOS the installer/helper we launched takes over once we exit.
+	// Persist the conversation and stop subprocesses before handing off. Linux
+	// and single-exe Windows installs relaunch the replaced binary; versioned
+	// Windows and macOS hand over to the installer or helper we launched.
 	a.shutdown(a.ctx)
 	if runtime.GOOS == "linux" {
 		_ = relaunchThroughLauncher()
+	}
+	if singleExe {
+		// The new process must not start while this one still holds the
+		// single-instance lock, or Wails treats it as a second instance and
+		// quits it. Hand our PID over so it waits for us to exit first.
+		_ = relaunchThroughLauncherWithEnv(map[string]string{
+			updateRelaunchParentPIDEnv: strconv.Itoa(os.Getpid()),
+		})
 	}
 	os.Exit(0)
 	return nil

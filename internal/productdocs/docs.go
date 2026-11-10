@@ -6,11 +6,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io/fs"
 	"path"
 	"regexp"
@@ -261,7 +259,7 @@ func (*docsTool) Schema() json.RawMessage {
 			"operation":{"type":"string","enum":["search","read","list"],"description":"search ranks relevant sections; read returns one section or lists a document's sections; list shows the embedded document catalog."},
 			"query":{"type":"string","maxLength":4096,"description":"Question, command, configuration key, error phrase, or topic for operation=search."},
 			"section_id":{"type":"string","description":"Exact section_id returned by search or by a document section listing. Used by operation=read."},
-			"path":{"type":"string","description":"Exact docs/*.md path returned by search/list. With operation=read and no section_id, lists that document's sections."},
+			"path":{"type":"string","description":"Exact docs/**/*.md path returned by search/list. With operation=read and no section_id, lists that document's sections."},
 			"language":{"type":"string","enum":["auto","all","en","zh-CN"],"description":"Language preference. search defaults to auto from the query; list defaults to all. Explicit en or zh-CN filters results."},
 			"audience":{"type":"string","enum":["all","user","developer","maintainer"],"description":"Optional audience filter; defaults to all."},
 			"limit":{"type":"integer","minimum":1,"maximum":10,"description":"Maximum search results, default 5, max 10."}
@@ -455,35 +453,36 @@ func loadCatalog(fsys fs.FS) (*catalog, error) {
 }
 
 func loadCatalogWithReleaseNotes(docsFS, releaseNotesFS fs.FS) (*catalog, error) {
-	entries, err := fs.ReadDir(docsFS, ".")
-	if err != nil {
-		return nil, err
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 	hash := sha256.New()
 	_, _ = hash.Write([]byte("reasonix-product-docs-v1\x00"))
 	markdownParser := goldmark.DefaultParser()
 	c := &catalog{byPath: map[string]*document{}, byID: map[string]*section{}}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
-			continue
-		}
-		data, err := fs.ReadFile(docsFS, entry.Name())
+	// Walk the whole docs tree: the corpus is filed under guide/, spec/,
+	// design/ and ops/, so the top level alone is no longer the catalog.
+	walkErr := fs.WalkDir(docsFS, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", entry.Name(), err)
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+			return nil
+		}
+		data, err := fs.ReadFile(docsFS, name)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", name, err)
 		}
 		if !utf8.Valid(data) {
-			return nil, fmt.Errorf("read %s: Markdown is not valid UTF-8", entry.Name())
+			return fmt.Errorf("read %s: Markdown is not valid UTF-8", name)
 		}
-		writeDigestRecord(hash, entry.Name(), data)
-		doc := parseDocumentWithParser(entry.Name(), string(data), markdownParser)
-		doc.source = "docs/" + entry.Name()
+		writeDigestRecord(hash, name, data)
+		doc := parseDocumentWithParser(name, string(data), markdownParser)
+		doc.source = "docs/" + name
 		if len(doc.sections) == 0 {
-			continue
+			return nil
 		}
-		if err := c.addDocument(doc); err != nil {
-			return nil, err
-		}
+		return c.addDocument(doc)
+	})
+	if walkErr != nil {
+		return nil, walkErr
 	}
 	if releaseNotesFS != nil {
 		data, err := fs.ReadFile(releaseNotesFS, "releases.json")
@@ -532,16 +531,6 @@ func loadCatalogWithReleaseNotes(docsFS, releaseNotesFS fs.FS) (*catalog, error)
 	return c, nil
 }
 
-func writeDigestRecord(destination hash.Hash, name string, data []byte) {
-	var size [8]byte
-	binary.BigEndian.PutUint64(size[:], uint64(len(name)))
-	_, _ = destination.Write(size[:])
-	_, _ = destination.Write([]byte(name))
-	binary.BigEndian.PutUint64(size[:], uint64(len(data)))
-	_, _ = destination.Write(size[:])
-	_, _ = destination.Write(data)
-}
-
 func (c *catalog) addDocument(doc *document) error {
 	if _, exists := c.byPath[doc.path]; exists {
 		return fmt.Errorf("duplicate embedded documentation path %q", doc.path)
@@ -567,7 +556,7 @@ func parseDocumentWithParser(name, content string, markdownParser parser.Parser)
 	source := []byte(content)
 	doc := &document{
 		path:     path.Clean(name),
-		title:    strings.TrimSuffix(strings.TrimSuffix(name, ".md"), ".zh-CN"),
+		title:    strings.TrimSuffix(strings.TrimSuffix(path.Base(name), ".md"), ".zh-CN"),
 		locale:   detectDocumentLanguage(name, content),
 		audience: documentAudience(name),
 	}
@@ -766,7 +755,7 @@ func detectDocumentLanguage(name, content string) string {
 }
 
 func documentAudience(name string) string {
-	stem := strings.TrimSuffix(strings.TrimSuffix(name, ".md"), ".zh-CN")
+	stem := strings.TrimSuffix(strings.TrimSuffix(path.Base(name), ".md"), ".zh-CN")
 	switch strings.ToUpper(stem) {
 	case "RELEASING", "PRODUCTION_CHECKLIST", "THEME_ASSETS":
 		return "maintainer"

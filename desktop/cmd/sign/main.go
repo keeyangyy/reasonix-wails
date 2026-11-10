@@ -42,8 +42,7 @@ import (
 var platforms = []string{"darwin-arm64", "darwin-amd64", "windows-amd64", "windows-arm64", "linux-amd64"}
 
 var websiteDownloads = map[string]struct{}{
-	"Reasonix-darwin-universal.dmg":       {},
-	"Reasonix-windows-amd64-portable.zip": {},
+	"Reasonix-darwin-universal.dmg": {},
 }
 
 func main() {
@@ -299,9 +298,18 @@ func matchArtifact(name string) (key, kind string) {
 		}
 		return "", ""
 	}
-	// The Windows updater channel is the per-arch -installer.exe; the portable .zip
-	// is a human download, so skip it or it would shadow the installer's key.
-	if strings.Contains(name, "windows-") && !strings.HasSuffix(name, "-installer.exe") {
+	// Windows ships one self-contained exe that replaces itself in place, so the
+	// bare exe is the updater channel. The NSIS installer is a first-install
+	// convenience and must not shadow the platform key.
+	if strings.Contains(name, "windows-") {
+		if strings.HasSuffix(name, "-installer.exe") || !strings.HasSuffix(name, ".exe") {
+			return "", ""
+		}
+		for _, p := range platforms {
+			if strings.Contains(name, p) {
+				return p, artifactPortable
+			}
+		}
 		return "", ""
 	}
 	for _, p := range platforms {

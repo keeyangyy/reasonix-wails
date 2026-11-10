@@ -15,7 +15,7 @@
 // After Serve returns nil from an orderly extension/shutdown the process
 // should exit with code 0; the host reaps it by that exit status.
 //
-// Protocol reference: docs/EXTENSION_PROTOCOL.generated.md and
+// Protocol reference: docs/spec/EXTENSION_PROTOCOL.generated.md and
 // internal/extension/protocol/schema.generated.json in the Reasonix
 // repository.
 package extension

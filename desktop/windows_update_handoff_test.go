@@ -116,10 +116,6 @@ func TestWindowsInstallerScriptWaitsBeforeCopyingExecutable(t *testing.T) {
 		"SetErrorLevel 1618",
 		"Call reasonix.waitForExecutableUnlock",
 		`File "/oname=${REASONIX_UPDATE_HELPER}" "${REASONIX_UPDATE_HELPER}"`,
-		`File "/oname=${REASONIX_LAYOUT_INSTALLER}" "${REASONIX_GUARD}"`,
-		`nsExec::ExecToLog /OEM`,
-		`Reasonix layout activator output:`,
-		`--activate-staging "$R9" --no-relaunch`,
 		`File "/oname=${REASONIX_PAYLOAD_MANIFEST}" "${REASONIX_PAYLOAD_MANIFEST}"`,
 		`File "/oname=${REASONIX_PAYLOAD_SIGNATURE}" "${REASONIX_PAYLOAD_SIGNATURE}"`,
 		`Delete "$INSTDIR\${REASONIX_UPDATE_HELPER}"`,
@@ -224,12 +220,15 @@ func TestDesktopBuildScriptCompilesAndPackagesWindowsUpdateHelper(t *testing.T) 
 	packager := string(packageData)
 	for _, want := range []string{
 		`cp "$PAYLOAD/$UPDATE_HELPER" "$INSTALLER_DIR/$UPDATE_HELPER"`,
-		`cp "$PAYLOAD/$UPDATE_HELPER" "$portable_staging/versions/$version_label/$UPDATE_HELPER"`,
-		`"$ROOT/scripts/verify-windows-portable.sh" "$portable_staging"`,
+		`cp "$PAYLOAD/$BINNAME.exe" "$dist_exe"`,
+		`"$ROOT/scripts/verify-windows-portable.sh" "$dist_exe"`,
 	} {
 		if !strings.Contains(packager, want) {
 			t.Fatalf("package-windows-desktop.sh missing %q", want)
 		}
+	}
+	if strings.Contains(packager, "portable_staging") {
+		t.Fatal("package-windows-desktop.sh must not rebuild the versioned portable tree")
 	}
 }
 

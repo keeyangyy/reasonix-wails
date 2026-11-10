@@ -54,7 +54,7 @@ func TestOpenCodeGoHeadersAllAdapters(t *testing.T) {
 				t.Fatalf("requests=%d", len(headers))
 			}
 			for _, h := range headers {
-				if h.Get("User-Agent") != "Reasonix" || h.Get("x-opencode-session") == "" {
+				if h.Get("User-Agent") != "Reasonix-Wails" || h.Get("x-opencode-session") == "" {
 					t.Fatalf("missing identity headers: %v", h)
 				}
 			}

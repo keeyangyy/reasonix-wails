@@ -123,6 +123,7 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 	for _, node := range runtimeNodes {
 		runtimeByTopic[node.TopicID] = node
 	}
+	sessionTopics := a.metadataSessionTopics(scope, workspaceRoot)
 	out := []ProjectNode{}
 	seen := map[string]bool{}
 	for sortOrder, topicID := range pinnedTopicIDs(orderedTopicIDs(ids, titles), pinnedIDs) {
@@ -136,6 +137,14 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 		title := strings.TrimSpace(titles[topicID])
 		if title == "" {
 			title = defaultTopicTitle
+		}
+		// A titleless topic with no live tab is a shell left by legacy Studio
+		// forks; hide it unless the catalog still knows a session for the topic,
+		// so an in-flight new session is never hidden.
+		if _, live := runtimeByTopic[topicID]; !live && isDefaultTopicTitle(title) && sessionTopics != nil {
+			if _, ownsConversation := sessionTopics[topicID]; !ownsConversation {
+				continue
+			}
 		}
 		kind := "topic"
 		if scope != "project" {
@@ -497,10 +506,9 @@ func (a *App) listProjectTopics(req ProjectTopicPageRequest) (ProjectTopicPage, 
 	if err != nil {
 		return page, err
 	}
-	// Metadata is a continuity source while some directories are pending or
-	// degraded. Once every target has completed, the catalog is authoritative:
-	// retaining metadata-only shells would resurrect recovery copies or deleted
-	// sessions that the completed scan deliberately folded/removed.
+	// Metadata bridges directories that are pending or degraded; once every
+	// target completes, the catalog is authoritative and metadata-only shells
+	// would resurrect folded or deleted sessions.
 	if !availability.complete {
 		page = a.mergeMetadataTopics(req, page)
 	}
@@ -537,10 +545,9 @@ func (a *App) withLiveTopics(catalog *sessioncatalog.Catalog, req ProjectTopicPa
 		if indexed[node.TopicID] {
 			continue
 		}
-		// A restored tab may still carry a legacy topic ID for a recovery
-		// session the catalog re-anchored onto the root logical topic. That
-		// logical row already represents the conversation, so a second
-		// runtime-only row would break the one-row ordinary-list contract.
+		// A restored tab may carry a legacy topic ID for a session the catalog
+		// re-anchored onto the root topic; that row already represents the
+		// conversation, so a second runtime-only row would duplicate it.
 		if liveTopicProjectedOnPage(ctx, catalog, sessionsByTopic[node.TopicID], indexed) {
 			continue
 		}

@@ -2267,7 +2267,7 @@ model = "x"
 
 	fullReq, _ := captureTokenProfileSurface(t, TokenModeFull)
 	economyReq, _ := captureTokenProfileSurface(t, "economy")
-	doc, err := os.ReadFile(filepath.Join(pkgDir, "..", "..", "docs", "TOOL_CONTRACT.md"))
+	doc, err := os.ReadFile(filepath.Join(pkgDir, "..", "..", "docs", "spec", "TOOL_CONTRACT.md"))
 	if err != nil {
 		t.Fatalf("read tool contract doc: %v", err)
 	}
