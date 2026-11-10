@@ -184,8 +184,8 @@ func main() {
     if (![string]::Equals($launch.executable, $expectedDesktop, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unexpected desktop executable. Expected '$expectedDesktop', got '$($launch.executable)'."
     }
-    if (![string]::Equals($launch.workingDir, $versionPath, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Unexpected launcher working directory. Expected '$versionPath', got '$($launch.workingDir)'."
+    if (![string]::Equals($launch.workingDir, $currentPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unexpected desktop working directory. Expected '$currentPath', got '$($launch.workingDir)'."
     }
     if (@($launch.args).Count -ne 0) {
         throw "Legacy shortcut arguments reached the desktop fixture: $($launch.args -join ' ')"
