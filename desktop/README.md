@@ -1,6 +1,6 @@
 # Reasonix Desktop (Wails shell)
 
-Model/provider setup: [English guide](../docs/MODEL_SETTINGS.md) · [中文指南](../docs/MODEL_SETTINGS.zh-CN.md).
+Model/provider setup: [English guide](../docs/guide/MODEL_SETTINGS.md) · [中文指南](../docs/guide/MODEL_SETTINGS.zh-CN.md).
 
 A native desktop window around the Reasonix Go kernel. The same
 transport-agnostic `control.Controller` that backs the chat TUI and the HTTP/SSE
@@ -122,7 +122,7 @@ desktop app, the NSIS installer and the standalone CLI, signs the installer with
 minisign, generates a `latest.json` manifest, publishes a GitHub release, and
 refreshes the `versions.json` catalog on the `wails-latest` anchor.
 
-See [../docs/RELEASING.md](../docs/RELEASING.md) for the tag rules and the
+See [../docs/ops/RELEASING.md](../docs/ops/RELEASING.md) for the tag rules and the
 recommended flow (the `Release (manual)` workflow only tags a commit whose CI
 is green).
 

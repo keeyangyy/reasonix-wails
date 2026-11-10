@@ -18,7 +18,7 @@
   &nbsp;·&nbsp;
   <a href="./README.en.md">English</a>
   &nbsp;·&nbsp;
-  <a href="./docs/GUIDE.zh-CN.md">使用指南</a>
+  <a href="./docs/guide/GUIDE.zh-CN.md">使用指南</a>
   &nbsp;·&nbsp;
   <a href="https://github.com/keeyangyy/reasonix-wails/issues">反馈</a>
 </p>
@@ -109,12 +109,12 @@ pnpm build
 
 ## 文档
 
-- [使用指南](./docs/GUIDE.zh-CN.md)
-- [配置路径](./docs/CONFIG_PATHS.zh-CN.md)
-- [Checkpoints 与回退](./docs/CHECKPOINTS.zh-CN.md)
-- [能力诊断](./docs/CAPABILITY_DIAGNOSTICS.zh-CN.md)
-- [机器人使用指南](./docs/BOT_GUIDE.zh-CN.md)
-- [扩展与插件](./docs/EXTENSIONS.zh-CN.md)
+- [使用指南](./docs/guide/GUIDE.zh-CN.md)
+- [配置路径](./docs/guide/CONFIG_PATHS.zh-CN.md)
+- [Checkpoints 与回退](./docs/guide/CHECKPOINTS.zh-CN.md)
+- [能力诊断](./docs/guide/CAPABILITY_DIAGNOSTICS.zh-CN.md)
+- [机器人使用指南](./docs/guide/BOT_GUIDE.zh-CN.md)
+- [扩展与插件](./docs/guide/EXTENSIONS.zh-CN.md)
 
 产品文档以仓库内 `docs/` 为准；开发计划、审计与过程记录不纳入仓库。
 

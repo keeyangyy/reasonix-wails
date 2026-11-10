@@ -43,11 +43,11 @@ starter: 解释 Extension Protocol Sidecar 的作用
 ## 下一步
 
 - [`../../README.md`](../../README.md) 说明 SDK 回调与并发契约。
-- [`../../../../docs/EXTENSIONS.zh-CN.md`](../../../../docs/EXTENSIONS.zh-CN.md)
+- [`../../../../docs/guide/EXTENSIONS.zh-CN.md`](../../../../docs/guide/EXTENSIONS.zh-CN.md)
   说明重载、性能、缓存、兼容性与信任模型。
-- [`../../../../docs/PLUGIN_PACKAGES.zh-CN.md`](../../../../docs/PLUGIN_PACKAGES.zh-CN.md)
+- [`../../../../docs/guide/PLUGIN_PACKAGES.zh-CN.md`](../../../../docs/guide/PLUGIN_PACKAGES.zh-CN.md)
   定义 Manifest v2 的全部字段。
-- [`../../../../docs/EXTENSION_PROTOCOL.zh-CN.md`](../../../../docs/EXTENSION_PROTOCOL.zh-CN.md)
+- [`../../../../docs/spec/EXTENSION_PROTOCOL.zh-CN.md`](../../../../docs/spec/EXTENSION_PROTOCOL.zh-CN.md)
   是线上协议参考。
 - [`../fullsidecar/main.go`](../fullsidecar/main.go) 展示 Provider、结构化 UI、
   strategy、工具、content ref 与关闭流程。

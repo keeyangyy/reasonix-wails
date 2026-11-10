@@ -12,7 +12,7 @@ PR_BODY="$reviewed_body" "$check" services/api/AGENTS.local.md >/dev/null
 PR_BODY=$'Cache-impact: none - refactor preserves provider-visible bytes\nCache-guard: go test ./internal/boot\nSystem-prompt-review: reviewed provider-visible output as unchanged' \
 	"$check" internal/boot/boot.go >/dev/null
 
-PR_BODY='' "$check" docs/GUIDE.md >/dev/null
+PR_BODY='' "$check" docs/guide/GUIDE.md >/dev/null
 
 if PR_BODY='' "$check" CLAUDE.md >/dev/null 2>&1; then
 	echo "standing instruction without cache declarations unexpectedly passed" >&2

@@ -18,7 +18,7 @@
   &nbsp;·&nbsp;
   <strong>English</strong>
   &nbsp;·&nbsp;
-  <a href="./docs/GUIDE.md">Guide</a>
+  <a href="./docs/guide/GUIDE.md">Guide</a>
   &nbsp;·&nbsp;
   <a href="https://github.com/keeyangyy/reasonix-wails/issues">Issues</a>
 </p>
@@ -109,12 +109,12 @@ pnpm build
 
 ## Documentation
 
-- [Guide](./docs/GUIDE.md)
-- [Config paths](./docs/CONFIG_PATHS.md)
-- [Checkpoints and rewind](./docs/CHECKPOINTS.md)
-- [Capability diagnostics](./docs/CAPABILITY_DIAGNOSTICS.md)
-- [Bot guide](./docs/BOT_GUIDE.md)
-- [Extensions and plugins](./docs/EXTENSIONS.md)
+- [Guide](./docs/guide/GUIDE.md)
+- [Config paths](./docs/guide/CONFIG_PATHS.md)
+- [Checkpoints and rewind](./docs/guide/CHECKPOINTS.md)
+- [Capability diagnostics](./docs/guide/CAPABILITY_DIAGNOSTICS.md)
+- [Bot guide](./docs/guide/BOT_GUIDE.md)
+- [Extensions and plugins](./docs/guide/EXTENSIONS.md)
 
 Product documentation lives in `docs/`; development plans, audits and process notes are kept out of the repository.
 

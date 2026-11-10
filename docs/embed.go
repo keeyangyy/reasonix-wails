@@ -9,5 +9,5 @@ import "embed"
 // Images and generated site assets are intentionally excluded from the agent
 // retrieval corpus.
 //
-//go:embed *.md
+//go:embed *.md guide/*.md spec/*.md design/*.md ops/*.md
 var Content embed.FS

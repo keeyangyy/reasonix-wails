@@ -1,7 +1,7 @@
 package config
 
 // These presets are independently maintained from providers' public API docs.
-// See docs/PROVIDER_CATALOG.md for sources. Catalogs are editable starting points,
+// See docs/guide/PROVIDER_CATALOG.md for sources. Catalogs are editable starting points,
 // not a claim that every account has access to every listed model.
 var extendedProviderPresets = []ProviderPreset{
 	newCatalogPreset("doubao-chat", "火山引擎 / 豆包", "DOUBAO_API_KEY", "openai", "https://ark.cn-beijing.volces.com/api/v3", "doubao-seed-2-1-pro-260628"),
