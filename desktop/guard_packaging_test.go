@@ -10,13 +10,6 @@ import (
 	"testing"
 )
 
-func writePortableFixture(t *testing.T, dir, name, content string) {
-	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o755); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestVerifyWindowsPortableSingleExeLayout(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("portable verification script requires a POSIX shell")
