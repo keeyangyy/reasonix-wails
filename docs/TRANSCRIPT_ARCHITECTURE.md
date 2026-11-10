@@ -109,10 +109,10 @@ Two consecutive blank-viewport, invalid-geometry, or unrecoverable-anchor events
 
 Changes to this path must keep deterministic Kernel sequences, 100/101 rendering boundaries, active/resident ownership, stable prepend identity, stale-generation zero-write behavior, Markdown parity, selection retention, and browser/native platform replays green. Production must contain one native Transcript write point and no alternate scrolling controller.
 
-See [review closure and acceptance evidence](TRANSCRIPT_ACCEPTANCE_9777.md) for
-the measured paged safety costs, remaining qualification limits, related PR
-boundaries, and the final-head CI requirement. This architecture does not assert
-that every frontend issue since 1.23.0 has been eliminated.
+The measured paged safety costs, remaining qualification limits, related PR
+boundaries, and the final-head CI requirement live in the pull requests that
+landed this architecture. This design does not assert that every frontend issue
+since 1.23.0 has been eliminated.
 
 An approved measurement batch also owns its next geometry commit. A layout-effect state update completes that commit before paint rather than relying on TanStack notification scheduling. The commit installs the complete published prefix and either its covering candidate or a range reconstructed from that same prefix. Retaining the older prefix would defer already-approved offscreen growth until native scrolling brings it into view. Unsolicited stale range notifications still retain the last covering snapshot.
 
@@ -165,6 +165,6 @@ progress. A compaction card inserted while a turn runs anchors to its covered ro
 so it restores to that position when the tab is switched back, rather than
 sinking to the bottom of the message flow.
 
-See [the dedupe design report](reasonix-transcript-dedup-report.md) for the
-merge-time defences, and [REASONING_CONTRACT.md](REASONING_CONTRACT.md) for the
-blank-reasoning rule the fold filter depends on.
+The merge-time defences are described in the sections above, and
+[REASONING_CONTRACT.md](REASONING_CONTRACT.md) defines the blank-reasoning rule
+the fold filter depends on.

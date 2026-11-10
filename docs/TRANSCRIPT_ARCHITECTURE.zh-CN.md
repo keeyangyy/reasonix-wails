@@ -77,5 +77,5 @@ id，重叠判定依据 Provider 分配的 tool id（历史行是 `he:<toolCallI
 而不是文本：纯工具轮没有可比对的文本，而 id 是唯一不依赖流式进度的身份。运行中插入的压缩卡片
 以其覆盖的行作为锚点，切回标签页时回到该位置，而不是沉到消息流底部。
 
-合并期的各道防线见[去重设计报告](reasonix-transcript-dedup-report.md)，折叠过滤依赖的
-空白 reasoning 规则见 [REASONING_CONTRACT.md](REASONING_CONTRACT.md)。
+合并期的各道防线见上文各节，折叠过滤依赖的空白 reasoning 规则见
+[REASONING_CONTRACT.md](REASONING_CONTRACT.md)。
