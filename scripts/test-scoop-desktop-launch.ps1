@@ -178,7 +178,9 @@ func main() {
 
     $launch = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
     $versionPath = Join-Path $scoopRoot "apps\$appName\$appVersion"
-    $expectedDesktop = Join-Path $versionPath "Reasonix.exe"
+    # Without the launcher the process starts from the current junction, so the
+    # executable it reports is that path rather than the resolved version dir.
+    $expectedDesktop = Join-Path $currentPath "Reasonix.exe"
     if (![string]::Equals($launch.executable, $expectedDesktop, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Unexpected desktop executable. Expected '$expectedDesktop', got '$($launch.executable)'."
     }
