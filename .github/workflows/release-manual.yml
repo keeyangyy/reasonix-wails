@@ -133,16 +133,25 @@ jobs:
             # "previous" meaning the same branch's last release.
             PREV="$(git tag --merged HEAD -l 'v[0-9]*' --sort=-creatordate | grep -vx "v$VERSION" | sed -n '1p' || true)"
             if [ -z "$PREV" ]; then
-              RANGE=""
+              # First release on this line: there is no previous tag, so an
+              # empty range would produce a body with nothing but the heading.
+              # Summarize the most recent commits instead.
+              RANGE="HEAD"
               RANGE_NOTE="initial release"
+              EXTRA_ARGS=(--max-count=30)
             else
               RANGE="$PREV..HEAD"
               RANGE_NOTE="$PREV → v$VERSION"
+              EXTRA_ARGS=()
             fi
             {
               echo "## 变更总览（$RANGE_NOTE）"
               echo
-              git log "$RANGE" --no-merges --pretty=format:'- %s' 2>/dev/null || true
+              if [ "$RANGE_NOTE" = "initial release" ]; then
+                echo '首个公开发行版。下载与安装见仓库 README，产品文档索引见 docs/README.md。'
+                echo
+              fi
+              git log "$RANGE" --no-merges ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} --pretty=format:'- %s' 2>/dev/null || true
               echo
             } > /tmp/release-notes.md
             gh release create "v$VERSION" --draft --target main --title "$RELEASE_TITLE" --notes-file /tmp/release-notes.md
