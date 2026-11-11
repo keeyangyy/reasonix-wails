@@ -458,7 +458,7 @@ jobs:
         uses: actions/checkout@v7
 
       - if: env.RUN_STEPS == 'true'
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: sdk/go/go.mod
 
@@ -526,7 +526,7 @@ jobs:
         working-directory: desktop
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
@@ -556,7 +556,7 @@ jobs:
         working-directory: desktop
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
@@ -598,7 +598,7 @@ jobs:
           cache: true
           cache-dependency-path: desktop/go.sum
 
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
@@ -669,7 +669,7 @@ jobs:
           cache: true
           cache-dependency-path: desktop/go.sum
 
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
@@ -753,7 +753,7 @@ jobs:
           cache: true
           cache-dependency-path: desktop/go.sum
 
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
@@ -942,7 +942,7 @@ jobs:
           cache: true
 
       - if: github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false'
-        uses: pnpm/action-setup@v6.0.9
+        uses: pnpm/action-setup@v6.1.1
         with:
           version: 10
           run_install: false
