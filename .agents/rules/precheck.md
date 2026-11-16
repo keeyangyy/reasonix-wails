@@ -2,7 +2,7 @@
 
 目标：在 push 前发现云端 CI 会红的问题，不判断功能是否正确。先跑第 1 档，按改动面补第 2 档，第 3 档交云端。
 
-执行位置：c675。本机经 `Y:` 跑会走 SMB，极慢；用 `ssh c675-wjy`。
+执行位置：开发机（仓库所在机器）。本机经共享盘跑会走 SMB，极慢。
 
 ## 时机
 
@@ -31,7 +31,7 @@
 
 ## 第 3 档｜交云端
 
-workflow 契约与全量测试在云端跑；本地只跑能覆盖本次改动的最小范围。`bash scripts/check-wails-pin.test.sh`、`node --test scripts/*.test.mjs` 等脚本按需跑，c675 缺工具时以 CI 为准。
+workflow 契约与全量测试在云端跑；本地只跑能覆盖本次改动的最小范围。`bash scripts/check-wails-pin.test.sh`、`node --test scripts/*.test.mjs` 等脚本按需跑，开发机缺工具时以 CI 为准。
 
 ## 与测试的分工
 

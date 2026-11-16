@@ -20,7 +20,7 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 - 不主动跑完整测试或完整构建；本地只做改动相关的快速预检，完整测试交云端 CI。
 - 系统提示前缀（base prompt + tools + memory）必须字节稳定；不要中途改写。
 - 注释默认不写，只写 why；行数与 repolint 门禁不得放宽基线。
-- 仓库在 c675；本机不在 `Y:` 上执行 git、构建、测试或全库搜索。
+- 仓库在开发机；本机不在共享盘上执行 git、构建、测试或全库搜索。
 
 ## Rules Index
 
@@ -38,11 +38,12 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 
 ## 工作区
 
-- 主仓库：c675 `D:/project/prj-github-c675/reasonix-wails`（`main`）。
-- worktree：c675 `D:/project/prj-github-c675/worktree/reasonix-wails/reasonix-wails-devN`。
-- 本机经 `Y:/prj-github-c675/reasonix-wails` 只读写文件；git、构建、测试、全库搜索一律 `ssh c675-wjy`。
+- 主仓库：开发机 `<dev-host>` 上的仓库根（`main`）。
+- worktree：开发机 `<worktree-root>/<project>-devN`。
+- 本机经共享盘只读写文件；git、构建、测试、全库搜索一律在开发机执行。
 
 ## 文档
 
 - 产品文档：`docs/guide/`（用户）、`docs/spec/`（契约）、`docs/design/`（实现设计）、`docs/ops/`（发布与运维）。
-- 开发台账（decisions / analysis / archive）与架构导航在下一步整理中补齐。
+- 开发台账：`docs/decisions/`、`docs/analysis/`、`docs/archive/`。
+- 架构导航：`docs/architecture.md`。

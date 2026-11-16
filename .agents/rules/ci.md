@@ -39,5 +39,5 @@
 ## 本地盲区
 
 - 前端全量 Vitest 可能压满本机；优先跑相关文件，必要时限制 worker 数。
-- c675 是 session 0，没有桌面；Wails 窗口类验证要投递到用户会话，或改用浏览器 mock。
+- 开发机是 session 0，没有桌面；Wails 窗口类验证要投递到用户会话，或改用浏览器 mock。
 - Windows Go 测试的历史 flake 与 `GOMAXPROCS` 设置有关；出现相同症状再核对，不要当成固定规则。

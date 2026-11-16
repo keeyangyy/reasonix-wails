@@ -24,6 +24,8 @@ in one of these areas or it is a development record (below).
 | [`research/`](./research/) | Design notes that describe the current implementation | — |
 | [`superpowers/`](./superpowers/) | Specs and golden fixtures kept for tests | — |
 
+Developer architecture entry: [`architecture.md`](./architecture.md) — main call chain, layers, callback points and boundary rules.
+
 ## Development records
 
 Not bundled into the build; kept for maintainers.
