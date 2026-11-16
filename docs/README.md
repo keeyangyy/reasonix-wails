@@ -8,7 +8,10 @@ This directory is the product documentation bundled into every build. Files are
 filed by purpose; each area keeps its own documents flat, with an English file
 and its `zh-CN` counterpart side by side.
 
-## Areas
+## Product areas
+
+These are bundled into every build; a document is either **rewritten in place**
+in one of these areas or it is a development record (below).
 
 | Area | What lives here | Start with |
 | --- | --- | --- |
@@ -21,11 +24,21 @@ and its `zh-CN` counterpart side by side.
 | [`research/`](./research/) | Design notes that describe the current implementation | — |
 | [`superpowers/`](./superpowers/) | Specs and golden fixtures kept for tests | — |
 
+## Development records
+
+Not bundled into the build; kept for maintainers.
+
+| Area | What lives here | Start with |
+| --- | --- | --- |
+| [`decisions/`](./decisions/) | Major choices: selection, constraints, abandoned routes | [`decisions/README.md`](./decisions/README.md) |
+| [`analysis/`](./analysis/) | Technical analysis, evaluations and investigation reports | [`analysis/README.md`](./analysis/README.md) |
+| [`archive/`](./archive/) | Retired documents: closed, superseded or no longer maintained | [`archive/README.md`](./archive/README.md) |
+
 ## Conventions
 
-- A document is either **rewritten in place** (the four areas above) or it does
-  not belong here. Append-only records — experiment logs, one-off acceptance
-  evidence, branch reports — go to the changelog or the pull request instead.
+- A product document is rewritten in place in the four product areas above.
+  Development records — decisions, one-off analyses, branch reports — go to
+  `decisions/`, `analysis/` or `archive/`, never into the product areas.
 - English and `zh-CN` files live in the same area, so a translation never drifts
   into a different section.
 - [`spec/TOOL_CONTRACT.md`](./spec/TOOL_CONTRACT.md) and
