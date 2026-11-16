@@ -1,4 +1,6 @@
-# Desktop agent notes
+# Desktop 前端规则
+
+改 `desktop/frontend` 前必读。本文件不会自动加载，由根 `AGENTS.md` 索引指向。
 
 ## Transcript scroll discipline
 

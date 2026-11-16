@@ -41,7 +41,7 @@ go test ./...              # runs the full test suite
 | `internal/plugin` | MCP client (stdio + HTTP) |
 | `internal/event` | Typed event stream |
 | `internal/hook` | Shell hooks (PreToolUse, …) |
-| `internal/memory` | REASONIX.md hierarchy + auto-memory |
+| `internal/memory` | AGENTS.md hierarchy + auto-memory |
 | `internal/skill` | Skill discovery from Markdown |
 | `internal/sandbox` | OS-level sandboxing |
 | `internal/serve` | HTTP/SSE server frontend |
@@ -136,7 +136,7 @@ go test ./internal/tool/builtin/ -run TestGrep  # one test
 ```
 
 Desktop transcript scroll changes follow the discipline in
-`desktop/AGENTS.md` (single scroll writer, deterministic race tests via
+`.agents/rules/desktop.md` (single scroll writer, deterministic race tests via
 `pnpm test:transcript` in `desktop/frontend/`).
 
 ### Code style

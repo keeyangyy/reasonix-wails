@@ -9,7 +9,7 @@ import (
 const modulePrefix = "reasonix/"
 
 // Transport-agnostic control.Controller sits behind every frontend; nothing
-// below it may reach up. See REASONIX.md.
+// below it may reach up. See AGENTS.md.
 var frontends = []string{
 	"internal/acp",
 	"internal/boot",
