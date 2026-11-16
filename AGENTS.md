@@ -35,6 +35,7 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 | 需要对照上游历史实现 | [upstream.md](.agents/rules/upstream.md) |
 | 改 desktop 前端（尤其 transcript 滚动） | [desktop.md](.agents/rules/desktop.md) |
 | 排查踩过的坑 | [experiences.md](.agents/rules/experiences.md) |
+| 查已知技术风险与回归点 | [docs/analysis/技术风险与回归点.md](docs/analysis/技术风险与回归点.md) |
 
 ## 工作区
 
