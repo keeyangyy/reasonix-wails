@@ -22,6 +22,12 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 - 注释默认不写，只写 why；行数与 repolint 门禁不得放宽基线。
 - 仓库在开发机；本机不在共享盘上执行 git、构建、测试或全库搜索。
 
+## 语言与命名
+
+- 上游产品文档（`docs/guide/`、`docs/spec/`、`docs/design/`、`docs/ops/`、`docs/README.md`、根 README 的上游部分）保留英文原样，不做批量翻译。
+- 新增规则、分析、决策、架构导航、归档说明用中文；新增文件名用中文，技术术语与专名保留英文。
+- 代码、注释、标识符按代码规范（英文）；修改上游英文文档时保持英文。
+
 ## Rules Index
 
 | 何时 | 读什么 |
