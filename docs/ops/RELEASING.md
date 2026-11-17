@@ -88,7 +88,7 @@ The panel shows the five most recent versions plus up to three most recent
 stable ones. A pre-release tag is recorded with the `beta` channel, a stable
 tag with `stable`.
 
-## Before the first public release
+## Before a public release
 
 - Configure `MINISIGN_PRIVATE_KEY` and `MINISIGN_PASSWORD` repository secrets.
 - Confirm `wails-latest` exists and points at this line, not the archived upstream
