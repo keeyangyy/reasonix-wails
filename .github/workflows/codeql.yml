@@ -18,6 +18,12 @@ on:
   schedule:
     - cron: "27 3 * * 1"
 
+# A push that lands while a scan is running would otherwise queue a second
+# full analysis; the weekly cron keeps the cadence independent of pushes.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
