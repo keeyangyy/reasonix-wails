@@ -1,44 +1,46 @@
-## Summary
+## 摘要
 
 -
 
-## Issues
+## 关联 issue
 
 <!--
-If this resolves a report, put `Fixes #123` on its own line — GitHub only
-auto-closes from a bare line, so `- Fixes #123` in a list does nothing and the
-report stays open. If it only relates to one, use `Refs #123` instead: the
-release workflow then asks that reporter to verify once the fix ships.
+修复用 `Fixes #123`（必须单独成行，GitHub 才会自动关闭）；仅关联用 `Refs #123`。
 -->
 
-## Verification
+## 验证
 
 -
 
-For a GSAP to WAAPI/CSS migration (or any cross-API replacement), document
-the source-to-target contract here: easing syntax, time units, callbacks,
-cancellation, reduced-motion behavior, and failure fallback. Verification must
-assert that the target API was actually called; a mock that silently skips it
-does not count.
+<!--
+前端改动请附渲染图；测试命令、手工验证步骤或结果写在这里。
+-->
 
-## Documentation impact
+## 文档影响
 
 Documentation-impact: TODO
 
-For changes to user-visible CLI, Desktop, configuration, provider, permission,
-or tool behavior, use one of:
+<!--
+用户可见改动二选一：
+- Documentation-impact: updated - 改了什么
+- Documentation-impact: none - 为什么文档仍然正确
+-->
 
-- `Documentation-impact: updated - <what changed>` and update `docs/*.md`.
-- `Documentation-impact: none - <why the embedded documentation remains correct>`.
-
-## Cache impact
+## 缓存影响
 
 Cache-impact: TODO
 Cache-guard: TODO
 System-prompt-review: N/A
 
-For cache-sensitive changes, fill these lines before requesting review:
+<!--
+缓存敏感改动（internal/tool、internal/provider、internal/boot、internal/agent 等）必须填：
+- Cache-impact: none / low / medium / high - 原因
+- Cache-guard: 守卫测试或命令
+改系统提示、记忆前缀、输出风格或 skill 索引时，填 System-prompt-review。
+-->
 
-- `Cache-impact`: `none`, `low`, `medium`, or `high`, plus the reason.
-- `Cache-guard`: the focused guard test/command added or run, or why an existing guard covers the change.
-- `System-prompt-review`: required reviewer/approval note when provider-visible system prompt, memory prefix, output style, or skill index behavior changes.
+## Release PR（仅 release/vX.Y.Z）
+
+- [ ] 只改 `CHANGELOG.md` 和 `release-notes/releases.json`
+- [ ] 全量 CI 通过
+- [ ] app-memory 通过
