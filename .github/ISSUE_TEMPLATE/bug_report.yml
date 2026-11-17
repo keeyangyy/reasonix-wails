@@ -1,60 +1,60 @@
-name: Bug report
-description: Report a bug in DeepSeek-Reasonix
+name: Bug 报告
+description: 报告 Reasonix Wails 的问题
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for filing a bug. Pick which version line you're on below — it gets
-        labeled (`v2`/`v3`) automatically, no maintainer action needed.
-  - type: dropdown
-    id: version-line
+        感谢反馈。请尽量提供可复现的信息；不要粘贴密钥、token 或其他隐私数据。
+  - type: input
+    id: wails-version
     attributes:
-      label: Version line
-      description: Which line are you running?
+      label: Reasonix Wails 版本
+      description: 应用内「关于 / 设置」里的版本，或 `reasonix --version` 的输出
+      placeholder: 例如 v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: 安装方式
       options:
-        - "v2 — Go rewrite (1.x), main-v2 (active development)"
-        - "v3 — Studio (2.x), studio"
+        - 安装版（installer）
+        - 便携版（单 exe）
+        - 从源码构建
+        - 不确定
     validations:
       required: true
   - type: input
-    id: version
+    id: windows
     attributes:
-      label: Exact version
-      description: Output of `reasonix --version`.
-      placeholder: e.g. 1.0.0
+      label: Windows 版本 / 架构
+      placeholder: 例如 Windows 11 24H2 x64
     validations:
       required: true
   - type: textarea
     id: what-happened
     attributes:
-      label: What happened?
-      description: A clear description of the bug, and what you expected instead.
+      label: 发生了什么
+      description: 实际现象，以及你期望的行为
     validations:
       required: true
   - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce
+      label: 复现步骤
       placeholder: |
         1. ...
         2. ...
         3. ...
     validations:
       required: true
-  - type: input
-    id: os
-    attributes:
-      label: OS / platform
-      placeholder: e.g. macOS 15.3 (arm64), Ubuntu 24.04, Windows 11
-    validations:
-      required: true
   - type: textarea
     id: logs
     attributes:
-      label: Relevant logs or output
-      description: Paste any error output. Automatically formatted as code.
+      label: 日志或截图
+      description: 相关错误输出或截图；请先去除个人信息和密钥
       render: shell
     validations:
       required: false
