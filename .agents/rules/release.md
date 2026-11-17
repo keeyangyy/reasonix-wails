@@ -14,14 +14,16 @@
 
 1. 所有代码 PR 合入 `main`，完整 CI 绿。
 2. 从 `main` 开 `release/vX.Y.Z`，只改 `CHANGELOG.md` 和 `release-notes/releases.json`。
-3. 开 PR；CI 强制全量，并跑一次 app-memory；确认两者绿后合并。
+3. 开 PR；CI 强制全量，确认绿后合并。
 4. 合并后的 release commit 只触发轻量 CI；`release-manual` 会校验它只改了文档。
+5. app-memory 不在 PR 阶段跑，由 `Release (manual)` 在打 tag 前调用（见「流程」第 2 步）。
 
 ## 流程
 
 1. 确认 release commit 的 `CI` 为绿。
 2. Actions → `Release (manual)`，输入 `X.Y.Z`（不带 `v`）和 notes。
-3. 工作流等待该提交的 CI；红则中止，**不产生 tag**。
+3. 工作流先跑 app-memory 筛查；红则中止，不产生 tag。
+4. 再等待该提交的 CI；红则中止，**不产生 tag**。
 4. 绿后创建 annotated tag，创建 draft Release，并触发 `Release Windows`。
 5. `Release Windows` 构建桌面端、安装器、CLI，上传产物、签名、写 `latest.json`、刷新 `wails-latest`。
 6. 产物齐全后才发布；draft 不得提前公开。

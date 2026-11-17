@@ -1,48 +1,27 @@
 name: App memory screening
 
+# Release-time memory gate: called by release-manual.yml before the tag exists,
+# and runnable on demand via workflow_dispatch. It is intentionally not wired to
+# pull_request — the screening takes 20-90 minutes while the PR desktop lanes
+# already cover bundle budgets and the frontend suite. Running it once per
+# release keeps four permanently-skipped jobs off every PR's check list.
+
 on:
-  pull_request:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: app-memory-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: app-memory-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXPECTED_SOURCE_SHA: ${{ github.sha }}
 
 jobs:
-  changes:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
-    runs-on: ubuntu-22.04
-    outputs:
-      run: ${{ steps.paths.outputs.run }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.EXPECTED_SOURCE_SHA }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24.21.0"
-      - id: paths
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "${GITHUB_HEAD_REF%%/*}" = "release" ]; then
-            echo 'run=true' >> "$GITHUB_OUTPUT"
-          else
-            git diff --name-only -z "$BASE_SHA...$EXPECTED_SOURCE_SHA" > "$RUNNER_TEMP/memory-paths"
-            node desktop/frontend/bench/app-memory-paths.mjs "$RUNNER_TEMP/memory-paths" >> "$GITHUB_OUTPUT"
-          fi
-
   prepare:
-    needs: changes
-    if: (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')) && needs.changes.outputs.run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     defaults:
@@ -74,7 +53,6 @@ jobs:
           retention-days: 7
 
   shard:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
     needs: prepare
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -121,52 +99,38 @@ jobs:
           retention-days: 7
 
   app-memory:
-    if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/'))
-    needs: [changes, prepare, shard]
+    needs: [prepare, shard]
+    if: always()
     runs-on: ubuntu-22.04
     steps:
       - name: Verify all prerequisite jobs
         env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          SHOULD_RUN: ${{ needs.changes.outputs.run }}
           PREPARE_RESULT: ${{ needs.prepare.result }}
           SHARD_RESULT: ${{ needs.shard.result }}
         run: |
-          test "$CHANGES_RESULT" = success
-          if [ "$SHOULD_RUN" = true ]; then
-            test "$PREPARE_RESULT" = success
-            test "$SHARD_RESULT" = success
-          else
-            test "$SHOULD_RUN" = false
-            test "$PREPARE_RESULT" = skipped
-            test "$SHARD_RESULT" = skipped
-          fi
+          test "$PREPARE_RESULT" = success
+          test "$SHARD_RESULT" = success
       - uses: actions/checkout@v7
-        if: needs.changes.outputs.run == 'true'
         with:
           ref: ${{ env.EXPECTED_SOURCE_SHA }}
       - uses: actions/setup-node@v7
-        if: needs.changes.outputs.run == 'true'
         with:
           node-version: "24.21.0"
       - uses: actions/download-artifact@v8
-        if: needs.changes.outputs.run == 'true'
         with:
           pattern: app-memory-shard-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/app-memory-reports
       - uses: actions/download-artifact@v8
-        if: needs.changes.outputs.run == 'true'
         with:
           name: app-memory-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/app-memory-build
       - name: Verify same-build complete protocol
-        if: needs.changes.outputs.run == 'true'
         run: |
           node desktop/frontend/bench/app-memory-aggregate.mjs \
             "$RUNNER_TEMP/app-memory-reports" "$RUNNER_TEMP/app-memory-build/identity.json" \
             "$RUNNER_TEMP/app-memory-report.json" "$EXPECTED_SOURCE_SHA"
       - uses: actions/upload-artifact@v7
-        if: success() && needs.changes.outputs.run == 'true'
+        if: success()
         with:
           name: app-memory-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/app-memory-report.json

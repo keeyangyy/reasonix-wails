@@ -32,11 +32,18 @@ permissions:
   actions: write
 
 jobs:
+  # The memory screening is a release gate, so it runs here instead of on every
+  # pull request (see app-memory.yml). Its result gates the tag: a failed
+  # screening aborts the release before anything is published.
+  memory:
+    uses: ./.github/workflows/app-memory.yml
+
   release:
+    needs: [memory]
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0

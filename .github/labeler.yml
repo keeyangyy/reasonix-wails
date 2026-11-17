@@ -13,7 +13,6 @@ mcp:
   - changed-files:
       - any-glob-to-any-file:
           - 'internal/plugin/**'
-          - 'internal/codegraph/**'
 
 config:
   - changed-files:
