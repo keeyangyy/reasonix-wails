@@ -3,8 +3,6 @@ name: App memory screening
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +17,7 @@ env:
 
 jobs:
   changes:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-22.04
     outputs:
       run: ${{ steps.paths.outputs.run }}
@@ -34,7 +33,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "${GITHUB_HEAD_REF%%/*}" = "release" ]; then
             echo 'run=true' >> "$GITHUB_OUTPUT"
           else
             git diff --name-only -z "$BASE_SHA...$EXPECTED_SOURCE_SHA" > "$RUNNER_TEMP/memory-paths"
@@ -43,7 +42,7 @@ jobs:
 
   prepare:
     needs: changes
-    if: needs.changes.outputs.run == 'true'
+    if: (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')) && needs.changes.outputs.run == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     defaults:
@@ -75,6 +74,7 @@ jobs:
           retention-days: 7
 
   shard:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
     needs: prepare
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -121,7 +121,7 @@ jobs:
           retention-days: 7
 
   app-memory:
-    if: always()
+    if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/'))
     needs: [changes, prepare, shard]
     runs-on: ubuntu-22.04
     steps:

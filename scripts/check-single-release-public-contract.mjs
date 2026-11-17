@@ -3,9 +3,9 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
-const files = execFileSync("git", ["ls-files", "README.md", "docs/*.md"], {
+const files = execFileSync("git", ["ls-files", "-z", "README.md", "docs/*.md"], {
   encoding: "utf8",
-}).trim().split("\n").filter(Boolean);
+}).split("\0").filter(Boolean);
 const migrationReferences = new Set([
   "docs/ops/RELEASING.md",
 ]);

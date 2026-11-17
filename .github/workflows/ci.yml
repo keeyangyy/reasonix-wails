@@ -68,6 +68,9 @@ jobs:
               if echo "$files" | grep -qE '^(sdk/|internal/extension/)'; then sdk=true; fi
             fi
           fi
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "${GITHUB_HEAD_REF%%/*}" = "release" ]; then
+            code=true; desktop=true; sdk=true
+          fi
           { echo "code=$code"; echo "desktop=$desktop"; echo "site=$site"; echo "sdk=$sdk"; } >> "$GITHUB_OUTPUT"
 
   # The ruleset requires the per-OS check names (test (ubuntu-latest) etc.).
@@ -93,7 +96,7 @@ jobs:
         os: [windows-latest]
     runs-on: ${{ matrix.os }}
     env:
-      RUN_STEPS: ${{ github.event_name != 'pull_request' || needs.changes.outputs.code != 'false' }}
+      RUN_STEPS: ${{ needs.changes.outputs.code != 'false' }}
     steps:
       - if: env.RUN_STEPS == 'true'
         uses: actions/checkout@v7
@@ -335,7 +338,7 @@ jobs:
     if: always()
     runs-on: windows-latest
     env:
-      RUN_STEPS: ${{ github.event_name != 'pull_request' || needs.changes.outputs.code != 'false' }}
+      RUN_STEPS: ${{ needs.changes.outputs.code != 'false' }}
     steps:
       - if: env.RUN_STEPS == 'true'
         uses: actions/checkout@v7
@@ -356,7 +359,7 @@ jobs:
 
   race:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.code != 'false')
+    if: always() && (needs.changes.outputs.code != 'false')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -449,7 +452,7 @@ jobs:
         os: [windows-latest]
     runs-on: ${{ matrix.os }}
     env:
-      RUN_STEPS: ${{ github.event_name != 'pull_request' || needs.changes.outputs.sdk != 'false' }}
+      RUN_STEPS: ${{ needs.changes.outputs.sdk != 'false' }}
     defaults:
       run:
         working-directory: sdk/go
@@ -503,7 +506,7 @@ jobs:
       - name: Verify desktop validation jobs
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
-          SHOULD_RUN: ${{ github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false' }}
+          SHOULD_RUN: ${{ needs.changes.outputs.desktop != 'false' }}
           PREPARE_RESULT: ${{ needs.desktop-prepare.result }}
           GO_RESULT: ${{ needs.desktop-go.result }}
           FRONTEND_RESULT: ${{ needs.desktop-frontend.result }}
@@ -519,7 +522,7 @@ jobs:
 
   desktop-frontend:
     needs: [changes, desktop-prepare]
-    if: always() && needs.desktop-prepare.result == 'success' && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && needs.desktop-prepare.result == 'success' && (needs.changes.outputs.desktop != 'false')
     runs-on: ubuntu-22.04
     defaults:
       run:
@@ -549,7 +552,7 @@ jobs:
 
   desktop-browser:
     needs: [changes, desktop-prepare]
-    if: always() && needs.desktop-prepare.result == 'success' && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && needs.desktop-prepare.result == 'success' && (needs.changes.outputs.desktop != 'false')
     runs-on: ubuntu-22.04
     defaults:
       run:
@@ -582,7 +585,7 @@ jobs:
 
   desktop-prepare:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && (needs.changes.outputs.desktop != 'false')
     outputs:
       artifact_name: desktop-frontend-${{ github.run_id }}-${{ github.run_attempt }}
     runs-on: ubuntu-22.04
@@ -655,7 +658,7 @@ jobs:
 
   desktop-go:
     needs: [changes, desktop-prepare]
-    if: always() && needs.desktop-prepare.result == 'success' && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && needs.desktop-prepare.result == 'success' && (needs.changes.outputs.desktop != 'false')
     runs-on: ubuntu-22.04
     defaults:
       run:
@@ -735,7 +738,7 @@ jobs:
   # from the 22.04/4.0 leg so neither runtime becomes a distro whitelist.
   desktop-windows:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && (needs.changes.outputs.desktop != 'false')
     runs-on: windows-latest
     # A hung native step must not hold the workflow's concurrency group for the
     # six-hour default. Normal runs finish in ~25 minutes.
@@ -892,7 +895,7 @@ jobs:
   # built frontend.
   desktop-windows-go:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false')
+    if: always() && (needs.changes.outputs.desktop != 'false')
     runs-on: windows-latest
     timeout-minutes: 45
     defaults:
@@ -931,7 +934,7 @@ jobs:
   # `code` filter would otherwise skip.
   lint:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.code != 'false' || needs.changes.outputs.desktop != 'false' || needs.changes.outputs.sdk != 'false')
+    if: always() && (needs.changes.outputs.code != 'false' || needs.changes.outputs.desktop != 'false' || needs.changes.outputs.sdk != 'false')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -941,13 +944,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - if: github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false'
+      - if: needs.changes.outputs.desktop != 'false'
         uses: pnpm/action-setup@v6.0.9
         with:
           version: 10
           run_install: false
 
-      - if: github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false'
+      - if: needs.changes.outputs.desktop != 'false'
         uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -955,7 +958,7 @@ jobs:
           cache-dependency-path: desktop/frontend/pnpm-lock.yaml
 
       - name: required native motion contracts
-        if: github.event_name != 'pull_request' || needs.changes.outputs.desktop != 'false'
+        if: needs.changes.outputs.desktop != 'false'
         run: |
           pnpm --dir desktop/frontend install --frozen-lockfile
           pnpm --dir desktop/frontend test:motion
@@ -997,16 +1000,17 @@ jobs:
       - name: release workflow contracts
         run: |
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
-            .github/workflows/prepare-release-notes.yml \
             .github/workflows/docs-impact.yml \
-            .github/workflows/ci.yml
+            .github/workflows/ci.yml \
+            .github/workflows/release-manual.yml \
+            .github/workflows/app-memory.yml
           node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
           bash scripts/update-versions-index.test.sh
           node scripts/check-single-release-public-contract.mjs
 
   govulncheck:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.code != 'false')
+    if: always() && (needs.changes.outputs.code != 'false')
     runs-on: ubuntu-latest
     continue-on-error: true # informational — stdlib vulns need a Go patch release
     steps:
@@ -1025,7 +1029,7 @@ jobs:
 
   coverage:
     needs: changes
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.code != 'false')
+    if: always() && (needs.changes.outputs.code != 'false')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

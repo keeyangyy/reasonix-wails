@@ -1,8 +1,8 @@
 name: Auto-label PRs
 
 # Apply area labels to PRs based on changed paths (see .github/labeler.yml).
-# Complements the AI-based issue labeler (issue-auto-label.yml). Version (v1/v2)
-# labels are handled separately by pr-version-label.yml.
+# This is the only label workflow kept: issue auto-classification and version
+# labels were removed because they were unused in this repository.
 #
 # pull_request_target runs in the base repo context so it has the write token
 # needed to label PRs from forks; actions/labeler only reads the diff file list

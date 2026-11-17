@@ -2,8 +2,9 @@
 
 ## 分支模型
 
-- 单一主线 `main`，受保护；功能改动走短生命周期分支 + PR。
-- 分支前缀：`feat/`、`fix/`、`chore/`、`docs/`；一个主题一个分支。
+- 单一主线 `main`，受保护；所有改动走 PR。
+- 分支前缀：`feat/`、`fix/`、`chore/`、`docs/`、`ci/`、`refactor/`；一个主题一个分支。
+- release 准备用 `release/vX.Y.Z`，只改 `CHANGELOG.md` 与 `release-notes/**`；该 PR 强制全量 CI，并跑一次 app-memory。
 - 不再保留长期并行线；上游已停维，不再有同步线。
 
 ## 开发流程
@@ -13,6 +14,7 @@
 3. 跑 [precheck.md](precheck.md) 与 [testing.md](testing.md) 的相关部分。
 4. 释放 worktree（detach），更新必要的文档台账。
 5. 合并回 `main` 或等待其他会话合并；红灯不带入 main。
+6. release：代码 PR 全绿后，开 `release/vX.Y.Z` PR，只改 `CHANGELOG.md` 与 `release-notes/**`；release PR 全量 CI + app-memory，确认后合并。合并后的 release commit 只触发轻量 CI，再触发 `release-manual`。
 
 ## 提交
 
