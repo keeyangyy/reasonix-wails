@@ -45,6 +45,17 @@ jobs:
         id: target
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Verify release commit is documentation only
+        run: |
+          set -euo pipefail
+          BASE="$(git rev-parse HEAD^1)"
+          CHANGED="$(git diff --name-only "$BASE" HEAD)"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -vE '^(CHANGELOG\.md|release-notes/)'; then
+            echo "::error::release commit may only change CHANGELOG.md and release-notes/**"
+            exit 1
+          fi
+
       - name: Wait for official CI of this commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

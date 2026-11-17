@@ -6,20 +6,18 @@
 
 | workflow | 职责 |
 |---|---|
-| `ci.yml` | 主 CI：push / PR 到 `main`；路径过滤后跑 lint、race、test 等 required checks |
-| `release-manual.yml` | 手动发版：等目标提交 CI 绿，创建 tag 与 draft Release |
+| `ci.yml` | 主 CI：push / PR 到 `main`；普通 PR 按路径过滤，`release/*` PR 强制全量；docs-only push 只跑轻量 |
+| `release-manual.yml` | 手动发版：校验 release commit 只改文档，等轻量 CI 绿，创建 tag 与 draft Release |
 | `release-windows.yml` | tag 驱动：构建 Windows 桌面端、安装器、CLI，签名、上传、写更新清单 |
-| `build-windows.yml` | Windows 构建 |
-| `build-probe-windows.yml` | Windows 构建探测 |
+| `build-windows.yml` | 手动 Windows 构建 |
+| `build-probe-windows.yml` | 手动 canary 诊断构建 |
 | `cache-impact.yml` | PR 缓存影响门禁 |
 | `docs-impact.yml` | PR 文档影响门禁 |
 | `ci-rerun.yml` | 失败自动重跑 |
 | `codeql.yml` | 代码扫描 |
-| `prepare-release-notes.yml` | 发布说明准备 |
-| `release-notes.yml` | 发布说明生成/更新 |
-| `app-memory.yml` | 应用记忆相关辅助任务 |
-| `issue-auto-label.yml` / `issue-version-label.yml` | issue 标签 |
-| `pr-auto-label.yml` / `pr-version-label.yml` | PR 标签 |
+| `app-memory.yml` | 前端内存筛查：仅 `release/*` PR 或手动触发 |
+| `release-notes.yml` | PR 校验发布说明文件与脚本 |
+| `pr-auto-label.yml` | PR 打开/同步时按路径打 area 标签 |
 | `spam-comment-guard.yml` | 防垃圾评论 |
 
 ## 规则

@@ -1,0 +1,23 @@
+language: "zh-CN"
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_filters:
+    - "!docs/archive/**"
+    - "!release-notes/**"
+    - "!**/*.lock"
+  path_instructions:
+    - path: "docs/**"
+      instructions: "文档改动重点检查链接、术语和前后一致性，不要求代码风格。"
+    - path: ".agents/**"
+      instructions: "规则文件重点检查与仓库实际流程是否一致；不要建议翻译上游英文产品文档。"
+    - path: "desktop/frontend/**"
+      instructions: "前端改动重点检查 transcript 单写者、generation fence 和竞态测试；必要时引用 .agents/rules/desktop.md。"
+
+chat:
+  auto_reply: true

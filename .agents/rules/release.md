@@ -10,9 +10,16 @@
 - 必须三段数字；四段会让 NSIS 版本无效。
 - 版本号属于本仓库，与上游 1.x / 2.x 无关。
 
+## 发版准备
+
+1. 所有代码 PR 合入 `main`，完整 CI 绿。
+2. 从 `main` 开 `release/vX.Y.Z`，只改 `CHANGELOG.md` 和 `release-notes/releases.json`。
+3. 开 PR；CI 强制全量，并跑一次 app-memory；确认两者绿后合并。
+4. 合并后的 release commit 只触发轻量 CI；`release-manual` 会校验它只改了文档。
+
 ## 流程
 
-1. 所有改动合入 `main`，确认该提交的 `CI` 为绿。
+1. 确认 release commit 的 `CI` 为绿。
 2. Actions → `Release (manual)`，输入 `X.Y.Z`（不带 `v`）和 notes。
 3. 工作流等待该提交的 CI；红则中止，**不产生 tag**。
 4. 绿后创建 annotated tag，创建 draft Release，并触发 `Release Windows`。
