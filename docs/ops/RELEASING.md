@@ -1,6 +1,6 @@
-# Releasing Reasonix
+# Releasing Reasonix Wails
 
-This fork ships one user-facing release line: Windows x64 desktop, distributed
+This project ships one user-facing release line: Windows x64 desktop, distributed
 from `keeyangyy/reasonix-wails`. There is no npm package, no Homebrew tap, no
 CLI multi-platform matrix and no R2/CDN mirror.
 
@@ -21,7 +21,7 @@ Every release also writes `latest.json` and `versions.json` onto the fixed
 
 `vMAJOR.MINOR.PATCH` for a stable release, `vMAJOR.MINOR.PATCH-beta.N` for a
 pre-release. The numbers belong to this line; they have nothing to do with the
-upstream 1.x series.
+archived upstream 1.x series.
 
 Exactly three numeric segments are required: the NSIS installer derives
 `VIProductVersion` from `${version}.0`, so a four-segment tag such as
@@ -91,7 +91,7 @@ tag with `stable`.
 ## Before the first public release
 
 - Configure `MINISIGN_PRIVATE_KEY` and `MINISIGN_PASSWORD` repository secrets.
-- Confirm `wails-latest` exists and points at this line, not the upstream
+- Confirm `wails-latest` exists and points at this line, not the archived upstream
   1.38.x line.
 - Verify the `CI` workflow has actually run on `main` (it is the only gate the
   manual flow trusts).

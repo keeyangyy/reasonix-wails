@@ -1,13 +1,12 @@
-# Contributing to this build
+# Contributing to Reasonix Wails
 
-Thank you for your interest in this independently maintained build of
-DeepSeek-Reasonix. This fork branches from upstream v1.38.2 and keeps the Wails
-desktop app; it does not adopt Electron.
+Thank you for your interest in Reasonix Wails, an independent Windows desktop
+build derived from the Reasonix 1.x Wails implementation. It keeps the
+Go + Wails + WebView2 stack and does not adopt Electron.
 
-This guide covers the local development workflow for this repository. Upstream
-project-wide contributions should go to
-[keeyangyy/reasonix-wails](https://github.com/keeyangyy/reasonix-wails);
-changes specific to the Wails desktop line belong here.
+This guide covers the local development workflow for this repository. The
+upstream project is archived, so changes should go to this repository rather
+than upstream.
 
 ## Prerequisites
 
@@ -44,7 +43,6 @@ go test ./...              # runs the full test suite
 | `internal/memory` | AGENTS.md hierarchy + auto-memory |
 | `internal/skill` | Skill discovery from Markdown |
 | `internal/sandbox` | OS-level sandboxing |
-| `internal/serve` | HTTP/SSE server frontend |
 | `internal/checkpoint` | Snapshot-based rewind |
 | `desktop/` | Wails-based desktop app (separate Go module) |
 | `docs/` | Engineering spec, migration guide |
@@ -190,8 +188,7 @@ ci: add golangci-lint and govulncheck
 4. Ensure `gofmt -l .` shows no changes
 5. Submit a pull request to `main`
 
-Changes that also apply upstream are welcome there as a separate PR; keep this
-repository's diff focused on the Wails desktop line.
+The upstream project is archived and no longer accepts PRs; keep changes focused on this repository.
 
 ## Reporting issues
 
