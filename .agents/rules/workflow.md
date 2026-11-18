@@ -22,10 +22,17 @@
 - 一个提交一件事；review 反馈用 amend，避免堆 fixup 提交。
 - 不提交 `tmp/`、构建产物、用户数据、密钥。
 
+## 计划
+
+- `tmp/plan/`：本地短期计划，不提交 Git。
+- `plan/`：需要跨会话协作、可版本化的长期计划，属于工作材料，不当作持久化设计文档；PR 中仍接受轻量 CI 与 CodeRabbit 评审。
+- 计划完成后及时清理：有长期价值的结论提炼到 `docs/` 对应位置（需要保留历史证据的按需归档），无留存价值的计划删除。不为统一结构创建空目录。
+
 ## PR
 
 - **异步审查要合批处理**：CI 与 CodeRabbit 的结论到达时间不同（CI 约 5–30 分钟，CodeRabbit 约 5 分钟且会基于最新 commit 重审）。先等两边都出结论，再一次性修改提交；中间急着推送只会让两边都重跑，还会让先到的一方基于旧代码重新提意见。
 - 一个 PR 一个主题，diff 只含相关文件。
+- **文档主题的 PR 不夹带无关代码**：如果 PR 的主题是文档，diff 里不要顺带改与文档无关的脚本/代码（例如删除 `scripts/*.mjs`）。`check-changes` 的 `code` 与 `desktop` 是排除式判定：除文档路径等白名单外的任何路径都会启用，`scripts/**`、根 `go.mod` 等都算；`desktop/**` 另启用 `desktop_direct`，`sdk/`、`internal/extension/` 启用 `sdk`，`.github/workflows/**` 启用 `workflow`；`.github/**`（workflows 之外）与 `.agents/**` 不启用任何 lane。多出的非文档路径会让 PR 同时跑对应 lane，耗时以实际 workflow 运行记录为准。功能或代码改动与其对应文档一起提交是正常的，这类 PR 本来就按对应档位走。
 - **required 是两个：`gate` 与 `CodeRabbit`。** `gate` 由入口工作流（`ci-docs` / `ci-code` / `ci-full`）汇总本次运行的顶层 job，任何一项不是 `success` 都会让它失败；`CodeRabbit` 未出结论（pending/cancelled）时同样不能合并。
 - **合并门禁：本 PR 产生的所有 check 必须全部通过。**
   - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 6、根模块 code 约 20、含 desktop 约 26、full 约 30）。
@@ -36,6 +43,7 @@
 - **合并方式只有 squash**；合并后 head 分支自动删除。
 - **没有人可以绕过 gate**：ruleset 的 bypass 名单是空的，包括仓库所有者。
 - 未解决的 review 线程会阻止合并：CodeRabbit 或人工的意见要么修，要么回复理由并 `Resolve conversation`。
+- **CodeRabbit 的意见是参考，不是必须全盘接受**：它可能误报、超出本 PR 范围，或把实现细节穷举进规则。收到 finding 先判断是否成立、是否属于本 PR 范围：成立且相关就修；不成立、范围外或过度细化，就回复理由并 `Resolve conversation`。不要为了让它变绿而改坏设计或扩大 PR。
 - PR 正文写清：改了什么、为什么、影响面、验证方式。
 - 元数据门禁（以脚本为准）：
   - 缓存敏感改动：`Cache-impact: <none|low|medium|high> - <reason>`、`Cache-guard: <test/command>`。

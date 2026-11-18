@@ -109,6 +109,8 @@ pnpm build
 
 ## 文档
 
+开发者文档入口：[文档索引](./docs/index.md) · [架构导航](./docs/architecture.md)。
+
 - [使用指南](./docs/guide/GUIDE.zh-CN.md)
 - [配置路径](./docs/guide/CONFIG_PATHS.zh-CN.md)
 - [Checkpoints 与回退](./docs/guide/CHECKPOINTS.zh-CN.md)

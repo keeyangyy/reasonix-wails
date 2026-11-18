@@ -71,6 +71,8 @@ benchmarks/context-maintenance-e2e/run/
 
 # Local scratch
 /tmp/
+/data/
+/logs/
 temp/
 
 # Official theme art intermediate outputs / caches

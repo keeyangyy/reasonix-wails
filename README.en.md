@@ -109,6 +109,8 @@ pnpm build
 
 ## Documentation
 
+Developer documentation: [Documentation index](./docs/index.md) · [Architecture overview](./docs/architecture.md).
+
 - [Guide](./docs/guide/GUIDE.md)
 - [Config paths](./docs/guide/CONFIG_PATHS.md)
 - [Checkpoints and rewind](./docs/guide/CHECKPOINTS.md)
