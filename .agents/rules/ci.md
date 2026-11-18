@@ -36,7 +36,7 @@
 
 DOC 路径：`docs/**`、`plan/**`、`.agents/**`、`release-notes/**`、`benchmarks/**`、根级 `*.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig`、`.coderabbit.yaml`、`.github/ISSUE_TEMPLATE/**`、`.github/pull_request_template.md`、`.github/labeler.yml`、`.github/dependabot.yml`。
 
-`plan/**` 是需要版本化和跨会话协作的计划，保留在轻量文档档；`tmp/**` 是本地临时资料，不提交也不进入 CI 路径。计划内容审查规则见 `.coderabbit.yaml`。
+`plan/**` 是需要版本化和跨会话协作的计划，保留在轻量文档档；`tmp/**` 是本地临时资料，不提交也不进入 CI 路径。CodeRabbit 会审查 PR 中变更的计划文件，检查标准见 `.coderabbit.yaml`。
 
 `ci-docs.yml` 的 `paths` 与 `ci-code.yml` 的 `paths-ignore` 必须完全一致，否则同一个 PR 会同时启动两个入口、产生两个 `gate`。
 
