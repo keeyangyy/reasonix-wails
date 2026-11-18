@@ -99,7 +99,7 @@ jobs:
         if: env.CODE == 'true' || env.DESKTOP == 'true' || env.WF == 'true'
         run: |
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
-          node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
+          node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-classify.test.mjs scripts/ci-workflow.test.mjs
           bash scripts/update-versions-index.test.sh
           node scripts/check-single-release-public-contract.mjs
 

@@ -1,30 +1,12 @@
-name: CI (code)
+name: CI
 
-# Everything that is not documentation: code, workflows, desktop, sdk, scripts.
-# The paths-ignore list must mirror ci-docs.yml's `paths` exactly, so a PR
-# never starts both entry points.
-
+# Single PR entry: classify the diff once and schedule only affected lanes.
+# On main pushes (or manual invocation), all code lanes are exhaustive.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "plan/**"
-      - ".agents/**"
-      - "release-notes/**"
-      - "benchmarks/**"
-      - "*.md"
-      - "LICENSE"
-      - ".gitignore"
-      - ".gitattributes"
-      - ".editorconfig"
-      - ".coderabbit.yaml"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/pull_request_template.md"
-      - ".github/labeler.yml"
-      - ".github/dependabot.yml"
   workflow_dispatch:
 
 permissions:
@@ -36,7 +18,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: ci-code-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -48,6 +30,7 @@ jobs:
 
   lint:
     needs: changes
+    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
     uses: ./.github/workflows/check-lint.yml
     with:
       code: ${{ needs.changes.outputs.code }}
@@ -56,6 +39,7 @@ jobs:
 
   go:
     needs: changes
+    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.sdk == 'true') }}
     uses: ./.github/workflows/check-go.yml
     with:
       code: ${{ needs.changes.outputs.code }}
@@ -63,6 +47,7 @@ jobs:
 
   desktop:
     needs: changes
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.desktop == 'true' }}
     uses: ./.github/workflows/check-desktop.yml
     with:
       desktop: ${{ needs.changes.outputs.desktop }}
@@ -72,24 +57,43 @@ jobs:
 
   codeql:
     needs: changes
+    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
     uses: ./.github/workflows/check-codeql.yml
     with:
       code: ${{ needs.changes.outputs.code }}
       desktop: ${{ needs.changes.outputs.desktop }}
       workflow: ${{ needs.changes.outputs.workflow }}
 
+  # Every release/* PR must run all code checks plus memory screening.
+  memory:
+    needs: changes
+    if: ${{ needs.changes.result == 'success' && github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
+    uses: ./.github/workflows/check-memory.yml
+
   gate:
-    needs: [changes, docs-rules, lint, go, desktop, codeql]
+    needs: [changes, docs-rules, lint, go, desktop, codeql, memory]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify every job succeeded
+      - name: Verify every selected lane passed
         env:
           RESULTS: ${{ toJSON(needs) }}
+          IS_RELEASE_PR: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/') }}
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
-          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'
+          echo "$RESULTS" | jq -e --arg release "$IS_RELEASE_PR" '
+            def lane($needed; $name):
+              if $needed then .[$name].result == "success"
+              else .[$name].result == "skipped" end;
+            .changes.result == "success"
+            and .["docs-rules"].result == "success"
+            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "lint")
+            and lane(.changes.outputs.code == "true" or .changes.outputs.sdk == "true"; "go")
+            and lane(.changes.outputs.desktop == "true"; "desktop")
+            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "codeql")
+            and lane($release == "true"; "memory")
+          '
 
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
@@ -97,8 +101,8 @@ jobs:
   metrics:
     # needs gate so the artifact always covers the same job set
     # (otherwise gate may or may not have finished when the API is queried).
-    needs: [changes, docs-rules, lint, go, desktop, codeql, gate]
-    if: always()
+    needs: [changes, docs-rules, lint, go, desktop, codeql, memory, gate]
+    if: ${{ always() && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.sdk == 'true' || needs.changes.outputs.workflow == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -149,7 +153,7 @@ jobs:
     # wait for codeql as well: it writes this run's overlay cache, and pruning
     # before that write leaves two entries in the same family.
     needs: [go, desktop, codeql]
-    if: always()
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

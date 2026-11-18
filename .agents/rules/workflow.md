@@ -33,7 +33,7 @@
 - **异步审查要合批处理**：CI 与 CodeRabbit 的结论到达时间不同（CI 约 5–30 分钟，CodeRabbit 约 5 分钟且会基于最新 commit 重审）。先等两边都出结论，再一次性修改提交；中间急着推送只会让两边都重跑，还会让先到的一方基于旧代码重新提意见。
 - 一个 PR 一个主题，diff 只含相关文件。
 - **文档主题的 PR 不夹带无关代码**：如果 PR 的主题是文档，diff 里不要顺带改与文档无关的脚本/代码（例如删除 `scripts/*.mjs`）。`check-changes` 的 `code` 与 `desktop` 是排除式判定：除文档路径等白名单外的任何路径都会启用，`scripts/**`、根 `go.mod` 等都算；`desktop/**` 另启用 `desktop_direct`，`sdk/`、`internal/extension/` 启用 `sdk`，`.github/workflows/**` 启用 `workflow`；`.github/**`（workflows 之外）与 `.agents/**` 不启用任何 lane。多出的非文档路径会让 PR 同时跑对应 lane，耗时以实际 workflow 运行记录为准。功能或代码改动与其对应文档一起提交是正常的，这类 PR 本来就按对应档位走。
-- **required 是两个：`gate` 与 `CodeRabbit`。** `gate` 由入口工作流（`ci-docs` / `ci-code` / `ci-full`）汇总本次运行的顶层 job，任何一项不是 `success` 都会让它失败；`CodeRabbit` 未出结论（pending/cancelled）时同样不能合并。
+- **required 是两个：`gate` 与 `CodeRabbit`。** `gate` 由单一 PR 入口 `ci.yml`（或手动/定时的 `ci-full.yml`）汇总分类结果：需要执行的 lane 必须 `success`，非适用 lane 必须 `skipped`；`CodeRabbit` 未出结论（pending/cancelled）时同样不能合并。
 - **合并门禁：本 PR 产生的所有 check 必须全部通过。**
   - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 6、根模块 code 约 20、含 desktop 约 26、full 约 30）。
   - 灰色 `skipped` 在 GitHub 的统计里计入通过，所以可复用工作流内部的子 job 可以用 job 级 `if` 按需跳过；但**顶层必需 job 不能跳过**，它们必须始终给出结论。
