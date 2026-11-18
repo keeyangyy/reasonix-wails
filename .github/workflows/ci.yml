@@ -524,7 +524,6 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           SHOULD_RUN: ${{ needs.changes.outputs.desktop != 'false' }}
-          WINDOWS_RUN: ${{ needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false' }}
           PREPARE_RESULT: ${{ needs.desktop-prepare.result }}
           GO_RESULT: ${{ needs.desktop-go.result }}
           FRONTEND_RESULT: ${{ needs.desktop-frontend.result }}
@@ -535,17 +534,18 @@ jobs:
           test "$CHANGES_RESULT" = success
           linux_expected=skipped
           if [ "$SHOULD_RUN" = true ]; then linux_expected=success; fi
-          windows_expected=skipped
-          if [ "$WINDOWS_RUN" = true ]; then windows_expected=success; fi
           for pair in "prepare:$PREPARE_RESULT" "go:$GO_RESULT" "frontend:$FRONTEND_RESULT" "browser:$BROWSER_RESULT"; do
             lane=${pair%%:*}; result=${pair#*:}
             echo "$lane: $result (expected $linux_expected)"
             test "$result" = "$linux_expected"
           done
+          # The Windows lanes always run and gate their steps, so they report
+          # success even when the module is out of scope. Requiring success here
+          # keeps the merge rule (every produced check green) enforceable.
           for pair in "windows:$WINDOWS_RESULT" "windows-go:$WINDOWS_GO_RESULT"; do
             lane=${pair%%:*}; result=${pair#*:}
-            echo "$lane: $result (expected $windows_expected)"
-            test "$result" = "$windows_expected"
+            echo "$lane: $result (expected success)"
+            test "$result" = success
           done
 
   desktop-frontend:
