@@ -26,7 +26,7 @@
 
 | 类别 | 路径 |
 |---|---|
-| DOC | `docs/**`、`release-notes/**`、`benchmarks/**`、`tmp/**`、根级 `*.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig` |
+| DOC | `docs/**`、`release-notes/**`、`benchmarks/**`、`tmp/**`、`.agents/**`、根级 `*.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig`、`.coderabbit.yaml` |
 | META | `.github/**` 但非 `workflows/`（模板、labeler、dependabot、CODEOWNERS） |
 | WF | `.github/workflows/**` |
 | CODE | 其他全部 |

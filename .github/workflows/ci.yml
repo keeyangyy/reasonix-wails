@@ -71,12 +71,12 @@ jobs:
               desktop_direct=false; full=false
               # Root-module CI: desktop/ is a separate module, so only this
               # clearly-unrelated set can skip it.
-              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|desktop/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$)'; then
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|\.agents/|desktop/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$|\.coderabbit\.yaml$)'; then
                 code=true
               fi
               # desktop/ imports the root kernel via `replace reasonix => ../`,
               # so the same clearly-unrelated set is what skips it.
-              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$)'; then
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|\.agents/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$|\.coderabbit\.yaml$)'; then
                 desktop=true
               fi
               # Only a diff that touches desktop/ itself pays for the full
