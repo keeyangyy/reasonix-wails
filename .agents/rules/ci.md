@@ -41,6 +41,8 @@ DOC 路径：`docs/**`、`plan/**`、`.agents/**`、`release-notes/**`、`benchm
 ## 门禁
 
 - required 是两个：`gate` 与 `CodeRabbit`。ruleset 另外锁 squash、线程必须 resolve、合并后删除 head 分支、bypass 为空。
+- review 数量要求是 0：不要求 approve。`required_approving_review_count` 只计数、不能指定某个审查者；单人维护下把关来自 `gate`、`CodeRabbit` check 与未 resolve 线程。
+- 实测：count 为 0 时，CodeRabbit 提交 `Changes requested` 仍会让 `reviewDecision` 变 `CHANGES_REQUESTED`、`mergeStateStatus` 变 `BLOCKED`。
 - `gate` 汇总本次运行的**顶层 job**。`ci-code` 是 changes / docs-rules / lint / go / desktop / codeql；`ci-full` 在此基础上再加 `memory`（内存筛查）。判定用 `jq -e 'all(.[]; .result == "success")'`。它们不按路径跳过；其中 `lint` / `go` / `desktop` / `codeql` 都 `needs: changes`，所以 `changes` 失败时它们会被跳过，而 `docs-rules`（无 `needs`）与 `gate` 仍会运行，随后由 `gate` 判失败。
 - `CodeRabbit` 没出结论（pending / cancelled）就无法合并；它的意见要么修，要么回复理由并 resolve 线程。
 - **可复用工作流内部的子 job 可以按需跳过**（例如桌面 lane 在非桌面改动时不启动），由该文件的汇总 job 按 `inputs` 判定，不让 skipped 传导到 `gate`。
