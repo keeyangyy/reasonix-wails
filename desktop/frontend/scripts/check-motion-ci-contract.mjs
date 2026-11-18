@@ -6,7 +6,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const workflow = readFileSync(resolve(repoRoot, ".github/workflows/ci.yml"), "utf8");
+// The CI structure is split into entry points plus reusable checks, so the
+// contract reads the two files that carry the desktop and lint jobs rather
+// than a single monolithic ci.yml.
+const workflow = [
+  ".github/workflows/check-desktop.yml",
+  ".github/workflows/check-lint.yml",
+].map(file => readFileSync(resolve(repoRoot, file), "utf8")).join("\n");
 const packageJSON = JSON.parse(readFileSync(resolve(repoRoot, "desktop/frontend/package.json"), "utf8"));
 const appSource = readFileSync(resolve(repoRoot, "desktop/frontend/src/App.tsx"), "utf8");
 const bridgeSource = readFileSync(resolve(repoRoot, "desktop/frontend/src/lib/bridge.ts"), "utf8");

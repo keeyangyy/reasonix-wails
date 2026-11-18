@@ -1,0 +1,31 @@
+name: Check docs rules
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # repolint enforces file-size budgets, essay/narrative rules and test-file
+      # sizes. It applies to documents too, which is why the docs lane keeps it.
+      - name: repo standards
+        run: go run ./tools/repolint
+
+      # A release-notes-only PR lands in this lane, so the catalog schema and
+      # generator tests have to run here; ci-code would never see it.
+      - name: release notes catalog
+        run: |
+          node scripts/release-notes.mjs validate
+          node --test scripts/release-notes.test.mjs

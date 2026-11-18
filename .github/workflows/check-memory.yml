@@ -1,21 +1,10 @@
 name: App memory screening
 
-# Release-time memory gate: called by release-manual.yml before the tag exists,
-# and runnable on demand via workflow_dispatch. It is intentionally not wired to
-# pull_request — the screening takes 20-90 minutes while the PR desktop lanes
-# already cover bundle budgets and the frontend suite. Running it once per
-# release keeps four permanently-skipped jobs off every PR's check list.
-
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: app-memory-${{ github.ref }}
-  cancel-in-progress: false
 
 env:
   EXPECTED_SOURCE_SHA: ${{ github.sha }}

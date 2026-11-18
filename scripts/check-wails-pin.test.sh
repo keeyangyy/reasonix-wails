@@ -19,7 +19,11 @@ make_fixture() {
   cp "$root/scripts/check-wails-pin.sh" "$fixture/scripts/check-wails-pin.sh"
   printf '%s\n' "$fixture_pin" > "$fixture/.wails-version"
   printf 'github.com/wailsapp/wails/v2 %s\n' "$fixture_pin" > "$fixture/desktop/go.mod"
-  printf 'run: go install "%s@$(cat "$GITHUB_WORKSPACE/.wails-version")"\n' "$wails_module" > "$fixture/.github/workflows/ci.yml"
+  # The layout installs the CLI from two workflows: the desktop checks and the
+  # build pipeline. Both must read the shared pin.
+  for wf in check-desktop.yml build-windows.yml; do
+    printf 'run: go install "%s@$(cat "$GITHUB_WORKSPACE/.wails-version")"\n' "$wails_module" > "$fixture/.github/workflows/$wf"
+  done
 
 
   printf 'go install "%s@$wails_pin"\nwails version\n' "$wails_module" > "$fixture/prod_test"
@@ -63,11 +67,11 @@ printf 'github.com/wailsapp/wails/v2 v9.8.8\n' > "$fixture/desktop/go.mod"
 expect_failure "$fixture" 'version drift'
 
 fixture="$(make_fixture workflow-cwd)"
-printf 'run: go install "%s@$(cat .wails-version)"\n' "$wails_module" > "$fixture/.github/workflows/ci.yml"
+printf 'run: go install "%s@$(cat .wails-version)"\n' "$wails_module" > "$fixture/.github/workflows/check-desktop.yml"
 expect_failure "$fixture" "reads .wails-version relative to the job's working directory"
 
 fixture="$(make_fixture workflow-other-source)"
-printf 'run: go install "%s@$WAILS_VERSION"\n' "$wails_module" > "$fixture/.github/workflows/ci.yml"
+printf 'run: go install "%s@$WAILS_VERSION"\n' "$wails_module" > "$fixture/.github/workflows/check-desktop.yml"
 expect_failure "$fixture" 'unsupported sources'
 
 fixture="$(make_fixture makefile-hard-code)"

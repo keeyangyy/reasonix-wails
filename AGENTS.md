@@ -45,9 +45,9 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 
 ## 工作区
 
-- 主仓库：开发机 `<dev-host>` 上的仓库根（`main`）。
-- worktree：开发机 `<worktree-root>/<project>-devN`。
-- 本机经共享盘只读写文件；git、构建、测试、全库搜索一律在开发机执行。
+- 主仓库：c675 上的 `D:/project/prj-github-c675/reasonix-wails`（`main`）。
+- worktree：`D:/project/prj-github-c675/worktree/reasonix-wails/reasonix-wails-devN`。
+- 本机经 `Y:/prj-github-c675/reasonix-wails/` 只读写文件；git、构建、测试、全库搜索一律在 c675 执行。
 
 ## 文档
 

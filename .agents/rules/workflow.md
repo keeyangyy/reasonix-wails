@@ -24,15 +24,18 @@
 
 ## PR
 
+- **异步审查要合批处理**：CI 与 CodeRabbit 的结论到达时间不同（CI 约 5–30 分钟，CodeRabbit 约 5 分钟且会基于最新 commit 重审）。先等两边都出结论，再一次性修改提交；中间急着推送只会让两边都重跑，还会让先到的一方基于旧代码重新提意见。
 - 一个 PR 一个主题，diff 只含相关文件。
-- PR 必须过 CI；required checks 以仓库设置和 `ci.yml` 为准。
+- **required check 只有一个：`gate`。** 它由入口工作流（`ci-docs` / `ci-code` / `ci-full`）汇总本次运行的全部 job，任何一项不是 `success` 都会让 gate 失败。
 - **合并门禁：本 PR 产生的所有 check 必须全部通过。**
-  - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 17、根模块 code 约 17、含 desktop 约 19、release/main 约 23）。
+  - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 6、根模块 code 约 20、含 desktop 约 26、full 约 30）。
   - 出现灰色 `skipped` 说明该 job 用了 job 级 `if`：改成 `always()` + 步骤门控，让它在不适用时秒过而不是跳过。
   - 任何红项都要处理：要么修代码，要么修检查本身（判定不合理、误报、flaky）。**不允许带着红合并。**
   - 例外仅限：平台 flake 重跑后恢复、第三方服务故障。例外必须在 PR 里写清原因，且不得长期挂着红。
   - 某项长期红 = 系统性问题（真 bug 或检查设计错），当次解决，不能靠下次。
-- CodeRabbit 也必须通过。它的意见可以反驳：回复理由并 `Resolve conversation`，让它在下一轮重新评估；不反驳也不修就会一直阻塞。
+- **合并方式只有 squash**；合并后 head 分支自动删除。
+- **没有人可以绕过 gate**：ruleset 的 bypass 名单是空的，包括仓库所有者。
+- 未解决的 review 线程会阻止合并：CodeRabbit 或人工的意见要么修，要么回复理由并 `Resolve conversation`。
 - PR 正文写清：改了什么、为什么、影响面、验证方式。
 - 元数据门禁（以脚本为准）：
   - 缓存敏感改动：`Cache-impact: <none|low|medium|high> - <reason>`、`Cache-guard: <test/command>`。

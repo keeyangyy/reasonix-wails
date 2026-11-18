@@ -19,19 +19,19 @@ function shellStep(body, name) {
   return body.split(`      - name: ${name}\n`)[1].match(/        run: \|\n((?:          .*\n|\n)+)/)[1]
     .replace(/^          /gm, "");
 }
-const ci = workflow("ci");
+const desktopWorkflow = workflow("check-desktop");
 
 test("required desktop aggregate rejects every failed, cancelled or unexpectedly skipped child", () => {
-  const script = shellStep(job(ci, "desktop"), "Verify desktop validation jobs");
+  const script = shellStep(job(desktopWorkflow, "desktop"), "Verify desktop validation jobs");
   const base = { CHANGES_RESULT: "success", SHOULD_RUN: "true", PREPARE_RESULT: "success", GO_RESULT: "success", FRONTEND_RESULT: "success", BROWSER_RESULT: "success", WINDOWS_RESULT: "success", WINDOWS_GO_RESULT: "success" };
   const run = env => spawnSync("bash", ["-e", "-c", script], { env: { ...process.env, ...env } }).status;
-  // Exhaustive run (push to main, release/*): every lane must succeed.
+  // Exhaustive run: every lane must succeed.
   assert.equal(run(base), 0);
   // Ordinary root-module PR: the Linux lanes are not scheduled, but the Windows
   // lanes always run (they gate their own steps) and must still report success.
   assert.equal(run({ ...base, SHOULD_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped" }), 0);
-  // Docs-only: the Linux lanes and the Windows lanes are all skipped, which
-  // must fail — the Windows lanes always run and always report success.
+  // Docs-only: the Linux lanes skip while the Windows lanes are already skipped;
+  // that combination must fail because the Windows lanes always report success.
   assert.notEqual(run({ ...base, SHOULD_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
   // A lane that should have run but did not (or failed) fails the aggregate.
   for (const key of ["PREPARE_RESULT", "GO_RESULT", "FRONTEND_RESULT", "BROWSER_RESULT", "WINDOWS_RESULT", "WINDOWS_GO_RESULT", "CHANGES_RESULT"]) {
@@ -41,19 +41,20 @@ test("required desktop aggregate rejects every failed, cancelled or unexpectedly
   }
 });
 
-
-
 test("all Linux consumers use the prepared build and reject a failed preparation", () => {
-  const context = { github: { event_name: "pull_request" },
-    needs: { changes: { outputs: { desktop: "true" } }, "desktop-prepare": { result: "success" } } };
-  const aggregate = job(ci, "desktop");
+  const context = {
+    github: { event_name: "pull_request" },
+    inputs: { desktop: "true" },
+    needs: { "desktop-prepare": { result: "success" } },
+  };
+  const aggregate = job(desktopWorkflow, "desktop");
   for (const name of ["desktop-go", "desktop-frontend", "desktop-browser"]) {
-    const body = job(ci, name);
+    const body = job(desktopWorkflow, name);
     assert.ok(aggregate.includes(name));
-    assert.ok(body.includes("needs: [changes, desktop-prepare]"));
+    assert.ok(body.includes("needs: [desktop-prepare]"));
     assert.ok(body.includes("name: ${{ needs.desktop-prepare.outputs.artifact_name }}"));
     assert.ok(!body.includes("pnpm --dir frontend build"));
     assert.equal(condition(body, context), true);
-    assert.equal(condition(body, { ...context, needs: { ...context.needs, "desktop-prepare": { result: "failure" } } }), false);
+    assert.equal(condition(body, { ...context, needs: { "desktop-prepare": { result: "failure" } } }), false);
   }
 });

@@ -2,14 +2,30 @@
 
 [中文](CI_PERFORMANCE.zh-CN.md)
 
+## Workflow layout
+
+Three entry points decide the scenario: `ci-docs` (documentation paths),
+`ci-code` (everything else, including a push to main) and `ci-full` (manual and
+nightly complete sweep). Each entry ends in a `gate` job that requires every job
+in that run to succeed, so a failed or skipped lane blocks the merge; the branch
+ruleset requires `gate` and nothing else.
+
+The work itself lives in reusable workflows — `check-changes`,
+`check-docs-rules`, `check-lint`, `check-go`, `check-desktop`, `check-codeql`,
+`check-memory` — so each file has one responsibility and can be debugged on its
+own. A reusable workflow cannot read the caller's `changes` job, so diff flags
+arrive as inputs; it also cannot raise permissions above the caller's, which is
+why the entry points grant `security-events: write` for the CodeQL lane.
+
 ## Desktop PR checks
 
-`desktop-prepare` generates Wails bindings and builds the Linux frontend once.
-Its artifact is consumed by independent `desktop-frontend`, `desktop-browser`,
-and `desktop-go` jobs. The existing required `desktop` check aggregates all
-four results, rejects failures/cancellations/unexpected skips, and accepts a
-path-based skip only when the changes detector succeeds. The other native OS
-checks remain separate.
+`desktop / desktop-prepare` generates Wails bindings and builds the Linux
+frontend once. Its artifact is consumed by the independent
+`desktop / desktop-frontend`, `desktop / desktop-browser` and
+`desktop / desktop-go` jobs. The `desktop` aggregate inside `check-desktop.yml`
+rejects failures, cancellations and unexpected skips, and accepts a path-based
+skip only when the changes detector succeeds; `gate` then requires that
+aggregate together with every other lane.
 
 `node desktop/frontend/scripts/run-ci-tests.mjs --list` prints the unit test
 plan. It expands the existing dedicated scripts and lifecycle hooks, discovers
