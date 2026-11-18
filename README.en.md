@@ -10,7 +10,7 @@
 
 <p align="center">
   Read code, edit files, run commands and tests — all on your machine.<br />
-  No data migration, no upstream desktop-architecture change.
+  Wails architecture retained; no Electron migration.
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 Reasonix Wails is a Windows desktop coding agent: it reads repositories, edits files, runs commands and tests. The UI and its assets are packaged into a single exe that runs without installation.
 
-This project originates from the **Wails desktop implementation on the Reasonix 1.x (`main-v2`) line**. Upstream's desktop app has migrated to Electron, and 2.x (Studio) is built on Electron as well; this project continues on the Go + Wails + WebView2 stack: the UI reuses the system-provided WebView2 without shipping Chromium or Node runtimes, and the current build is a single ~75 MB executable that is smaller, starts faster and uses less resident memory. Features evolve independently on that stack, without following upstream desktop-architecture changes.
+This project originates from the **upstream Reasonix 1.x Wails desktop implementation (v1.38 series)**. Upstream's desktop app has migrated to Electron, and 2.x (Studio) is built on Electron as well; this project continues on the Go + Wails + WebView2 stack: the UI reuses the system-provided WebView2 without shipping Chromium or Node runtimes, and the current build is a single ~75 MB executable that is smaller, starts faster and uses less resident memory. Features evolve independently on that stack, without following upstream desktop-architecture changes.
 
 Relationship to upstream:
 
@@ -41,7 +41,7 @@ Relationship to upstream:
 | --- | --- | --- | --- |
 | Desktop stack | Wails early, Electron now | Electron | **Wails** |
 | Shipped as | CLI + desktop | Desktop | **Windows desktop app** |
-| Status | Still maintained | Still in development | Independently maintained |
+| Status | Archived, final v1.39.11 | Archived, final v2.61.0 | Independently maintained |
 | Releases | Upstream | Upstream | **This repository** |
 
 This is not an official Reasonix release; feature scope and release cadence are decided independently by this repository. The original copyright notices, MIT license and contributor credits are preserved.
@@ -61,15 +61,15 @@ This is not an official Reasonix release; feature scope and release cadence are 
 - **Extensions and automation**: MCP, Extension Protocol sidecar, Reasonix / Codex / Claude plugin compatibility, hooks, slash commands, IM bots, heartbeat.
 - **Desktop**: tray, notifications, shortcuts, themes, font and scaling, zh-CN / zh-TW / en, WebView2 failure detection and recovery.
 
-## Shared configuration and sessions with upstream
+## Shared configuration and sessions with Reasonix Studio / legacy clients
 
-This project, upstream 1.x and Reasonix Studio share the same `%APPDATA%\reasonix` directory (`REASONIX_HOME` overrides it). Shared parts are used in place; sessions that do not belong to this project are left untouched:
+This project, Reasonix Studio and legacy 1.x clients share the same `%APPDATA%\reasonix` directory (`REASONIX_HOME` overrides it). Shared parts are used in place; sessions that do not belong to this project are left untouched:
 
-- **Configuration file**: the same `config.toml`. Load order is command-line flag > project-level `./reasonix.toml` > user-level `config.toml` > built-in defaults; models and providers already configured in Studio or 1.x carry over directly.
-- **Memory and project data**: the same `REASONIX.md`, `memory/`, `skills/`, `plugins/` and other directories under that home are shared by both lines.
+- **Configuration file**: the same `config.toml`. Load order is command-line flag > project-level `./reasonix.toml` > user-level `config.toml` > built-in defaults; models and providers already configured in Studio or legacy 1.x clients carry over directly.
+- **Memory and project data**: the same `REASONIX.md`, `memory/`, `skills/`, `plugins/` and other directories under that home are shared by those clients.
 - **Session format**: this build writes format 2 (the DAG event log in `<id>.events.jsonl`). Format 1 (before 1.39.0) opens normally, but the first save upgrades it in place to format 2, after which 1.x clients older than 1.39.0 can no longer open that session — the compatibility is one-way.
 - **Newer formats**: later 1.x versions continued to evolve the session format; an unsupported version is reported as an error without modifying a single byte.
-- **Studio-line sessions**: identified by sidecar keys unique to the other line (`archived`, `superseded`, `imported_from`, `recovery_root_id`) and then skipped: never listed, opened, silently migrated or rewritten.
+- **Studio project sessions**: identified by sidecar keys unique to the other line (`archived`, `superseded`, `imported_from`, `recovery_root_id`); a sidecar that is successfully read and parsed but carries none of this project's ownership fields (`topic_id`, `topic_title`, `scope`, `workspace_root`, including an empty `{}`) is treated as a foreign session as well (empty or invalid JSON is excluded). The history catalog, index and reconciliation skip these sessions; lightweight listings (CLI picker, desktop history slices) and direct open paths (ACP, `--resume`) do not intercept them yet and may still list or bind them for writing.
 - **Install identity**: a separate install directory, uninstall entry, shortcuts and single-instance lock, coexisting with upstream and older Wails builds; existing installs are never migrated or overwritten automatically.
 
 ## Download and installation
@@ -116,7 +116,7 @@ pnpm build
 - [Bot guide](./docs/guide/BOT_GUIDE.md)
 - [Extensions and plugins](./docs/guide/EXTENSIONS.md)
 
-Product documentation lives in `docs/`; development plans, audits and process notes are kept out of the repository.
+Product documentation lives in `docs/guide/`, `docs/spec/`, `docs/design/` and `docs/ops/`; development records live in `docs/architecture.md`, `docs/decisions/`, `docs/analysis/` and `docs/archive/`. Temporary process material stays in `tmp/` and is not committed.
 
 ## Credits
 

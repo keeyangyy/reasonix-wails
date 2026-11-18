@@ -2,17 +2,15 @@
 
 ## Supported Versions
 
-Reasonix security fixes are prioritized for the currently developed Go rewrite
-and the current 1.x release line.
+Reasonix Wails security fixes are prioritized for the current 0.1.x release line.
 
 | Version or branch | Security support |
 | --- | --- |
-| `main-v2` / 1.x releases | Supported |
-| `v1` / 0.x legacy branch | Critical fixes only, where practical |
-| Older releases, forks, or modified builds | Not covered unless the issue is reproducible upstream |
+| `main` / 0.1.x releases | Supported |
+| Upstream 1.x / 2.x, forks, or modified builds | Not covered unless the issue is reproducible in this repository |
 
 If you are unsure whether a version is affected, report against the newest
-released 1.x version and include the exact version or commit you tested.
+released 0.1.x version and include the exact version or commit you tested.
 
 ## Reporting a Vulnerability
 
@@ -28,9 +26,9 @@ Preferred reporting path:
 
 Please include:
 
-- Affected Reasonix version, commit, operating system, and installation method.
-- The feature or surface involved, such as CLI, desktop app, HTTP `serve`, bot
-  gateway, MCP plugin, built-in tool, updater, or configuration loading.
+- Affected Reasonix Wails version, commit, operating system, and installation method.
+- The feature or surface involved, such as CLI, desktop app, ACP, bot gateway,
+  MCP plugin, built-in tool, updater, or configuration loading.
 - Clear reproduction steps using dummy credentials and non-sensitive files.
 - The expected impact, such as secret disclosure, arbitrary file access,
   command execution, sandbox escape, authentication bypass, or supply-chain risk.
@@ -42,7 +40,7 @@ workspace files, or third-party user data.
 
 ## Security Boundaries
 
-Reasonix is a local coding agent. Many features intentionally operate on the
+Reasonix Wails is a local coding agent. Many features intentionally operate on the
 user's local machine and workspace, including file reads, file writes, shell
 commands, MCP plugins, language servers, bot sessions, and model-provider
 requests. A finding is security-relevant when it crosses a supported boundary or
@@ -56,9 +54,6 @@ Supported boundaries include:
 - Sandbox behavior for built-in shell execution where the platform supports it.
 - Secret handling for provider keys, bot credentials, OAuth tokens, plugin
   headers, and credential-store fallback files.
-- HTTP `serve` protections for the unauthenticated local server, including
-  localhost binding assumptions, JSON-only state-changing requests, and CORS
-  restrictions.
 - Desktop and bot session isolation, including per-workspace session metadata
   and configured bot allowlists.
 - Updater, install, and release verification paths.
@@ -91,7 +86,7 @@ when they bypass the intended boundary:
 
 ## `@` File References
 
-Reasonix supports `@path` references so users can include local files and images
+Reasonix Wails supports `@path` references so users can include local files and images
 in a prompt. This is intentional local functionality, but implementations must
 preserve these invariants:
 
