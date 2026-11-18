@@ -32,7 +32,7 @@
 
 - **异步审查要合批处理**：CI 与 CodeRabbit 的结论到达时间不同（CI 约 5–30 分钟，CodeRabbit 约 5 分钟且会基于最新 commit 重审）。先等两边都出结论，再一次性修改提交；中间急着推送只会让两边都重跑，还会让先到的一方基于旧代码重新提意见。
 - 一个 PR 一个主题，diff 只含相关文件。
-- **文档 PR 不夹带无关源码**：分类规则以 `scripts/ci-classify-changes.sh` 为准。普通 Markdown（包括 `desktop/`、`sdk/` 内的说明）不触发源码构建；`.github/workflows/**`、`.github/actions/**` 和 CI 分类器及其测试仅触发 `workflow`，其余 `scripts/**` 源码按代码影响处理；`docs/**`、`benchmarks/**` 内源码不能仅凭目录当文档。`desktop/**` 非说明文件触发桌面验证，`sdk/**` 非说明文件触发 SDK，`internal/extension/**` 同时影响根模块与 SDK。未知路径按源码保守处理，混合变更由唯一 `ci.yml` 入口执行所需检查并集。
+- **文档 PR 不夹带无关源码**：分类规则以 `scripts/ci-classify-changes.sh` 为准。普通 Markdown（包括 `desktop/`、`sdk/` 内的说明）不触发源码构建；`.github/workflows/**`、`.github/actions/**` 和 CI 分类器及其测试仅触发 `workflow`，其余 `scripts/**` 源码按代码影响处理；`docs/**`、`benchmarks/**` 内源码不能仅凭目录当文档。`desktop/**` 非说明文件触发桌面验证，`sdk/**` 非说明文件触发 SDK，`internal/extension/**` 的源码同时影响根模块与 SDK，普通 Markdown/TXT 说明不触发这些源码检查。未知路径按源码保守处理，混合变更由唯一 `ci.yml` 入口执行所需检查并集。
 - **required 是两个：`gate` 与 `CodeRabbit`。** `gate` 由单一 PR 入口 `ci.yml`（或手动/定时的 `ci-full.yml`）汇总分类结果：需要执行的 lane 必须 `success`，非适用 lane 必须 `skipped`；`CodeRabbit` 未出结论（pending/cancelled）时同样不能合并。
 - **合并门禁：本 PR 产生的所有 check 必须全部通过。**
   - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 6、根模块 code 约 20、含 desktop 约 26、full 约 30）。

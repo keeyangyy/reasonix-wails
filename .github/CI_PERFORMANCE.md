@@ -6,7 +6,8 @@
 
 `ci.yml` is the single entry for all PRs and pushes to main. The path
 classifier selects only the applicable documentation, workflow, Go, SDK and
-desktop checks; main pushes remain exhaustive. `ci-full.yml` runs the nightly
+desktop checks; main pushes run a complete code baseline, but skip the memory lane.
+`ci-full.yml` runs the nightly
 and manually triggered complete sweep. The `gate` requires selected lanes to
 succeed and unselected lanes to be skipped. Branch protection requires both
 `gate` and `CodeRabbit`.

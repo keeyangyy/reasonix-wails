@@ -5,7 +5,7 @@
 ## 工作流结构
 
 `ci.yml` 是所有 PR 和 push 到 main 的唯一常规入口。分类器按改动选择
-文档、Workflow、Go、SDK、Desktop 检查；push main 仍保留全量基线。
+文档、Workflow、Go、SDK、Desktop 检查；push main 执行完整代码基线，但不执行 memory 筛查。
 `ci-full.yml` 负责手动和每晚全量回归。 `gate` 要求分类选中的 lane 为
 `success`，未选中的 lane 为 `skipped`；Ruleset 同时要求
 `gate` 和 `CodeRabbit`。

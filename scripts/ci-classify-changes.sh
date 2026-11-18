@@ -44,7 +44,9 @@ else
       sdk/*)
         case "$path" in *.md|*.mdx|*.txt) : ;; *) sdk=true ;; esac ;;
       internal/extension/*)
-        code=true; desktop=true; sdk=true ;;
+        # Protocol and extension source changes affect all three modules.
+        # Pure prose under this directory does not.
+        case "$path" in *.md|*.mdx|*.txt) : ;; *) code=true; desktop=true; sdk=true ;; esac ;;
       docs/*|benchmarks/*|plan/*|tmp/*|.agents/*|release-notes/*)
         # Only known documentation/data formats can skip source checks.
         # Unknown extensions fail closed, even under docs/ or benchmarks/.

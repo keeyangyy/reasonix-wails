@@ -142,3 +142,9 @@ test("static docs artifacts and build data stay documentation-only", t => {
     ["benchmarks/fixtures/input.json", "{}"],
   ] }), expected());
 });
+
+test("extension documentation does not trigger Go, desktop, or SDK; source does", t => {
+  const f = fixture(t);
+  assert.deepEqual(f.classify({ files: [["internal/extension/README.md", "# extension"]] }), expected());
+  assert.deepEqual(f.classify({ files: [["internal/extension/protocol/schema.go", "package protocol"]] }), expected({ code: "true", desktop: "true", sdk: "true" }));
+});
