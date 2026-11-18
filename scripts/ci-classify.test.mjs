@@ -104,6 +104,8 @@ test("release PRs and non-PR runs always select all lanes", t => {
   const f = fixture(t);
   const all = { code: "true", desktop: "true", desktop_direct: "true", sdk: "true", workflow: "true", full: "true" };
   assert.deepEqual(f.classify({ ref: "release/v2.0.0", files: [["release-notes/releases.json", "{}"]] }), all);
+  // GitHub startsWith() is case-insensitive, but the Bash classifier intentionally is not.
+  assert.deepEqual(f.classify({ ref: "Release/v2.0.0", files: [["release-notes/releases.json", "{}"]] }), expected());
   assert.deepEqual(f.classify({ event: "push", files: [["README.md", "new"]] }), all);
 });
 test("three-dot diff uses PR merge-base rather than changes merged into main later", t => {

@@ -79,7 +79,7 @@ jobs:
       - name: Verify every selected lane passed
         env:
           RESULTS: ${{ toJSON(needs) }}
-          IS_RELEASE_PR: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/') }}
+          IS_RELEASE_PR: ${{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
           echo "$RESULTS" | jq -e --arg release "$IS_RELEASE_PR" '

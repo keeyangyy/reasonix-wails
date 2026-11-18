@@ -62,6 +62,7 @@ const ciWorkflow = workflow("ci");
 test("single PR entry selects only required lanes and rejects every incorrect outcome", () => {
   assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]/);
   assert.match(ciWorkflow, /needs: \[changes, docs-rules, lint, go, desktop, codeql, memory\]/);
+  assert.ok(ciWorkflow.includes("IS_RELEASE_PR: " + "$" + "{{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}"));
   const script = shellStep(job(ciWorkflow, "gate"), "Verify every selected lane passed");
   function base(flags = {}, release = false) {
     const outputs = {
