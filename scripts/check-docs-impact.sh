@@ -73,6 +73,17 @@ value="${line#*:}"
 value="${value#"${value%%[![:space:]]*}"}"
 lower="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
 
+# Automated dependency PRs have no hand-written body, so the required field can
+# never be present. The bump itself is the change and the release notes cover
+# it, so exempt the bot instead of parking a permanent red check on every
+# dependabot PR.
+case "${PR_AUTHOR:-${GITHUB_ACTOR:-}}" in
+dependabot\[bot\]|dependabot|app/dependabot)
+	echo "Documentation impact check skipped: automated dependency PR"
+	exit 0
+	;;
+esac
+
 fail() {
 	echo "Documentation impact check failed: $1" >&2
 	echo "User-visible files:" >&2

@@ -26,6 +26,13 @@
 
 - 一个 PR 一个主题，diff 只含相关文件。
 - PR 必须过 CI；required checks 以仓库设置和 `ci.yml` 为准。
+- **合并门禁：本 PR 产生的所有 check 必须全部通过。**
+  - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 17、根模块 code 约 17、含 desktop 约 19、release/main 约 23）。
+  - 出现灰色 `skipped` 说明该 job 用了 job 级 `if`：改成 `always()` + 步骤门控，让它在不适用时秒过而不是跳过。
+  - 任何红项都要处理：要么修代码，要么修检查本身（判定不合理、误报、flaky）。**不允许带着红合并。**
+  - 例外仅限：平台 flake 重跑后恢复、第三方服务故障。例外必须在 PR 里写清原因，且不得长期挂着红。
+  - 某项长期红 = 系统性问题（真 bug 或检查设计错），当次解决，不能靠下次。
+- CodeRabbit 也必须通过。它的意见可以反驳：回复理由并 `Resolve conversation`，让它在下一轮重新评估；不反驳也不修就会一直阻塞。
 - PR 正文写清：改了什么、为什么、影响面、验证方式。
 - 元数据门禁（以脚本为准）：
   - 缓存敏感改动：`Cache-impact: <none|low|medium|high> - <reason>`、`Cache-guard: <test/command>`。
