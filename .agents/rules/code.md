@@ -37,4 +37,3 @@
 - 规则层级：仓库根 `AGENTS.md`；`*.local.md` 个人变体；祖先目录同名文件；用户级 `AGENTS.md`。同目录所有支持的文件都会加载，`AGENTS.md` 不是 fallback。
 - `@path` 独占一行时导入另一个文件的内容。
 - 会话内 `#<note>` 快速添加常驻指令；`remember` 工具保存可失效的后台事实（frontmatter + `MEMORY.md` 索引），`scope` 控制项目级/全局。
-
