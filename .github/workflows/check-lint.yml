@@ -1,0 +1,108 @@
+name: Check lint
+
+on:
+  workflow_call:
+    inputs:
+      code: { required: true, type: string }
+      desktop: { required: true, type: string }
+      workflow: { required: true, type: string }
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      CODE: ${{ inputs.code != 'false' }}
+      DESKTOP: ${{ inputs.desktop != 'false' }}
+      WF: ${{ inputs.workflow != 'false' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - if: env.DESKTOP == 'true'
+        uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+
+      - if: env.DESKTOP == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - name: required native motion contracts
+        if: env.DESKTOP == 'true'
+        run: |
+          pnpm --dir desktop/frontend install --frozen-lockfile
+          pnpm --dir desktop/frontend test:motion
+
+      # gofmt output is OS-independent, and a Windows runner stages CRLF, which
+      # would flag every file.
+      - name: gofmt
+        if: env.CODE == 'true' || env.DESKTOP == 'true'
+        run: |
+          # Root module only — desktop/ is a separate module with its own gofmt
+          # step in desktop-prepare.
+          unformatted=$(gofmt -l . | grep -v '^desktop/' || true)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: wails version pin
+        if: env.CODE == 'true' || env.DESKTOP == 'true'
+        run: |
+          bash scripts/check-wails-pin.sh
+          bash scripts/check-wails-pin.test.sh
+
+      # `make lint-install` reads the same file, so a local run and this job
+      # cannot drift onto different linter versions.
+      - id: golangci
+        if: env.CODE == 'true' || env.DESKTOP == 'true'
+        run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
+
+      - name: golangci-lint
+        if: env.CODE == 'true' || env.DESKTOP == 'true'
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ steps.golangci.outputs.version }}
+          args: --timeout=5m
+
+      # The step above only type-checks the linux/amd64 build, so every
+      # //go:build windows and //go:build darwin file in the tree went unlinted.
+      # Both modules cross-check without a toolchain; desktop under darwin does
+      # not, because its watchdog is cgo, so that leg lives in desktop-macos.
+      - name: golangci-lint (Windows build tags)
+        if: env.CODE == 'true' || env.DESKTOP == 'true'
+        run: |
+          set -euo pipefail
+          command -v golangci-lint
+          for target in "windows ." "windows desktop"; do
+            read -r target_os target_dir <<< "$target"
+            echo "::group::golangci-lint GOOS=$target_os ($target_dir)"
+            (cd "$target_dir" && GOOS="$target_os" golangci-lint run --timeout=5m ./...)
+            echo "::endgroup::"
+          done
+
+      # Workflow-only PRs reach this step even though every Go lane skips them.
+      - name: release workflow contracts
+        if: env.CODE == 'true' || env.DESKTOP == 'true' || env.WF == 'true'
+        run: |
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+          node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-workflow.test.mjs
+          bash scripts/update-versions-index.test.sh
+          node scripts/check-single-release-public-contract.mjs
+
+  # Required: the Go toolchain is pinned through go.mod's `toolchain`, so a
+  # stdlib advisory is fixable in-repo instead of being reported forever. The
+  # job always runs so a docs-only PR still reports a conclusion.

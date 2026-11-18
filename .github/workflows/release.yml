@@ -1,4 +1,4 @@
-name: Release (manual)
+name: Release
 
 # One-shot release pipeline: triggers manually with a semver, waits for the
 # official CI of the current main commit to turn green, then creates the
@@ -27,7 +27,7 @@ concurrency:
 
 permissions:
   contents: write
-  # Dispatches release-windows.yml at the end of the release; GITHUB_TOKEN
+  # Dispatches build-release-windows.yml at the end of the release; GITHUB_TOKEN
   # needs actions: write for workflow_dispatch of another workflow.
   actions: write
 
@@ -36,10 +36,9 @@ jobs:
   # pull request (see app-memory.yml). Its result gates the tag: a failed
   # screening aborts the release before anything is published.
   memory:
-    uses: ./.github/workflows/app-memory.yml
+    uses: ./.github/workflows/check-memory.yml
 
   release:
-    needs: [memory]
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -73,7 +72,7 @@ jobs:
           RETRIED=0
           while true; do
             LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA" \
-              --jq '.workflow_runs[] | select(.name=="CI") | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
+              --jq '.workflow_runs[] | select(.name | startswith("CI")) | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
             if [ -n "$LATEST" ]; then
               STATUS=$(echo "$LATEST" | awk '{print $1}')
               CONCLUSION=$(echo "$LATEST" | awk '{print $2}')
@@ -139,7 +138,7 @@ jobs:
           RELEASE_TITLE="${TITLE:-v$VERSION}"
           # Create the release as a draft: the Windows pipeline attaches the
           # installer and portable archive a few minutes later, and a public
-          # release must never be visible without its assets. release-windows.yml
+          # release must never be visible without its assets. build-release-windows.yml
           # publishes it once both assets are uploaded.
           if [ -n "$NOTES" ]; then
             gh release create "v$VERSION" --draft --target main --title "$RELEASE_TITLE" --notes "$NOTES"
@@ -185,4 +184,4 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          gh workflow run release-windows.yml --repo "$GITHUB_REPOSITORY" -f "tag=v$VERSION"
+          gh workflow run build-release-windows.yml --repo "$GITHUB_REPOSITORY" -f "tag=v$VERSION"

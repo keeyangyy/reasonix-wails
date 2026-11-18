@@ -1,0 +1,494 @@
+name: Check desktop
+
+on:
+  workflow_call:
+    inputs:
+      desktop: { required: true, type: string }
+      desktop_direct: { required: true, type: string }
+      full: { required: true, type: string }
+      changes_ok: { required: true, type: string }
+
+permissions:
+  contents: read
+
+jobs:
+
+  desktop:
+    needs: [desktop-prepare, desktop-go, desktop-frontend, desktop-browser, desktop-windows, desktop-windows-go]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify desktop validation jobs
+        env:
+          CHANGES_RESULT: ${{ inputs.changes_ok }}
+          SHOULD_RUN: ${{ inputs.desktop != 'false' }}
+          PREPARE_RESULT: ${{ needs.desktop-prepare.result }}
+          GO_RESULT: ${{ needs.desktop-go.result }}
+          FRONTEND_RESULT: ${{ needs.desktop-frontend.result }}
+          BROWSER_RESULT: ${{ needs.desktop-browser.result }}
+          WINDOWS_RESULT: ${{ needs.desktop-windows.result }}
+          WINDOWS_GO_RESULT: ${{ needs.desktop-windows-go.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          linux_expected=skipped
+          if [ "$SHOULD_RUN" = true ]; then linux_expected=success; fi
+          for pair in "prepare:$PREPARE_RESULT" "go:$GO_RESULT" "frontend:$FRONTEND_RESULT" "browser:$BROWSER_RESULT"; do
+            lane=${pair%%:*}; result=${pair#*:}
+            echo "$lane: $result (expected $linux_expected)"
+            test "$result" = "$linux_expected"
+          done
+          # The Windows lanes always run and gate their steps, so they report
+          # success even when the module is out of scope. Requiring success here
+          # keeps the merge rule (every produced check green) enforceable.
+          for pair in "windows:$WINDOWS_RESULT" "windows-go:$WINDOWS_GO_RESULT"; do
+            lane=${pair%%:*}; result=${pair#*:}
+            echo "$lane: $result (expected success)"
+            test "$result" = success
+          done
+
+  desktop-frontend:
+    needs: [desktop-prepare]
+    if: always() && needs.desktop-prepare.result == 'success' && (inputs.desktop != 'false')
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.desktop-prepare.outputs.artifact_name }}
+          path: desktop/frontend
+      - name: Verify CI test coverage and runner
+        run: node --test frontend/scripts/ci-test-plan.test.mjs
+      - name: Test desktop frontend once per suite
+        env:
+          REASONIX_TEST_CONCURRENCY: "2"
+        run: node frontend/scripts/run-ci-tests.mjs
+
+  desktop-browser:
+    needs: [desktop-prepare]
+    if: always() && needs.desktop-prepare.result == 'success' && (inputs.desktop != 'false')
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.desktop-prepare.outputs.artifact_name }}
+          path: desktop/frontend
+      - name: Install browser runtimes
+        run: PLAYWRIGHT_BROWSERS_PATH=.pw-browsers pnpm --dir frontend exec playwright install --with-deps chromium webkit
+      - name: Test desktop browser contracts
+        run: |
+          pnpm --dir frontend test:motion-browser
+          PLAYWRIGHT_BROWSERS_PATH=.pw-browsers pnpm --dir frontend test:app-browser
+          PLAYWRIGHT_BROWSERS_PATH=.pw-browsers REASONIX_SETTINGS_BROWSERS=chromium,webkit pnpm --dir frontend test:settings-browser
+          xvfb-run -a env REASONIX_TRANSCRIPT_NATIVE_THUMB=1 pnpm --dir frontend test:transcript-browser
+          PLAYWRIGHT_BROWSERS_PATH=.pw-browsers pnpm --dir frontend test:transcript-reader-browser
+
+  desktop-prepare:
+    if: always() && (inputs.desktop != 'false')
+    outputs:
+      artifact_name: desktop-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: desktop/go.mod
+          cache: true
+          cache-dependency-path: desktop/go.sum
+
+      - uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$(cat "$GITHUB_WORKSPACE/.wails-version")"
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go.mod tidy
+        run: |
+          go mod tidy
+          if ! git diff --quiet -- go.mod go.sum; then
+            echo "desktop/go.mod or go.sum is stale - run 'cd desktop && go mod tidy' and commit."
+            git diff -- go.mod go.sum
+            exit 1
+          fi
+
+      # WebKitGTK 4.0 toolchain (pinned to ubuntu-22.04; no webkit2_41 tag).
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dbus-daemon gcc libgtk-3-dev libwebkit2gtk-4.0-dev xvfb
+
+      - name: Build frontend
+        run: |
+          wails generate module
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir frontend build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-frontend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            desktop/frontend/dist
+            desktop/frontend/wailsjs
+          if-no-files-found: error
+          retention-days: 3
+
+  desktop-go:
+    needs: [desktop-prepare]
+    if: always() && needs.desktop-prepare.result == 'success' && (inputs.desktop != 'false')
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: desktop/go.mod
+          cache: true
+          cache-dependency-path: desktop/go.sum
+
+      - uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.desktop-prepare.outputs.artifact_name }}
+          path: desktop/frontend
+      - run: pnpm --dir frontend install --frozen-lockfile
+
+      # WebKitGTK 4.0 toolchain (pinned to ubuntu-22.04; no webkit2_41 tag).
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dbus-daemon gcc libgtk-3-dev libwebkit2gtk-4.0-dev xvfb
+
+      # The native/UI regression steps below only run when the diff touches
+      # desktop/ itself or when the run must be exhaustive (push to main,
+      # release/*). A root-module diff still compiles the module via
+      # vet/golangci-lint/build, but the WebKitGTK and full-suite runs stay on
+      # the exhaustive path so a normal PR does not pay ~13 minutes for them.
+      - name: Test WebKitGTK native transcript scrolling
+        if: inputs.desktop_direct != 'false' || inputs.full != 'false'
+        timeout-minutes: 5
+        run: |
+          pnpm --dir frontend exec vite preview --host 127.0.0.1 --port 4173 --strictPort >/tmp/reasonix-transcript-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 100); do
+            curl -fsS http://127.0.0.1:4173/ >/dev/null && break
+            sleep 0.1
+          done
+          xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 go run -tags reasonix_transcript_smoke ./cmd/transcript-native-smoke \
+            -url 'http://127.0.0.1:4173/?mock=bench&bench=1' \
+            -script transcript_native_smoke_contract.js
+
+      - name: vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: desktop
+          args: --timeout=5m
+
+      - name: build
+        run: go build ./...
+
+      - name: test
+        if: inputs.desktop_direct != 'false' || inputs.full != 'false'
+        run: go test ./...
+
+      - name: WebKitGTK 4.0 native recovery smoke
+        if: inputs.desktop_direct != 'false' || inputs.full != 'false'
+        run: xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 go test -tags reasonix_webkit_smoke . -run '^TestWebKitNativeRecoverySmoke$'
+
+      # The extension work added new shared-state paths to the desktop
+      # runtime (tab/rebuild fences, extension UI). Race-sweep the module so
+      # regressions are CI-blocked, not just author-verified locally.
+      - name: test -race
+        if: inputs.desktop_direct != 'false' || inputs.full != 'false'
+        run: go test -race ./...
+
+  # Runs always and gates its steps on the diff class: a job-level `if` that
+  # skipped would leave a grey `skipped` row in the PR check list, and the merge
+  # rule requires every produced check to be green (see
+  # .agents/rules/workflow.md). The expensive steps only execute when the diff
+  # touches desktop/ or the run is exhaustive.
+  desktop-windows:
+    if: always()
+    runs-on: windows-latest
+    # A hung native step must not hold the workflow's concurrency group for the
+    # six-hour default. Normal runs finish in ~25 minutes.
+    timeout-minutes: 45
+    env:
+      RUN_STEPS: ${{ inputs.desktop_direct != 'false' || inputs.full != 'false' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - if: env.RUN_STEPS == 'true'
+        uses: actions/checkout@v7
+
+      - if: env.RUN_STEPS == 'true'
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: desktop/go.mod
+          cache: true
+          cache-dependency-path: desktop/go.sum
+
+      - if: env.RUN_STEPS == 'true'
+        uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 10
+          run_install: false
+
+      - if: env.RUN_STEPS == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: desktop/frontend/pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        if: env.RUN_STEPS == 'true'
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$(cat "$GITHUB_WORKSPACE/.wails-version")"
+
+      # go:embed of frontend/dist needs a built frontend before the package
+      # compiles, same as the ubuntu desktop leg.
+      - name: Build frontend
+        if: env.RUN_STEPS == 'true'
+        run: |
+          wails generate module
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir frontend build
+
+      - name: Test native motion contracts
+        if: env.RUN_STEPS == 'true'
+        run: pnpm --dir frontend test:motion
+
+      # Chromium is the closest deterministic browser replay available on the
+      # Windows runner; the native smoke below separately exercises the actual
+      # installed WebView2 runtime. Keep both paths so transcript geometry is
+      # covered before the shell-level smoke starts.
+      - name: Test transcript browser replay on Windows
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 10
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/desktop/frontend/.pw-browsers
+        run: |
+          pnpm --dir frontend exec playwright install chromium
+          pnpm --dir frontend test:transcript-browser
+
+      - name: Test settings layout on Windows
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 5
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/desktop/frontend/.pw-browsers
+        run: pnpm --dir frontend test:settings-browser
+
+      - name: Test WebView2 native transcript and composer scrolling
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 5
+        run: |
+          pnpm --dir frontend exec vite preview --host 127.0.0.1 --port 4173 --strictPort > "$RUNNER_TEMP/reasonix-transcript-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 100); do
+            curl -fsS http://127.0.0.1:4173/ >/dev/null && break
+            sleep 0.1
+          done
+          go run -tags reasonix_transcript_smoke ./cmd/transcript-native-smoke \
+            -url 'http://127.0.0.1:4173/?mock=bench&bench=1&nativeComposer=1' \
+            -script transcript_native_smoke_contract.js
+
+      - name: Test WebView2 native smoke state machine
+        if: env.RUN_STEPS == 'true'
+        shell: pwsh
+        run: ../scripts/test-webview2-native-smoke.ps1 -SelfTest
+
+      - name: Test WebView2 transcript selection compositor
+        if: env.RUN_STEPS == 'true'
+        shell: pwsh
+        timeout-minutes: 5
+        run: ../scripts/test-transcript-selection-webview2.ps1 -Iterations 3
+
+      - name: Upload WebView2 transcript selection evidence
+        if: failure() && env.RUN_STEPS == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: webview2-transcript-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reasonix-transcript-selection-smoke
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Build the real Wails executable on every desktop PR and exercise the
+      # exact production startup path in Microsoft's installed WebView2 runtime.
+      # The frontend and bindings were already built above, so this skips only
+      # duplicate build work, not the native shell.
+      - name: Build Wails executable for native startup smoke
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 10
+        run: wails build -clean -s -skipbindings -nopackage -platform windows/amd64 -webview2 embed
+
+      - name: Smoke-test Wails/WebView2 native startup
+        if: env.RUN_STEPS == 'true'
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $output = $null
+          $code = 0
+          foreach ($attempt in 1..2) {
+            $output = & ../scripts/test-webview2-native-smoke.ps1 `
+              -ExecutablePath "build/bin/reasonix-wails.exe" `
+              -TimeoutSeconds 60 `
+              -HealthySeconds 5 2>&1
+            $code = $LASTEXITCODE
+            if ($code -eq 0) { $output; exit 0 }
+            # The whole-process go test timeout (panic: test timed out after
+            # ...) is NOT retried: it usually means a deadlock or a genuine
+            # hang, so a rerun would not meaningfully pass. Exit immediately.
+            if ($output -match 'panic: test timed out after') { $output; exit $code }
+            # Only retry two classes of flake that reliably pass on a rerun;
+            # any other failure stays red immediately:
+            #   1. the known CI-vanilla WebView2 flake (rejected the graceful
+            #      close request);
+            #   2. a short per-operation timeout built into a test (": timed
+            #      out", "timed out waiting for ...", "... timed out after
+            #      30s"). It only trips on loaded/slow runners, never
+            #      reproduces locally, and passes on a rerun. The branch above
+            #      already excluded go test's process-level timeout.
+            #   3. a TempDir cleanup race ("TempDir RemoveAll cleanup: ... is not
+            #      empty"): a background writer still touches the directory while
+            #      t.TempDir() removes it. Same class: slow runners only, passes
+            #      on a rerun.
+            if ($output -notmatch 'rejected the graceful close request|TempDir RemoveAll cleanup|: timed out|timed out waiting for|timed out after \d+') { $output; exit $code }
+            Write-Warning "known WebView2 smoke flake or test-internal timeout matched; retrying attempt $attempt"
+            Start-Sleep -Seconds 5
+          }
+          $output
+          exit $code
+
+      # The desktop Go suite lives in its own job (`desktop-windows-go`) so the
+      # Windows rebuild of the cgo packages overlaps the WebView2 smoke work
+      # here instead of extending it.
+
+      # Installer packaging is intentionally NOT re-run here: the Wails
+      # executable itself is already built and startup-smoked above, and the
+      # release pipeline builds the real installer/archive on every tag.
+      # Duplicating packaging per push cost ~6 minutes of Windows runner time
+      # while its artifacts (v0.0.0-ci canary) were never consumed.
+
+  # The desktop Go suite is the longest single thing on this lane (~23 minutes:
+  # a Windows rebuild of the cgo/Wails packages plus ~6 minutes of tests). Its
+  # own job lets that rebuild overlap the WebView2 smoke work in
+  # `desktop-windows` instead of extending it, and it needs neither pnpm nor a
+  # built frontend.
+  desktop-windows-go:
+    if: always()
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      RUN_STEPS: ${{ inputs.desktop_direct != 'false' || inputs.full != 'false' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - if: env.RUN_STEPS == 'true'
+        uses: actions/checkout@v7
+
+      - if: env.RUN_STEPS == 'true'
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: desktop/go.mod
+          cache: true
+          cache-dependency-path: desktop/go.sum
+
+      - name: test (Windows desktop and update helper)
+        if: env.RUN_STEPS == 'true'
+        # Normal wall time is ~6-7 minutes of tests plus a Windows rebuild of
+        # the cgo packages; a loaded runner has exceeded 15 minutes with every
+        # package still passing. Keep the budget above that load spike so the
+        # job-level timeout, not this step, ends a real hang.
+        timeout-minutes: 30
+        run: go test ./...
+
+      - name: test (vendored systray identity)
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 2
+        run: go test -timeout=60s fyne.io/systray
+
+      # A cold nested-module cache can spend several minutes compiling the
+      # real WebView2 cookie integration test. Keep its budget independent of
+      # the desktop suite and retain a Go timeout stack dump.
+      - name: test (vendored WebView2 edge)
+        if: env.RUN_STEPS == 'true'
+        timeout-minutes: 10
+        run: (cd third_party/go-webview2 && go test -timeout=8m ./pkg/edge)
+
+  # repolint scans desktop/ and sdk/ too, so this job also covers diffs the
+  # `code` filter would otherwise skip. lint is a required check, so the job
+  # always runs: a job-level `if` that skipped would leave the required check
+  # unanswered on a docs-only PR. The steps gate on the diff class instead.

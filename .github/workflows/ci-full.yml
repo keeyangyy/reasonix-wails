@@ -1,0 +1,79 @@
+name: CI (full)
+
+# The complete verification: every lane plus the front-end memory screening.
+# Two ways in, both deliberate:
+#   · workflow_dispatch — a manual full run (used by the release gate when the
+#     commit that will be tagged has no full run of its own)
+#   · schedule — a nightly sweep so drift is found even when nobody merges
+# A release PR itself stays on the docs lane; the memory screening runs inside
+# release.yml, in parallel with the "is main green" check.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+  actions: read
+
+concurrency:
+  group: ci-full-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    uses: ./.github/workflows/check-changes.yml
+
+  docs-rules:
+    uses: ./.github/workflows/check-docs-rules.yml
+
+  lint:
+    needs: changes
+    uses: ./.github/workflows/check-lint.yml
+    with:
+      code: ${{ needs.changes.outputs.code }}
+      desktop: ${{ needs.changes.outputs.desktop }}
+      workflow: ${{ needs.changes.outputs.workflow }}
+
+  go:
+    needs: changes
+    uses: ./.github/workflows/check-go.yml
+    with:
+      code: ${{ needs.changes.outputs.code }}
+      sdk: ${{ needs.changes.outputs.sdk }}
+
+  desktop:
+    needs: changes
+    uses: ./.github/workflows/check-desktop.yml
+    with:
+      desktop: ${{ needs.changes.outputs.desktop }}
+      desktop_direct: ${{ needs.changes.outputs.desktop_direct }}
+      full: ${{ needs.changes.outputs.full }}
+      changes_ok: ${{ needs.changes.result }}
+
+  codeql:
+    needs: changes
+    uses: ./.github/workflows/check-codeql.yml
+    with:
+      code: ${{ needs.changes.outputs.code }}
+      desktop: ${{ needs.changes.outputs.desktop }}
+      workflow: ${{ needs.changes.outputs.workflow }}
+
+  memory:
+    uses: ./.github/workflows/check-memory.yml
+
+  gate:
+    needs: [changes, docs-rules, lint, go, desktop, codeql, memory]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify every job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'

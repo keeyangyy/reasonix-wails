@@ -14,7 +14,7 @@ name: Build Windows artifact
 #   gh workflow run build-windows.yml
 #   gh workflow run build-windows.yml -f version=v0.1.0
 #
-# Tag-driven releases live in release-windows.yml.
+# Tag-driven releases live in build-release-windows.yml.
 
 on:
   workflow_dispatch:

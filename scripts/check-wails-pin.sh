@@ -34,9 +34,9 @@ MSG
   exit 1
 fi
 
-workflow_pins=(
-  "$root/.github/workflows/ci.yml"
-)
+# Scan every workflow: the CI layout is split into entry points and reusable
+# checks, and a hard-coded list would silently stop covering a renamed file.
+workflow_pins=("$root"/.github/workflows/*.yml)
 for workflow in "${workflow_pins[@]}"; do
   if grep -q "cmd/wails@v" "$workflow"; then
     echo "check-wails-pin: $(basename "$workflow") hard-codes a CLI version; read .wails-version instead" >&2
@@ -44,7 +44,9 @@ for workflow in "${workflow_pins[@]}"; do
   fi
   # Several desktop steps run with working-directory: desktop, where a bare
   # `cat .wails-version` resolves to nothing and installs wails@"".
-  if grep -q 'cat \.wails-version' "$workflow"; then
+  # Only an install command that resolves the pin relative to the job working
+  # directory is broken; other relative reads in a workflow are legitimate.
+  if grep -qE 'cmd/wails@[^"]*cat \.wails-version' "$workflow"; then
     echo "check-wails-pin: $(basename "$workflow") reads .wails-version relative to the job's working directory; use \$GITHUB_WORKSPACE" >&2
     exit 1
   fi
@@ -54,10 +56,7 @@ done
 # tracked install source except the three supported ways to read the shared pin.
 install_lines="$(git -C "$root" grep -nF "$module@" -- . || true)"
 unexpected_sources="$(awk -v module="$module" '
-  index($0, ".github/workflows/ci.yml:") == 1 && index($0, module "@$(cat \"$GITHUB_WORKSPACE/.wails-version\")") { next }
-  index($0, ".github/workflows/build-probe-windows.yml:") == 1 && index($0, module "@$(cat \"$GITHUB_WORKSPACE/.wails-version\")") { next }
-
-  index($0, ".github/workflows/build-windows.yml:") == 1 && index($0, module "@$(cat \"$GITHUB_WORKSPACE/.wails-version\")") { next }
+  index($0, ".github/workflows/") == 1 && index($0, module "@$(cat \"$GITHUB_WORKSPACE/.wails-version\")\"") { next }
   index($0, "Makefile:") == 1 && index($0, module "@$(WAILS_VERSION)") { next }
   index($0, "prod_test:") == 1 && index($0, module "@$wails_pin") { next }
   { print }
@@ -81,8 +80,14 @@ MSG
   exit 1
 fi
 
+# Only the workflows that actually build the desktop install the CLI; the rest
+# of the layout (changes, go, lint, codeql, memory) never touches Wails.
 workflow_install="go install \"$module@\$(cat \"\$GITHUB_WORKSPACE/.wails-version\")\""
-for workflow in "${workflow_pins[@]}"; do
+workflow_installers=(
+  "$root/.github/workflows/check-desktop.yml"
+  "$root/.github/workflows/build-windows.yml"
+)
+for workflow in "${workflow_installers[@]}"; do
   grep -Fq "$workflow_install" "$workflow" || {
     echo "check-wails-pin: $(basename "$workflow") must install Wails from \$GITHUB_WORKSPACE/.wails-version" >&2
     exit 1

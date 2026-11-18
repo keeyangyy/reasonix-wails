@@ -1,94 +1,59 @@
 # CI 与 workflow
 
-以 `.github/workflows/` 当前文件为准；本文件只记职责、粒度与排查口径。
+以 `.github/workflows/` 当前文件为准；本文件只记结构、职责与排查口径。
 
-## workflow 职责
+## 结构
 
-| workflow | 职责 |
-|---|---|
-| `ci.yml` | 主 CI：push / PR 到 `main`，按改动分三档跑 |
-| `release-manual.yml` | 手动发版：先跑 app-memory，再校验 release commit 只改文档，等 CI 绿，创建 tag 与 draft Release |
-| `release-windows.yml` | tag 驱动：构建 Windows 桌面端、安装器、CLI，签名、上传、写更新清单 |
-| `build-windows.yml` | 手动 Windows 构建，也被 `release-windows` 复用 |
-| `build-probe-windows.yml` | 手动 canary 诊断构建，平时不跑 |
-| `cache-impact.yml` | PR 缓存影响门禁（纯文档路径不触发） |
-| `docs-impact.yml` | PR 文档影响门禁 |
-| `ci-rerun.yml` | 失败自动重跑（仅带已知 flake 特征的 job） |
-| `codeql.yml` | 代码扫描：push / PR / 每周 cron |
-| `app-memory.yml` | 前端内存筛查：`workflow_call`（发版调用）+ `workflow_dispatch`，不在 PR 上跑 |
-| `release-notes.yml` | PR 校验发布说明文件与脚本（路径过滤） |
-| `pr-auto-label.yml` | PR 打开/同步时按路径打 area 标签（`actions/labeler`，无外部 key） |
-| `spam-comment-guard.yml` | 防垃圾评论（仅 `issue_comment`） |
+三个入口监听事件，其余文件都是被调用的可复用检查。入口只负责"哪个场景"，检查内容放在复用文件里，便于单独排查。
 
-## 改动分层
+| 文件 | 类型 | 触发 | 职责 |
+|---|---|---|---|
+| `ci-docs.yml` | 入口 | PR，diff 全在文档路径 | 文档档：`check-changes` + `check-docs-rules` + `gate` |
+| `ci-code.yml` | 入口 | PR（非文档路径）、push main、手动 | 代码档：全部检查 + `gate` |
+| `ci-full.yml` | 入口 | 手动、每晚 cron | 全量：全部检查 + `check-memory` + `gate` |
+| `check-changes.yml` | 复用 | 被入口调用 | 判定 code / desktop / desktop_direct / full / sdk / workflow |
+| `check-docs-rules.yml` | 复用 | 同上 | repolint（文档与注释规范） |
+| `check-lint.yml` | 复用 | 同上 | gofmt / golangci / wails pin / 契约脚本 |
+| `check-go.yml` | 复用 | 同上 | test / race / coverage / govulncheck / windows-control / sdk |
+| `check-desktop.yml` | 复用 | 同上 | prepare / frontend / browser / go / windows / windows-go + desktop 汇总 |
+| `check-codeql.yml` | 复用 | 同上 | 三语言安全扫描 |
+| `check-memory.yml` | 复用 | 同上 | 前端内存筛查（prepare / shard×3 / aggregate） |
+| `pr-metadata.yml` | 独立 | `pull_request_target` | PR 正文字段（docs-impact、cache-impact）与自动打标签 |
+| `release.yml` | 独立 | 手动 | 校验资格 → 打 tag → 建 draft → dispatch 构建 |
+| `build-release-windows.yml` | 独立 | tag / 手动 | 构建 / 签名 / 上传 / 转正 |
+| `build-windows.yml` | 复用 | 被 `build-release-windows` 调用 | 纯构建 |
+| `spam-comment-guard.yml` | 独立 | `issue_comment` | 折叠垃圾评论 |
 
-`ci.yml` 的 `changes` 闸门把 diff 分成四类，输出 `code` / `desktop` / `desktop_direct` / `full` / `sdk` / `workflow`：
+## 档位
 
-| 类别 | 路径 |
-|---|---|
-| DOC | `docs/**`、`release-notes/**`、`benchmarks/**`、`tmp/**`、`.agents/**`、根级 `*.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig`、`.coderabbit.yaml` |
-| META | `.github/**` 但非 `workflows/`（模板、labeler、dependabot、CODEOWNERS） |
-| WF | `.github/workflows/**` |
-| CODE | 其他全部 |
+| 档 | 判定 | 跑什么 | 时长 |
+|---|---|---|---|
+| docs | diff 全在 DOC 路径 | docs-rules + metadata + gate | <40 秒 |
+| workflow | 命中 `.github/workflows/` | docs-rules + lint（actionlint + 契约脚本）+ gate | 2–3 分钟 |
+| code（根模块） | 有代码改动，不含 `desktop/` | docs-rules + lint + go + codeql + gate；桌面只编译 | 10–14 分钟 |
+| code（含 desktop） | 命中 `desktop/**` | 上面 + 桌面完整矩阵 | 28–30 分钟 |
+| full | 手动 / 每晚 | 全部 + memory | 约 23 分钟 |
 
-实际档位：
+DOC 路径：`docs/**`、`plan/**`、`.agents/**`、`release-notes/**`、`benchmarks/**`、`tmp/**`、根级 `*.md`、`LICENSE`、`.gitignore`、`.gitattributes`、`.editorconfig`、`.coderabbit.yaml`、`.github/ISSUE_TEMPLATE/**`、`.github/pull_request_template.md`、`.github/labeler.yml`、`.github/dependabot.yml`。
 
-| 档 | 判定 | 跑什么 |
-|---|---|---|
-| docs | 全部 DOC/META | 只有 `lint` 的 repolint + 两个 impact guard + label；Go/桌面各 lane 步骤秒过（job 仍报 success） |
-| workflow | 全部 DOC/META/WF 且含 WF | `lint` 全量（actionlint + 契约脚本）、CodeQL actions；Go/桌面跳过 |
-| code（根模块） | 任一 CODE，但 diff 不含 `desktop/` | 核心门禁：`test` smoke、`race`、`lint`、`coverage`、`govulncheck`，`sdk` 按需；桌面只跑 `desktop-prepare` 与 `desktop-go` 的 vet/lint/build |
-| code（含 desktop/） | diff 命中 `desktop/**` | 上面全部 + 桌面完整矩阵（frontend、browser、windows、windows-go） |
-| release / main push | head 为 `release/*`，或 push 到 main | 全量（`full=true`）；发版另由 `release-manual` 调 app-memory |
+`ci-docs.yml` 的 `paths` 与 `ci-code.yml` 的 `paths-ignore` 必须完全一致，否则同一个 PR 会同时启动两个入口、产生两个 `gate`。
 
-## required checks
+## 门禁
 
-ruleset `protect-main` 的必需检查（7 项）：
+- required 只有 `gate`；ruleset 另外锁 squash、线程必须 resolve、合并后删除 head 分支、bypass 为空。
+- **不允许 skipped**：gate 用 `jq -e 'all(.[]; .result == "success")'` 判定，失败、取消、跳过一律算失败。
+- 新增 job 时不要用 job 级 `if` 做按需（会留下灰色 skipped），改成 `always()` + job 级 `env` + 步骤级 `if`。
+- 可复用工作流读不到 caller 的 `changes`，diff 判定必须通过 `inputs` 传入；它也不能超过 caller 的 `permissions`（CodeQL 需要入口文件授予 `security-events: write`）。
 
-- `test (windows-latest)`
-- `race`
-- `lint`
-- `sdk (windows-latest)`
-- `desktop`（汇总 6 条桌面 lane）
-- `coverage`（PR 侧根模块全量测试）
-- `govulncheck`
+## 已知例外
 
-规则：
-
-- 必需 job 必须 `if: always()`，靠步骤级 `RUN_STEPS` 门控。job 级 `if` 跳过会让必需检查停在 skipped/Expected，挡住合并。
-- 改 job id、matrix 维度或 check 名会让必需检查静默失效，必须同步 ruleset。
-- `desktop` 汇总必须覆盖全部桌面 lane（prepare / frontend / browser / go / windows / windows-go）；新增 lane 要同时加进 `needs` 与校验循环。
-- `desktop` 汇总的期望值分两组：Linux lane 跟 `desktop` 输出，Windows 两 lane 跟 `desktop_direct` / `full`。普通根模块 PR 允许 Windows lane skipped；`full`（main push、release PR）时它们必须有结论。
-- `coverage` 是 PR 上唯一的根模块全量测试；`test` 只跑 Windows smoke 子集。
-- `govulncheck` 依赖 `go.mod` 的 `toolchain`。升 Go 补丁版本是修 stdlib 漏洞的正规手段，不要用 `continue-on-error` 绕过。
-- `cache-impact` / `docs-impact` 因 `paths-ignore` 在纯文档 PR 不触发，设为必需会让那类 PR 卡在 Expected，故保持非阻断；红了仍然给信号。
-
-## 满格规则（合并门禁）
-
-required 只有 7 项，但**合并的硬性要求是"本 PR 产生的所有 check 全绿"**（见 [workflow.md](workflow.md)）。两项配合的语义：
-
-- required = 机器硬门禁，防"完全没跑就合并"；
-- 满格 = 人的验收标准，防"带着红/灰合并"。
-
-因此新增或修改 job 时：
-
-- **不要用 job 级 `if` 做按需**。job 级 `if` 跳过会留下灰色 `skipped`，页面永远到不了 `N/N`。改成 `if: always()` + job 级 `env` 开关 + 每个步骤 `if: env.RUN_STEPS == 'true'`。
-- 会改变 check 数量的独立 workflow（CodeQL、impact guard、release-notes）用 `paths-ignore` 控制"整条不出现"，这样它不会进入分母。
-- `dependabot[bot]` 的 PR 没有手写正文，`docs-impact` 已在脚本里豁免；新增元数据检查时要考虑同一类情况，否则会给依赖 PR 挂永久红。
-
-## 规则
-
-- `ci.yml` 是唯一 required checks 来源；路径过滤只为省时间，不能绕过必需检查。
-- 修改 workflow 后，`lint` job 会跑 `actionlint .github/workflows/*.yml` 与契约脚本；本地改完先在开发机跑同一组命令。
-- 优化耗时先查关键路径、`needs` 与重复编译成本；先测收益再拆。当前关键路径是 `desktop-windows-go`（约 15–27 分钟，只在 `desktop/**` 改动或 `full` 时跑）。
-- 自动重跑由 `ci-rerun.yml` 生效；改分类规则时同步 CI 与重跑配置。
-- 新增检查先问三件事：是否必需、跳过时是否仍有结论、是否会在纯文档 PR 出现。
+- **纯 workflow 改动的 PR**：走 `ci-code`，此时 `desktop=false`，桌面四条 Linux lane 以 `skipped` 结束，`desktop` 汇总按 `desktop` 输出判为通过。这类 PR 不涉及桌面代码，强制 `always()` 只会多起四个空 job；`gate` 仍然要求其余 lane 全绿。
+- **同时改文档与代码的 PR**：`ci-docs` 的 `paths` 与 `ci-code` 的 `paths-ignore` 是互补而非互斥（`paths` 任一命中即触发），所以会同时启动两个入口，产生两个同名 `gate`。GitHub 对同名 required check 要求全部 success，两个都绿才放行；合并前看 `gh pr checks` 里 `gate` 出现几行即可确认。
 
 ## 失败与重跑
 
 - 先分类：真回归、环境差异、已知 flake。重跑、同提交云端结果、基线证据一起看。
-- 白名单只表示允许自动重试，不表示失败可以忽略。
-- 手工重跑：`gh run rerun <run-id> -R keeyangyy/reasonix-wails --failed`。
+- 手工重跑：`gh run rerun <run-id> -R keeyangyy/reasonix-wails --failed`。自动重跑已移除——它会把真实失败洗成假绿。
 - 未知故障先保留现场，不直接改代码。
 
 ## 本地盲区
@@ -99,6 +64,4 @@ required 只有 7 项，但**合并的硬性要求是"本 PR 产生的所有 che
 
 ## 变更记录
 
-- 2026-11-18（二）：普通代码 PR 不再跑完整桌面矩阵。新增 `desktop_direct` 与 `full` 两个输出：Windows 两条 lane 与 `desktop-go` 的 WebKitGTK / test / -race 只在 `desktop/**` 改动或 `full`（main push、release PR）时运行；`desktop` 汇总按 lane 分两组判定期望值。取舍：只改根模块却打断桌面运行时的回归会由 main 兜底发现，不在 PR 阶段拦截。
-
-- 2026-11-18：分三档（docs / workflow / code）+ release 强制全量；删 `test` 中永不执行的 gofmt 与全量测试步骤（gofmt 移入 lint）；`coverage`、`govulncheck`、`desktop` 汇总转正为必需；toolchain 升 1.26.11 修 GO-2026-6859；app-memory 改为发版调用；清掉 labeler 的 `internal/codegraph` 死规则。
+- 2026-11-18：拆成 3 入口 + 7 个可复用检查 + 单一 `gate`；required 从 7 项缩为 1 项；ruleset 锁 squash、清空 bypass、要求线程 resolve；`pr-metadata` 合并两个门卫并改为每个 PR 都运行；`plan/` 纳入文档档；`release.yml` 让内存筛查与"等 CI 绿"并行。

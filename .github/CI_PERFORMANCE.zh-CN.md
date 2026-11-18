@@ -2,12 +2,26 @@
 
 [English](CI_PERFORMANCE.md)
 
+## 工作流结构
+
+三个入口决定场景：`ci-docs`（文档路径）、`ci-code`（其余全部，含 push 到
+main）、`ci-full`（手动与每晚全量）。每个入口末尾都有 `gate`，要求本次运行里
+所有 job 都成功，因此失败或被跳过的 lane 都会挡住合并；分支 ruleset 只要求
+`gate` 一项。
+
+实际工作放在可复用工作流里：`check-changes`、`check-docs-rules`、
+`check-lint`、`check-go`、`check-desktop`、`check-codeql`、`check-memory`。
+每个文件只负责一件事，也能单独排查。可复用工作流读不到调用方的 `changes`
+job，因此 diff 判定结果通过 inputs 传入；它也不能超过调用方的权限，所以入口
+文件统一授予 `security-events: write` 供 CodeQL lane 使用。
+
 ## Desktop PR 检查
 
-`desktop-prepare` 统一生成 Wails 绑定并构建一次 Linux 前端，产物供
-`desktop-frontend`、`desktop-browser`、`desktop-go` 三个独立 job 使用。
-原有 required check `desktop` 汇总这四项结果，拒绝失败、取消和意外跳过；
-只有路径检测成功且判定无关时，才接受各分组跳过。其他原生系统检查保持独立。
+`desktop / desktop-prepare` 统一生成 Wails 绑定并构建一次 Linux 前端，产物供
+`desktop / desktop-frontend`、`desktop / desktop-browser`、`desktop / desktop-go`
+三个独立 job 使用。`check-desktop.yml` 内的 `desktop` 汇总拒绝失败、取消和
+意外跳过；只有路径检测成功且判定无关时，才接受各分组跳过。随后 `gate` 把该
+汇总与其余所有 lane 一起判定。
 
 `node desktop/frontend/scripts/run-ci-tests.mjs --list` 可以查看单测清单。
 它展开原有专用脚本和生命周期钩子，自动发现新增测试，并保留每个 TypeScript
