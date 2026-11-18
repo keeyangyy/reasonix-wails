@@ -23,17 +23,16 @@ const desktopWorkflow = workflow("check-desktop");
 
 test("required desktop aggregate rejects every failed, cancelled or unexpectedly skipped child", () => {
   const script = shellStep(job(desktopWorkflow, "desktop"), "Verify desktop validation jobs");
-  const base = { CHANGES_RESULT: "success", SHOULD_RUN: "true", PREPARE_RESULT: "success", GO_RESULT: "success", FRONTEND_RESULT: "success", BROWSER_RESULT: "success", WINDOWS_RESULT: "success", WINDOWS_GO_RESULT: "success" };
+  const base = { CHANGES_RESULT: "success", SHOULD_RUN: "true", WINDOWS_RUN: "true", PREPARE_RESULT: "success", GO_RESULT: "success", FRONTEND_RESULT: "success", BROWSER_RESULT: "success", WINDOWS_RESULT: "success", WINDOWS_GO_RESULT: "success" };
   const run = env => spawnSync("bash", ["-e", "-c", script], { env: { ...process.env, ...env } }).status;
   // Exhaustive run: every lane must succeed.
   assert.equal(run(base), 0);
-  // Ordinary root-module PR: the Linux lanes are not scheduled, but the Windows
-  // lanes always run (they gate their own steps) and must still report success.
-  assert.equal(run({ ...base, SHOULD_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped" }), 0);
-  // Docs-only: the Linux lanes skip while the Windows lanes are already skipped;
-  // that combination must fail because the Windows lanes always report success.
-  assert.notEqual(run({ ...base, SHOULD_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
-  // A lane that should have run but did not (or failed) fails the aggregate.
+  // Root-module PR: the Windows lanes are not scheduled, and a skipped check
+  // still counts as passing for the PR total, so the aggregate accepts it.
+  assert.equal(run({ ...base, WINDOWS_RUN: "false", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
+  // Docs/workflow-only diff: nothing is scheduled at all.
+  assert.equal(run({ ...base, SHOULD_RUN: "false", WINDOWS_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
+  // A scheduled lane that did not run (or failed) fails the aggregate.
   for (const key of ["PREPARE_RESULT", "GO_RESULT", "FRONTEND_RESULT", "BROWSER_RESULT", "WINDOWS_RESULT", "WINDOWS_GO_RESULT", "CHANGES_RESULT"]) {
     for (const value of ["failure", "cancelled", "skipped", ""]) {
       assert.notEqual(run({ ...base, [key]: value }), 0, `${key}=${value}`);
