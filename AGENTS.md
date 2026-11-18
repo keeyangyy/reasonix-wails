@@ -24,7 +24,7 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 
 ## 语言与命名
 
-- 上游产品文档（`docs/guide/`、`docs/spec/`、`docs/design/`、`docs/ops/`、`docs/README.md`、根 README 的上游部分）保留英文原样，不做批量翻译。
+- 上游产品文档（`docs/guide/`、`docs/spec/`、`docs/design/`、`docs/ops/`、根 README 的上游部分）保留英文原样，不做批量翻译。
 - 新增规则、分析、决策、架构导航、归档说明用中文；新增文件名用中文，技术术语与专名保留英文。
 - 代码、注释、标识符按代码规范（英文）；修改上游英文文档时保持英文。
 
@@ -40,8 +40,7 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 | CI 红了、改 workflow | [ci.md](.agents/rules/ci.md) |
 | 需要对照上游历史实现 | [upstream.md](.agents/rules/upstream.md) |
 | 改 desktop 前端（尤其 transcript 滚动） | [desktop.md](.agents/rules/desktop.md) |
-| 排查踩过的坑 | [experiences.md](.agents/rules/experiences.md) |
-| 查已知技术风险与回归点 | [docs/analysis/技术风险与回归点.md](docs/analysis/技术风险与回归点.md) |
+| 查技术风险与工程经验 | [技术风险与回归点.md](docs/analysis/技术风险与回归点.md)、[工程协作与自动化经验.md](docs/analysis/工程协作与自动化经验.md) |
 
 ## 工作区
 
@@ -50,5 +49,5 @@ Windows 桌面编码 Agent，单 exe 分发，基于 Go + Wails v2 + WebView2。
 
 ## 文档
 
-- 入口：[docs/README.md](docs/README.md)（产品文档与开发记录的分类、导航）。
+- 入口：[docs/index.md](docs/index.md)（产品文档与开发记录的分类、导航）。
 - 开发台账：`docs/decisions/`、`docs/analysis/`、`docs/archive/`。

@@ -21,6 +21,8 @@ reviews:
       instructions: "文档改动重点检查链接、术语和前后一致性，不要求代码风格。"
     - path: ".agents/**"
       instructions: "规则文件重点检查与仓库实际流程是否一致；不要建议翻译上游英文产品文档。"
+    - path: "plan/**"
+      instructions: "计划是跨会话协作的工作材料，不是已定稿的产品文档。重点检查目标与范围、前置条件、依赖顺序、风险与回滚、验收标准、未决问题，以及与 docs/design、docs/decisions 和项目规则的一致性。区分已确认决策与待验证假设；不要求计划具备产品文档的完整度，也不要把临时执行细节当作长期规范。"
     - path: "desktop/frontend/**"
       instructions: "前端改动重点检查 transcript 单写者、generation fence 和竞态测试；必要时引用 .agents/rules/desktop.md。"
 

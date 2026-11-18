@@ -70,6 +70,7 @@ Thumbs.db
 benchmarks/context-maintenance-e2e/run/
 
 # Local scratch
+/tmp/
 temp/
 
 # Official theme art intermediate outputs / caches

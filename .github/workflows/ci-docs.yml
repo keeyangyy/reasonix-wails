@@ -11,11 +11,9 @@ on:
     paths:
       - "docs/**"
       - "plan/**"
-      - "plan/**"
       - ".agents/**"
       - "release-notes/**"
       - "benchmarks/**"
-      - "tmp/**"
       - "*.md"
       - "LICENSE"
       - ".gitignore"
