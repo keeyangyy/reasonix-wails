@@ -40,9 +40,11 @@ DOC 路径：`docs/**`、`plan/**`、`.agents/**`、`release-notes/**`、`benchm
 
 ## 门禁
 
-- required 只有 `gate`；ruleset 另外锁 squash、线程必须 resolve、合并后删除 head 分支、bypass 为空。
-- **不允许 skipped**：gate 用 `jq -e 'all(.[]; .result == "success")'` 判定，失败、取消、跳过一律算失败。
-- 新增 job 时不要用 job 级 `if` 做按需（会留下灰色 skipped），改成 `always()` + job 级 `env` + 步骤级 `if`。
+- required 是两个：`gate` 与 `CodeRabbit`。ruleset 另外锁 squash、线程必须 resolve、合并后删除 head 分支、bypass 为空。
+- `gate` 汇总本次运行的**顶层 job**。`ci-code` 是 changes / docs-rules / lint / go / desktop / codeql；`ci-full` 在此基础上再加 `memory`（内存筛查）。判定用 `jq -e 'all(.[]; .result == "success")'`。它们不按路径跳过；其中 `lint` / `go` / `desktop` / `codeql` 都 `needs: changes`，所以 `changes` 失败时它们会被跳过，而 `docs-rules`（无 `needs`）与 `gate` 仍会运行，随后由 `gate` 判失败。
+- `CodeRabbit` 没出结论（pending / cancelled）就无法合并；它的意见要么修，要么回复理由并 resolve 线程。
+- **可复用工作流内部的子 job 可以按需跳过**（例如桌面 lane 在非桌面改动时不启动），由该文件的汇总 job 按 `inputs` 判定，不让 skipped 传导到 `gate`。
+- GitHub 对单个 check 的口径是 **skipped 计入通过**，所以页面 `N/N` 不会因为这类跳过而缺分；`gate` 负责的是"该跑的真的跑过"。
 - 可复用工作流读不到 caller 的 `changes`，diff 判定必须通过 `inputs` 传入；它也不能超过 caller 的 `permissions`（CodeQL 需要入口文件授予 `security-events: write`）。
 
 ## 已知例外
