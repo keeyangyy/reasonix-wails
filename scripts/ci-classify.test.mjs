@@ -119,3 +119,24 @@ test("three-dot diff uses PR merge-base rather than changes merged into main lat
   git(f.dir, "commit", "-qm", "concurrent code merge");
   assert.deepEqual(f.run(git(f.dir, "rev-parse", "HEAD"), head), expected());
 });
+
+test("desktop and SDK Markdown files do not start source builds", t => {
+  const f = fixture(t);
+  assert.deepEqual(f.classify({ files: [
+    ["desktop/README.md", "# desktop"],
+    ["sdk/go/README.md", "# sdk"],
+    ["desktop/frontend/public/provider-icons/SOURCE.md", "credit"],
+  ] }), expected());
+});
+test("unknown files under docs are treated conservatively as code", t => {
+  const f = fixture(t);
+  assert.deepEqual(f.classify({ files: [["docs/experimental/controller.m", "disp(1)"]] }), expected({ code: "true", desktop: "true" }));
+});
+test("static docs artifacts and build data stay documentation-only", t => {
+  const f = fixture(t);
+  assert.deepEqual(f.classify({ files: [
+    ["docs/.nojekyll", ""],
+    ["docs/index.html", "<html></html>"],
+    ["benchmarks/fixtures/input.json", "{}"],
+  ] }), expected());
+});

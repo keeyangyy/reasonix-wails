@@ -10,9 +10,9 @@ sdk=false
 workflow=false
 full=false
 
-is_source() {
+is_docs_only() {
   case "$1" in
-    *.go|*.js|*.jsx|*.mjs|*.cjs|*.ts|*.tsx|*.py|*.sh|*.bash|*.ps1|*.rs|*.c|*.h|*.cpp|*.hpp|*.cs|*.java|*.kt|*.kts|*.swift|*.m|*.mm|*.dart|*.vue|*.svelte) return 0 ;;
+    *.md|*.mdx|*.txt|*.rst|*.adoc|*.tex|*.svg|*.png|*.jpg|*.jpeg|*.gif|*.webp|*.avif|*.ico|*.pdf|*.json|*.jsonl|*.yaml|*.yml|*.toml|*.csv|*.tsv|*.xml|*.html|*.css|*.scss|*.sass|*.less|*.woff|*.woff2|*.ttf|*.otf|*.eot|*.mp4|*.webm|*.lock|*.snap|docs/.nojekyll) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -39,14 +39,16 @@ else
       .github/workflows/*|.github/actions/*|scripts/ci-classify-changes.sh|scripts/ci-classify.test.mjs|scripts/ci-workflow.test.mjs)
         workflow=true ;;
       desktop/*)
-        desktop=true; desktop_direct=true ;;
+        # Only prose in desktop/ can skip its expensive native matrix.
+        case "$path" in *.md|*.mdx|*.txt) : ;; *) desktop=true; desktop_direct=true ;; esac ;;
       sdk/*)
-        sdk=true ;;
+        case "$path" in *.md|*.mdx|*.txt) : ;; *) sdk=true ;; esac ;;
       internal/extension/*)
         code=true; desktop=true; sdk=true ;;
       docs/*|benchmarks/*|plan/*|tmp/*|.agents/*|release-notes/*)
-        # Directory names alone do not imply documentation-only changes.
-        if is_source "$path"; then
+        # Only known documentation/data formats can skip source checks.
+        # Unknown extensions fail closed, even under docs/ or benchmarks/.
+        if ! is_docs_only "$path"; then
           code=true
           if [[ "$path" != benchmarks/* ]]; then desktop=true; fi
         fi ;;
