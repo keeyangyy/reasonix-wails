@@ -8,6 +8,12 @@ This directory is the product documentation bundled into every build. Files are
 filed by purpose; each area keeps its own documents flat, with an English file
 and its `zh-CN` counterpart side by side.
 
+Changes confined to `docs/`, `plan/`, `.agents/` and the root Markdown files run
+the lightweight documentation lane only: no Go or desktop test is started, and a
+measured run of that lane took about 30 seconds. The lane triggers on pull
+requests whose base is `main`; a push straight to another branch does not start
+it.
+
 ## Product areas
 
 These are bundled into every build; a document is either **rewritten in place**
