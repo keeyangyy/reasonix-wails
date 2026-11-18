@@ -71,7 +71,7 @@ document.getAnimations().forEach((a) => { try { a.finish(); } catch (e) {} });
 - 输出出现真实用户数据目录时立即停止并查隔离。
 - 可能触发桌面项目聚合的宿主测试，运行前关闭 Reasonix 桌面应用。
 - 用合成夹具或单独目录的数据副本，禁止把用户运行目录当可写夹具。
-- 事故成因见 [experiences.md](experiences.md)。
+- 隔离失效的具体成因与识别线索见[技术风险与回归点](../../docs/analysis/技术风险与回归点.md#测试用户状态隔离)。
 
 ## 行为验证
 

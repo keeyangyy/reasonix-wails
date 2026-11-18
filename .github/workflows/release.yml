@@ -165,7 +165,7 @@ jobs:
               echo "## 变更总览（$RANGE_NOTE）"
               echo
               if [ "$RANGE_NOTE" = "initial release" ]; then
-                echo '首个公开发行版。下载与安装见仓库 README，产品文档索引见 docs/README.md。'
+                echo '首个公开发行版。下载与安装见仓库 README，产品文档索引见 docs/index.md。'
                 echo
               fi
               git log "$RANGE" --no-merges ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} --pretty=format:'- %s' 2>/dev/null || true

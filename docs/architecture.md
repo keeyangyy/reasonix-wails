@@ -114,7 +114,15 @@ go list -deps ./internal/agent | Select-String '^reasonix/internal'
 go list -deps ./internal/cli   | Select-String '^reasonix/internal'
 ```
 
-## 八、已知边界
+## 八、相关详细设计
+
+- [会话所有权与生命周期](design/SESSION_OWNERSHIP.md)
+- [Transcript 架构](design/TRANSCRIPT_ARCHITECTURE.md)
+- [会话恢复与并行](design/SESSION_RECOVERY_AND_PARALLELISM.md)
+- [Extension Runtime](design/EXTENSION_RUNTIME_V2.md)
+- [Session Memory Retrieval](design/SESSION_MEMORY_RETRIEVAL.md)
+
+## 九、已知边界
 
 - 只覆盖 Go 后端；`desktop/frontend` 未纳入。
 - 分区由文件名前缀聚合，前缀不保证语义完备。
