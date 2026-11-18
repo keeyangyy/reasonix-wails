@@ -63,6 +63,19 @@ ruleset `protect-main` 的必需检查（7 项）：
 - `govulncheck` 依赖 `go.mod` 的 `toolchain`。升 Go 补丁版本是修 stdlib 漏洞的正规手段，不要用 `continue-on-error` 绕过。
 - `cache-impact` / `docs-impact` 因 `paths-ignore` 在纯文档 PR 不触发，设为必需会让那类 PR 卡在 Expected，故保持非阻断；红了仍然给信号。
 
+## 满格规则（合并门禁）
+
+required 只有 7 项，但**合并的硬性要求是"本 PR 产生的所有 check 全绿"**（见 [workflow.md](workflow.md)）。两项配合的语义：
+
+- required = 机器硬门禁，防"完全没跑就合并"；
+- 满格 = 人的验收标准，防"带着红/灰合并"。
+
+因此新增或修改 job 时：
+
+- **不要用 job 级 `if` 做按需**。job 级 `if` 跳过会留下灰色 `skipped`，页面永远到不了 `N/N`。改成 `if: always()` + job 级 `env` 开关 + 每个步骤 `if: env.RUN_STEPS == 'true'`。
+- 会改变 check 数量的独立 workflow（CodeQL、impact guard、release-notes）用 `paths-ignore` 控制"整条不出现"，这样它不会进入分母。
+- `dependabot[bot]` 的 PR 没有手写正文，`docs-impact` 已在脚本里豁免；新增元数据检查时要考虑同一类情况，否则会给依赖 PR 挂永久红。
+
 ## 规则
 
 - `ci.yml` 是唯一 required checks 来源；路径过滤只为省时间，不能绕过必需检查。

@@ -35,5 +35,6 @@ jobs:
       - name: Check documentation impact declaration
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
         run: bash scripts/check-docs-impact.sh

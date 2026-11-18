@@ -2,7 +2,12 @@ language: "zh-CN"
 
 reviews:
   profile: "chill"
-  request_changes_workflow: false
+  # A finding blocks the merge until it is either fixed or rebutted in the
+  # thread and resolved: the project rule is that a PR merges only when every
+  # check is green, and a review opinion is part of that. Rebuttal is the
+  # escape hatch — reply with the reason, resolve the thread, and CodeRabbit
+  # re-evaluates instead of blocking forever.
+  request_changes_workflow: true
   high_level_summary: true
   poem: false
   review_status: true
