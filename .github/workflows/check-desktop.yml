@@ -451,11 +451,16 @@ jobs:
 
       - name: test (Windows desktop and update helper)
         # Normal wall time is ~6-7 minutes of tests plus a Windows rebuild of
-        # the cgo packages; a loaded runner has exceeded 15 minutes with every
-        # package still passing. Keep the budget above that load spike so the
-        # job-level timeout, not this step, ends a real hang.
-        timeout-minutes: 30
-        run: go test ./...
+        # the cgo packages. -timeout gives the Go test binary its own deadline:
+        # when a test wedges, the runtime dumps the goroutine stacks and exits
+        # instead of holding this step until the job timeout (observed: one run
+        # sat here for 30 minutes and was killed with no diagnostics).
+        # -timeout must stay well under the step budget: the clock starts when a
+        # test binary starts, and a binary kicked off late in the step would
+        # otherwise hit the step timeout before Go can dump goroutine stacks.
+        # 6m leaves ~9 minutes for the bundle's compile time.
+        timeout-minutes: 15
+        run: go test -p 4 -timeout=6m ./...
 
       - name: test (vendored systray identity)
         timeout-minutes: 2
