@@ -92,3 +92,118 @@ jobs:
         run: |
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
           echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'
+
+  # Observability only: it never gates a merge, but it records every job's wall
+  # time so a silent regression (for example `test` drifting from 6 to 12
+  # minutes) becomes visible instead of anecdotal.
+  metrics:
+    # needs gate so the artifact always covers the same job set
+    # (otherwise gate may or may not have finished when the API is queried).
+    needs: [changes, docs-rules, lint, go, desktop, codeql, gate]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Summarize job durations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
+            --jq '.jobs[] | @json' > jobs.jsonl
+          python3 - <<'PY'
+          import json, os, datetime
+          rows = []
+          for line in open("jobs.jsonl"):
+              line = line.strip()
+              if not line:
+                  continue
+              j = json.loads(line)
+              s, e = j.get("started_at"), j.get("completed_at")
+              if not s or not e:
+                  continue
+              d = (datetime.datetime.fromisoformat(e.replace("Z", "+00:00"))
+                   - datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))).total_seconds() / 60
+              rows.append({"job": j["name"], "minutes": round(d, 1), "conclusion": j["conclusion"]})
+          rows.sort(key=lambda r: -r["minutes"])
+          with open("ci-metrics.json", "w") as fh:
+              json.dump({"run_id": os.environ["RUN_ID"], "jobs": rows}, fh, indent=2)
+          print(f"{'job':38} {'minutes':>8}  conclusion")
+          for r in rows:
+              print(f"{r['job']:38} {r['minutes']:>8}  {r['conclusion']}")
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ci-metrics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-metrics.json
+          retention-days: 30
+
+  # Actions caches have a hard 10 GB per-repository budget and GitHub evicts
+  # entries on its own schedule once it is hit. The CodeQL overlay databases
+  # alone are ~200 MB each and get a new key on every run, so they are the real
+  # growth source. Keep the newest entry per family after a push to main.
+  prune-cache:
+    # wait for codeql as well: it writes this run's overlay cache, and pruning
+    # before that write leaves two entries in the same family.
+    needs: [go, desktop, codeql]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    env:
+      PRUNE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      # Only a push to main prunes; on a pull request the job still starts and
+      # reports success in seconds so the check list stays all-green.
+      - name: Keep the newest cache per family
+        if: env.PRUNE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$REPO/actions/caches?per_page=100&sort=created_at&direction=desc&ref=refs/heads/main" \
+            --jq '.actions_caches[] | @json' > caches.jsonl
+          python3 - <<'PY'
+          import json, os, subprocess
+
+          codeql_langs = {"go", "javascript", "python", "csharp", "java", "cpp", "ruby", "swift"}
+
+          def family(key):
+              if key.startswith("codeql-overlay-base-database-"):
+                  # Keep the restore prefix (CLI version + config + language),
+                  # drop only the trailing commit SHA, run id and attempt.
+                  return key.rsplit("-", 3)[0]
+              # setup-go-<os>-<arch>[-<distro>]-go-<ver>-<hash>
+              # golangci-lint.cache-<os>[-<dir>]-<pid>-<hash>
+              return key.rsplit("-", 1)[0]
+
+          caches = [json.loads(l) for l in open("caches.jsonl") if l.strip()]
+          seen, deleted, freed, errors = set(), 0, 0, 0
+          for c in caches:  # already newest-first
+              fam = family(c["key"])
+              if fam in seen:
+                  r = subprocess.run(
+                      ["gh", "api", "-X", "DELETE", f"repos/{os.environ['REPO']}/actions/caches/{c['id']}"],
+                      capture_output=True, text=True,
+                  )
+                  if r.returncode == 0:
+                      deleted += 1
+                      freed += c["size_in_bytes"]
+                      print(f"deleted {c['size_in_bytes']/1e6:8.1f} MB  {c['key'][:80]}")
+                  else:
+                      errors += 1
+                      print(f"failed  {c['key'][:80]}  {(r.stderr or '')[:80]}")
+              else:
+                  seen.add(fam)
+          print(f"kept {len(seen)} families, deleted {deleted} caches, freed {freed/1e9:.2f} GB")
+          if errors:
+              raise SystemExit(f"{errors} cache deletions failed; rerun to retry the remainder")
+          PY
