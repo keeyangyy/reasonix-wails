@@ -4,10 +4,11 @@
 
 ## 工作流结构
 
-三个入口决定场景：`ci-docs`（文档路径）、`ci-code`（其余全部，含 push 到
-main）、`ci-full`（手动与每晚全量）。每个入口末尾都有 `gate`，要求本次运行里
-所有 job 都成功，因此失败或被跳过的 lane 都会挡住合并；分支 ruleset 只要求
-`gate` 一项。
+`ci.yml` 是所有 PR 和 push 到 main 的唯一常规入口。分类器按改动选择
+文档、Workflow、Go、SDK、Desktop 检查；push main 执行完整代码基线，但不执行 memory 筛查。
+`ci-full.yml` 负责手动和每晚全量回归。 `gate` 要求分类选中的 lane 为
+`success`，未选中的 lane 为 `skipped`；Ruleset 同时要求
+`gate` 和 `CodeRabbit`。
 
 实际工作放在可复用工作流里：`check-changes`、`check-docs-rules`、
 `check-lint`、`check-go`、`check-desktop`、`check-codeql`、`check-memory`。

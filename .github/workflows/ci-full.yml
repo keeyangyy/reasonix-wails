@@ -5,8 +5,8 @@ name: CI (full)
 #   · workflow_dispatch — a manual full run (used by the release gate when the
 #     commit that will be tagged has no full run of its own)
 #   · schedule — a nightly sweep so drift is found even when nobody merges
-# A release PR itself stays on the docs lane; the memory screening runs inside
-# release.yml, in parallel with the "is main green" check.
+# Release PRs run the complete PR CI (including memory screening) via
+# ci.yml; release.yml separately validates the commit to be tagged.
 
 on:
   workflow_dispatch:

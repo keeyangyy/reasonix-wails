@@ -57,3 +57,52 @@ test("all Linux consumers use the prepared build and reject a failed preparation
     assert.equal(condition(body, { ...context, needs: { "desktop-prepare": { result: "failure" } } }), false);
   }
 });
+
+const ciWorkflow = workflow("ci");
+test("single PR entry selects only required lanes and rejects every incorrect outcome", () => {
+  assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]/);
+  assert.match(ciWorkflow, /needs: \[changes, docs-rules, lint, go, desktop, codeql, memory\]/);
+  assert.ok(ciWorkflow.includes("IS_RELEASE_PR: " + "$" + "{{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}"));
+  const script = shellStep(job(ciWorkflow, "gate"), "Verify every selected lane passed");
+  function base(flags = {}, release = false) {
+    const outputs = {
+      code: "false", desktop: "false", desktop_direct: "false",
+      sdk: "false", workflow: "false", full: "false", ...flags,
+    };
+    const active = {
+      lint: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      go: ["code", "sdk"].some(k => outputs[k] === "true"),
+      desktop: outputs.desktop === "true",
+      codeql: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      memory: release,
+    };
+    return {
+      changes: { result: "success", outputs },
+      "docs-rules": { result: "success" },
+      ...Object.fromEntries(Object.entries(active).map(([name, needed]) => [name, { result: needed ? "success" : "skipped" }])),
+    };
+  }
+  const run = (needs, release = false) => spawnSync("bash", ["-e", "-c", script], {
+    env: { ...process.env, RESULTS: JSON.stringify(needs), IS_RELEASE_PR: String(release) },
+  }).status;
+  const cases = [
+    [base(), false],
+    [base({ workflow: "true" }), false],
+    [base({ code: "true", desktop: "true" }), false],
+    [base({ sdk: "true" }), false],
+    [base({ code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" }, true), true],
+  ];
+  for (const [needs, release] of cases) {
+    assert.equal(run(needs, release), 0, JSON.stringify(needs));
+    for (const name of ["lint", "go", "desktop", "codeql", "memory"]) {
+      const wrong = structuredClone(needs);
+      wrong[name].result = wrong[name].result === "success" ? "skipped" : "success";
+      assert.notEqual(run(wrong, release), 0, "incorrect lane " + name + " was allowed");
+    }
+    for (const name of ["changes", "docs-rules"]) {
+      const wrong = structuredClone(needs);
+      wrong[name].result = "failure";
+      assert.notEqual(run(wrong, release), 0, name + " failure was allowed");
+    }
+  }
+});

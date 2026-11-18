@@ -4,11 +4,13 @@
 
 ## Workflow layout
 
-Three entry points decide the scenario: `ci-docs` (documentation paths),
-`ci-code` (everything else, including a push to main) and `ci-full` (manual and
-nightly complete sweep). Each entry ends in a `gate` job that requires every job
-in that run to succeed, so a failed or skipped lane blocks the merge; the branch
-ruleset requires `gate` and nothing else.
+`ci.yml` is the single entry for all PRs and pushes to main. The path
+classifier selects only the applicable documentation, workflow, Go, SDK and
+desktop checks; main pushes run a complete code baseline, but skip the memory lane.
+`ci-full.yml` runs the nightly
+and manually triggered complete sweep. The `gate` requires selected lanes to
+succeed and unselected lanes to be skipped. Branch protection requires both
+`gate` and `CodeRabbit`.
 
 The work itself lives in reusable workflows — `check-changes`,
 `check-docs-rules`, `check-lint`, `check-go`, `check-desktop`, `check-codeql`,
