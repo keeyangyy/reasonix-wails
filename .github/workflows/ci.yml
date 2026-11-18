@@ -47,6 +47,8 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       desktop: ${{ steps.filter.outputs.desktop }}
+      desktop_direct: ${{ steps.filter.outputs.desktop_direct }}
+      full: ${{ steps.filter.outputs.full }}
       sdk: ${{ steps.filter.outputs.sdk }}
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
@@ -55,7 +57,7 @@ jobs:
           fetch-depth: 0
       - id: filter
         run: |
-          code=true; desktop=true; sdk=true; workflow=true
+          code=true; desktop=true; sdk=true; workflow=true; desktop_direct=true; full=true
           base=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
@@ -66,16 +68,22 @@ jobs:
             files=$(git diff --name-only "$base" HEAD)
             if [ -n "$files" ]; then
               code=false; desktop=false; sdk=false; workflow=false
+              desktop_direct=false; full=false
               # Root-module CI: desktop/ is a separate module, so only this
               # clearly-unrelated set can skip it.
-              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|desktop/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$)'; then
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|\.agents/|desktop/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$|\.coderabbit\.yaml$)'; then
                 code=true
               fi
               # desktop/ imports the root kernel via `replace reasonix => ../`,
               # so the same clearly-unrelated set is what skips it.
-              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$)'; then
+              if echo "$files" | grep -qvE '^(docs/|release-notes/|benchmarks/|tmp/|\.github/|\.agents/|[^/]+\.md$|LICENSE$|\.gitignore$|\.gitattributes$|\.editorconfig$|\.coderabbit\.yaml$)'; then
                 desktop=true
               fi
+              # Only a diff that touches desktop/ itself pays for the full
+              # desktop matrix (WebView2 shell + the ~25 minute Windows Go
+              # suite). A root-module diff still validates that desktop
+              # compiles, but the full desktop regression run stays on main.
+              if echo "$files" | grep -qE '^desktop/'; then desktop_direct=true; fi
               # sdk/go is a nested module invisible to root `go test ./...`;
               # its DTOs are generated from internal/extension/protocol, so
               # both paths must trigger the sdk job.
@@ -85,10 +93,13 @@ jobs:
               if echo "$files" | grep -qE '^\.github/workflows/'; then workflow=true; fi
             fi
           fi
+          # `full` marks the runs that must not depend on a diff heuristic:
+          # every push to main (the release baseline) and every release/* PR.
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then full=true; fi
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "${GITHUB_HEAD_REF%%/*}" = "release" ]; then
-            code=true; desktop=true; sdk=true; workflow=true
+            code=true; desktop=true; sdk=true; workflow=true; desktop_direct=true; full=true
           fi
-          { echo "code=$code"; echo "desktop=$desktop"; echo "sdk=$sdk"; echo "workflow=$workflow"; } >> "$GITHUB_OUTPUT"
+          { echo "code=$code"; echo "desktop=$desktop"; echo "desktop_direct=$desktop_direct"; echo "full=$full"; echo "sdk=$sdk"; echo "workflow=$workflow"; } >> "$GITHUB_OUTPUT"
 
   # The ruleset requires the per-OS check names (test (ubuntu-latest) etc.).
   # A matrix job skipped at job level reports no per-leg checks at all, so
@@ -500,8 +511,10 @@ jobs:
 
   # Single required check for the desktop module: the ruleset requires this
   # aggregate, so the per-lane jobs can be renamed or split without silently
-  # disabling the gate. It fails when any lane fails and passes when the diff
-  # cannot affect desktop (every lane skipped by the `changes` gate).
+  # disabling the gate. Linux lanes must run whenever the diff can reach the
+  # module; the two Windows lanes only run for a desktop/** diff or an
+  # exhaustive run (push to main, release/*), so they are allowed to skip on an
+  # ordinary root-module PR.
   desktop:
     needs: [changes, desktop-prepare, desktop-go, desktop-frontend, desktop-browser, desktop-windows, desktop-windows-go]
     if: always()
@@ -511,6 +524,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           SHOULD_RUN: ${{ needs.changes.outputs.desktop != 'false' }}
+          WINDOWS_RUN: ${{ needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false' }}
           PREPARE_RESULT: ${{ needs.desktop-prepare.result }}
           GO_RESULT: ${{ needs.desktop-go.result }}
           FRONTEND_RESULT: ${{ needs.desktop-frontend.result }}
@@ -519,11 +533,19 @@ jobs:
           WINDOWS_GO_RESULT: ${{ needs.desktop-windows-go.result }}
         run: |
           test "$CHANGES_RESULT" = success
-          expected=skipped
-          if [ "$SHOULD_RUN" = true ]; then expected=success; fi
-          for result in "$PREPARE_RESULT" "$GO_RESULT" "$FRONTEND_RESULT" "$BROWSER_RESULT" "$WINDOWS_RESULT" "$WINDOWS_GO_RESULT"; do
-            echo "lane: $result (expected $expected)"
-            test "$result" = "$expected"
+          linux_expected=skipped
+          if [ "$SHOULD_RUN" = true ]; then linux_expected=success; fi
+          windows_expected=skipped
+          if [ "$WINDOWS_RUN" = true ]; then windows_expected=success; fi
+          for pair in "prepare:$PREPARE_RESULT" "go:$GO_RESULT" "frontend:$FRONTEND_RESULT" "browser:$BROWSER_RESULT"; do
+            lane=${pair%%:*}; result=${pair#*:}
+            echo "$lane: $result (expected $linux_expected)"
+            test "$result" = "$linux_expected"
+          done
+          for pair in "windows:$WINDOWS_RESULT" "windows-go:$WINDOWS_GO_RESULT"; do
+            lane=${pair%%:*}; result=${pair#*:}
+            echo "$lane: $result (expected $windows_expected)"
+            test "$result" = "$windows_expected"
           done
 
   desktop-frontend:
@@ -701,7 +723,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y dbus-daemon gcc libgtk-3-dev libwebkit2gtk-4.0-dev xvfb
 
+      # The native/UI regression steps below only run when the diff touches
+      # desktop/ itself or when the run must be exhaustive (push to main,
+      # release/*). A root-module diff still compiles the module via
+      # vet/golangci-lint/build, but the WebKitGTK and full-suite runs stay on
+      # the exhaustive path so a normal PR does not pay ~13 minutes for them.
       - name: Test WebKitGTK native transcript scrolling
+        if: needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false'
         timeout-minutes: 5
         run: |
           pnpm --dir frontend exec vite preview --host 127.0.0.1 --port 4173 --strictPort >/tmp/reasonix-transcript-preview.log 2>&1 &
@@ -729,22 +757,25 @@ jobs:
         run: go build ./...
 
       - name: test
+        if: needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false'
         run: go test ./...
 
       - name: WebKitGTK 4.0 native recovery smoke
+        if: needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false'
         run: xvfb-run -a env WEBKIT_DISABLE_COMPOSITING_MODE=1 go test -tags reasonix_webkit_smoke . -run '^TestWebKitNativeRecoverySmoke$'
 
       # The extension work added new shared-state paths to the desktop
       # runtime (tab/rebuild fences, extension UI). Race-sweep the module so
       # regressions are CI-blocked, not just author-verified locally.
       - name: test -race
+        if: needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false'
         run: go test -race ./...
 
   # Ubuntu 24.04 ships WebKitGTK 4.1 only. Keep this capability build separate
   # from the 22.04/4.0 leg so neither runtime becomes a distro whitelist.
   desktop-windows:
     needs: changes
-    if: always() && (needs.changes.outputs.desktop != 'false')
+    if: always() && (needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false')
     runs-on: windows-latest
     # A hung native step must not hold the workflow's concurrency group for the
     # six-hour default. Normal runs finish in ~25 minutes.
@@ -901,7 +932,7 @@ jobs:
   # built frontend.
   desktop-windows-go:
     needs: changes
-    if: always() && (needs.changes.outputs.desktop != 'false')
+    if: always() && (needs.changes.outputs.desktop_direct != 'false' || needs.changes.outputs.full != 'false')
     runs-on: windows-latest
     timeout-minutes: 45
     defaults:

@@ -23,14 +23,21 @@ const ci = workflow("ci");
 
 test("required desktop aggregate rejects every failed, cancelled or unexpectedly skipped child", () => {
   const script = shellStep(job(ci, "desktop"), "Verify desktop validation jobs");
-  const success = { CHANGES_RESULT: "success", SHOULD_RUN: "true", PREPARE_RESULT: "success", GO_RESULT: "success", FRONTEND_RESULT: "success", BROWSER_RESULT: "success", WINDOWS_RESULT: "success", WINDOWS_GO_RESULT: "success" };
+  const base = { CHANGES_RESULT: "success", SHOULD_RUN: "true", WINDOWS_RUN: "true", PREPARE_RESULT: "success", GO_RESULT: "success", FRONTEND_RESULT: "success", BROWSER_RESULT: "success", WINDOWS_RESULT: "success", WINDOWS_GO_RESULT: "success" };
   const run = env => spawnSync("bash", ["-e", "-c", script], { env: { ...process.env, ...env } }).status;
-  assert.equal(run(success), 0);
+  // Exhaustive run (push to main, release/*): every lane must succeed.
+  assert.equal(run(base), 0);
+  // Ordinary root-module PR: the Linux lanes run, the Windows lanes are not
+  // scheduled and are allowed to report skipped.
+  assert.equal(run({ ...base, WINDOWS_RUN: "false", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
+  // Docs-only: nothing runs.
+  assert.equal(run({ ...base, SHOULD_RUN: "false", WINDOWS_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
+  // A lane that should have run but did not (or failed) fails the aggregate.
   for (const key of ["PREPARE_RESULT", "GO_RESULT", "FRONTEND_RESULT", "BROWSER_RESULT", "WINDOWS_RESULT", "WINDOWS_GO_RESULT", "CHANGES_RESULT"]) {
-    for (const value of ["failure", "cancelled", "skipped", ""]) assert.notEqual(run({ ...success, [key]: value }), 0, `${key}=${value}`);
+    for (const value of ["failure", "cancelled", "skipped", ""]) assert.notEqual(run({ ...base, [key]: value }), 0, `${key}=${value}`);
   }
-  assert.equal(run({ ...success, SHOULD_RUN: "false", PREPARE_RESULT: "skipped", GO_RESULT: "skipped", FRONTEND_RESULT: "skipped", BROWSER_RESULT: "skipped", WINDOWS_RESULT: "skipped", WINDOWS_GO_RESULT: "skipped" }), 0);
-  assert.notEqual(run({ ...success, SHOULD_RUN: "false" }), 0);
+  // A lane that was not scheduled must not report success either.
+  assert.notEqual(run({ ...base, WINDOWS_RUN: "false" }), 0);
 });
 
 
