@@ -26,10 +26,10 @@
 
 - **异步审查要合批处理**：CI 与 CodeRabbit 的结论到达时间不同（CI 约 5–30 分钟，CodeRabbit 约 5 分钟且会基于最新 commit 重审）。先等两边都出结论，再一次性修改提交；中间急着推送只会让两边都重跑，还会让先到的一方基于旧代码重新提意见。
 - 一个 PR 一个主题，diff 只含相关文件。
-- **required check 只有一个：`gate`。** 它由入口工作流（`ci-docs` / `ci-code` / `ci-full`）汇总本次运行的全部 job，任何一项不是 `success` 都会让 gate 失败。
+- **required 是两个：`gate` 与 `CodeRabbit`。** `gate` 由入口工作流（`ci-docs` / `ci-code` / `ci-full`）汇总本次运行的顶层 job，任何一项不是 `success` 都会让它失败；`CodeRabbit` 未出结论（pending/cancelled）时同样不能合并。
 - **合并门禁：本 PR 产生的所有 check 必须全部通过。**
   - 顶栏应是 `☑️ N/N`（数字随档位变化：docs 约 6、根模块 code 约 20、含 desktop 约 26、full 约 30）。
-  - 出现灰色 `skipped` 说明该 job 用了 job 级 `if`：改成 `always()` + 步骤门控，让它在不适用时秒过而不是跳过。
+  - 灰色 `skipped` 在 GitHub 的统计里计入通过，所以可复用工作流内部的子 job 可以用 job 级 `if` 按需跳过；但**顶层必需 job 不能跳过**，它们必须始终给出结论。
   - 任何红项都要处理：要么修代码，要么修检查本身（判定不合理、误报、flaky）。**不允许带着红合并。**
   - 例外仅限：平台 flake 重跑后恢复、第三方服务故障。例外必须在 PR 里写清原因，且不得长期挂着红。
   - 某项长期红 = 系统性问题（真 bug 或检查设计错），当次解决，不能靠下次。
