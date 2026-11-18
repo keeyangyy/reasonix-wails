@@ -69,7 +69,7 @@ Reasonix Wails 是一个 Windows 桌面编码 Agent：读仓库、改文件、�
 - **记忆与项目数据**：同一 home 下的 `REASONIX.md`、`memory/`、`skills/`、`plugins/` 等目录由这些客户端共用。
 - **会话格式**：本项目写入格式 2（`<id>.events.jsonl` 的 DAG 事件日志）。格式 1（1.39.0 之前）可正常打开，但首次保存时会就地升级为格式 2，此后早于 1.39.0 的 1.x 客户端将无法再打开该会话——兼容是单向的。
 - **更新的格式**：1.x 在停维前曾继续演进过会话格式；本项目遇到不支持的版本时直接报错，不修改任何字节。
-- **Studio 线路的会话**：依据 sidecar 中另一线独有的字段（`archived`、`superseded`、`imported_from`、`recovery_root_id`）识别；若 sidecar 存在但缺少本项目的所有权字段（`topic_id`、`topic_title`、`scope`、`workspace_root`，包括空对象 `{}`），同样视为外部会话。识别后跳过：不列出、不打开、不静默迁移，也不改写其文件。
+- **Studio 线路的会话**：依据 sidecar 中另一线独有的字段（`archived`、`superseded`、`imported_from`、`recovery_root_id`）识别；若 sidecar 存在但缺少本项目的所有权字段（`topic_id`、`topic_title`、`scope`、`workspace_root`，包括空对象 `{}`），同样视为外部会话。历史目录、索引与对账会跳过这些会话；轻量列表（CLI 选择器、桌面历史切片）和直接打开路径（ACP、`--resume`）目前不拦截，可能仍会列出或以可写方式打开。
 - **安装身份**：独立的安装目录、卸载项、快捷方式与单实例锁，可与上游及旧版 Wails 客户端并存，不会自动迁移或覆盖既有安装。
 
 ## 下载与安装
