@@ -257,14 +257,24 @@ jobs:
             ANCHOR_IS_DRAFT="$(gh release view "$anchor" --json isDraft --jq .isDraft)"
             if gh release download "$anchor" -p versions.json -D catalog --clobber 2>/dev/null; then
               existing=catalog/versions.json
+            elif gh release download "$anchor" -p versions.json.backup -D catalog --clobber 2>/dev/null; then
+              cp catalog/versions.json.backup catalog/versions.json
+              existing=catalog/versions.json
+              echo "::warning::Restored the previous catalog from versions.json.backup."
             elif [ "$ANCHOR_IS_DRAFT" = "true" ]; then
-              echo "Draft anchor has no catalog yet; starting a new one."
+              echo "Draft anchor has no catalog or backup yet; starting a new one."
             else
-              echo "::error::Published update anchor is missing versions.json; refusing to reset release history."
+              echo "::error::Published update anchor is missing versions.json and its backup; refusing to reset release history."
               exit 1
             fi
           else
             echo "No update anchor yet; starting a new one."
+          fi
+          # Preserve the current published catalog before preparing its replacement.
+          # The backup is uploaded before versions.json is replaced, so a failed
+          # --clobber upload can be recovered without losing release history.
+          if [ "$existing" != "-" ]; then
+            cp "$existing" catalog/versions.json.backup
           fi
           now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           # The next release reads back what this one wrote, so the index keeps
@@ -297,7 +307,13 @@ jobs:
           fi
 
           # The mutable anchor is intentionally never the repository Latest.
-          gh release upload wails-latest catalog/versions.json manifest-input/latest.json --clobber
+          # Back up the last known catalog before replacing it: GitHub's --clobber
+          # deletes the old asset before uploading the replacement.
+          if [ -f catalog/versions.json.backup ]; then
+            gh release upload wails-latest catalog/versions.json.backup --clobber
+          fi
+          gh release upload wails-latest manifest-input/latest.json --clobber
+          gh release upload wails-latest catalog/versions.json --clobber
           gh release edit wails-latest --draft=false --latest=false
       - name: Summarize release
         env:
