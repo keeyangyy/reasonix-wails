@@ -83,6 +83,7 @@ jobs:
       - name: Verify every selected check passed
         env:
           RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           python3 - <<'PY'
           import json
@@ -90,6 +91,7 @@ jobs:
           import sys
 
           results = json.loads(os.environ["RESULTS"])
+          event = os.environ["EVENT_NAME"]
           outputs = results["changes"].get("outputs", {})
           failures = []
 
@@ -101,7 +103,6 @@ jobs:
 
           expect("changes", "success")
           expect("docs-rules", "success")
-
 
           selected = {
               "lint": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
