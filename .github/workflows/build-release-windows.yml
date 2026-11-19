@@ -134,12 +134,14 @@ jobs:
           fetch-depth: 0
 
       - name: Download build artifacts
+        if: ${{ inputs.anchor_only != true }}
         uses: actions/download-artifact@v8
         with:
           name: reasonix-windows-amd64-${{ needs.verify.outputs.version }}
           path: dist
 
       - name: List artifacts
+        if: ${{ inputs.anchor_only != true }}
         run: ls -la dist
 
       - name: Upload Windows assets to draft release
@@ -189,11 +191,15 @@ jobs:
             dist/Reasonix-windows-amd64.exe \
             dist/Reasonix-windows-amd64.exe.minisig \
             --clobber
-          # The version catalog points each entry at <tag>/latest.json, so the
-          # same manifest has to exist on the version's own release too — the
-          # anchor below is overwritten by every release and cannot serve as an
-          # immutable per-version address.
+          # The immutable version manifest lives on the version's own release.
           gh release upload "$RELEASE_TAG" manifest-input/latest.json --clobber
+          # Create the mutable update anchor as a draft if this is the first release.
+          if ! gh release view wails-latest >/dev/null 2>&1; then
+            gh release create wails-latest --draft --latest=false \
+              --title "Reasonix Wails update anchor" \
+              --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
+          fi
+
       - name: Restore manifest from published release for anchor-only recovery
         if: ${{ inputs.anchor_only == true }}
         env:
@@ -220,21 +226,12 @@ jobs:
           done
           mkdir -p manifest-input
           gh release download "$RELEASE_TAG" -p latest.json -D manifest-input
+          # Recovery can also create the mutable anchor if its first publication failed.
           if ! gh release view wails-latest >/dev/null 2>&1; then
             gh release create wails-latest --draft --latest=false \
               --title "Reasonix Wails update anchor" \
               --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
           fi
-          # The anchor is a fixed tag whose contents every release of this line
-          # overwrites, so the updater never follows the repository-wide latest
-          # badge -- which the studio and legacy 1.39 lines also claim.
-          if ! gh release view wails-latest >/dev/null 2>&1; then
-            # A new update anchor is staged as a draft until both assets are ready.
-            gh release create wails-latest --draft --latest=false \
-              --title "Reasonix Wails update anchor" \
-              --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
-          fi
-          # The mutable anchor is updated only after the version release is public.
 
       - name: Update this line's version catalog
         env:
