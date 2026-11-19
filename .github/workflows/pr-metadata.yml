@@ -1,14 +1,12 @@
 name: PR metadata
 
-# Both guards run on every pull request: a check that only appears on some
-# PRs cannot be part of a single required gate. dependabot[bot] is exempt
-# inside check-docs-impact.sh because an automated PR has no hand-written
-# body to carry the field.
+# Validate PR declarations in a separate workflow so body edits never cancel
+# the expensive CI workflow. Only trusted scripts from the base commit run here.
 
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
@@ -19,14 +17,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docs-impact:
+  pr-metadata:
+    name: pr-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      # Execute only the trusted base-branch checker; never run contributor code
-      # from a pull_request_target workflow.
-      - uses: actions/checkout@v7
+      - name: Checkout trusted base-branch scripts
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
 
       - name: Collect PR changed files
         env:
@@ -35,33 +35,22 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/docs-impact-files.txt"
+            --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/changed-files.txt"
 
       - name: Check documentation impact declaration
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
+          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
         run: bash scripts/check-docs-impact.sh
 
-  cache-impact:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-
-      - name: Collect PR changed files
+      - name: Check cache impact declaration
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/cache-impact-files.txt"
-
-      - name: Check cache-sensitive PR metadata
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/cache-impact-files.txt
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
         run: bash scripts/check-cache-impact.sh
+
+      - name: Check Blast Radius declaration
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+        run: bash scripts/check-blast-radius.sh

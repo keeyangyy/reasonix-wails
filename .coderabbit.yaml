@@ -17,6 +17,8 @@ reviews:
     - "!release-notes/**"
     - "!**/*.lock"
   path_instructions:
+    - path: "**/*"
+      instructions: "审查 PR 描述中的 Blast-radius 声明是否符合实际影响范围。重点检查公共调用方、跨模块依赖、持久化数据、安全边界、提示词/缓存和发布链路；不要按文件数量推断影响范围。若声明明显低估，指出具体受影响模块或调用链，并要求补充相应测试。CI 只校验声明格式，不代表等级判断正确。"
     - path: "docs/**"
       instructions: "文档改动重点检查链接、术语和前后一致性，不要求代码风格。"
     - path: ".agents/**"

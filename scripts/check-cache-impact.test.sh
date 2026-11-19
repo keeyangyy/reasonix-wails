@@ -10,25 +10,43 @@ PR_BODY="$reviewed_body" "$check" REASONIX.md >/dev/null
 PR_BODY="$reviewed_body" "$check" services/api/AGENTS.local.md >/dev/null
 
 PR_BODY=$'Cache-impact: none - refactor preserves provider-visible bytes\nCache-guard: go test ./internal/boot\nSystem-prompt-review: reviewed provider-visible output as unchanged' \
-	"$check" internal/boot/boot.go >/dev/null
+  "$check" internal/boot/boot.go >/dev/null
 
 PR_BODY='' "$check" docs/guide/GUIDE.md >/dev/null
 
 if PR_BODY='' "$check" CLAUDE.md >/dev/null 2>&1; then
-	echo "standing instruction without cache declarations unexpectedly passed" >&2
-	exit 1
+  echo "standing instruction without cache declarations unexpectedly passed" >&2
+  exit 1
+fi
+
+if PR_BODY=$'Cache-impact: urgent - unclear impact\nCache-guard: go test ./internal/boot\nSystem-prompt-review: reviewed prompt and provider output' \
+  "$check" internal/boot/boot.go >/dev/null 2>&1; then
+  echo "invalid cache-impact level unexpectedly passed" >&2
+  exit 1
+fi
+
+if PR_BODY=$'Cache-impact: low\nCache-guard: go test ./internal/boot\nSystem-prompt-review: reviewed prompt and provider output' \
+  "$check" internal/boot/boot.go >/dev/null 2>&1; then
+  echo "cache-impact without a rationale unexpectedly passed" >&2
+  exit 1
+fi
+
+if PR_BODY=$'Cache-impact: low - valid reason\nCache-guard: TODO\nSystem-prompt-review: reviewed prompt and provider output' \
+  "$check" internal/boot/boot.go >/dev/null 2>&1; then
+  echo "cache-guard placeholder unexpectedly passed" >&2
+  exit 1
 fi
 
 if PR_BODY=$'Cache-impact: none - text-only policy update\nCache-guard: bash scripts/check-cache-impact.test.sh\nSystem-prompt-review: reviewed as static' \
-	"$check" REASONIX.local.md >/dev/null 2>&1; then
-	echo "standing instruction declared as no cache impact unexpectedly passed" >&2
-	exit 1
+  "$check" REASONIX.local.md >/dev/null 2>&1; then
+  echo "standing instruction declared as no cache impact unexpectedly passed" >&2
+  exit 1
 fi
 
 if PR_BODY=$'Cache-impact: low - standing prefix changes once\nCache-guard: bash scripts/check-cache-impact.test.sh\nSystem-prompt-review: N/A' \
-	"$check" nested/AGENTS.md >/dev/null 2>&1; then
-	echo "standing instruction without an explicit system-prompt review unexpectedly passed" >&2
-	exit 1
+  "$check" nested/AGENTS.md >/dev/null 2>&1; then
+  echo "standing instruction without an explicit system-prompt review unexpectedly passed" >&2
+  exit 1
 fi
 
 echo "cache impact contract tests: PASS"

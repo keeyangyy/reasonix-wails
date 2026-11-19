@@ -7,6 +7,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +17,7 @@ permissions:
   security-events: write
   packages: read
   actions: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -64,10 +66,12 @@ jobs:
       desktop: ${{ needs.changes.outputs.desktop }}
       workflow: ${{ needs.changes.outputs.workflow }}
 
-  # Every release/* PR must run all code checks plus memory screening.
+  # Memory belongs to every exhaustive verification: main push, manual full
+  # runs, scheduled full runs (ci-full.yml), and release/* PRs. Release does
+  # not repeat it; release.yml waits for this main-push CI to pass.
   memory:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || needs.changes.outputs.full == 'true') }}
     uses: ./.github/workflows/check-memory.yml
 
   gate:
@@ -76,24 +80,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify every selected lane passed
+      - name: Verify every selected check passed
         env:
           RESULTS: ${{ toJSON(needs) }}
-          IS_RELEASE_PR: ${{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
-          echo "$RESULTS" | jq -e --arg release "$IS_RELEASE_PR" '
-            def lane($needed; $name):
-              if $needed then .[$name].result == "success"
-              else .[$name].result == "skipped" end;
-            .changes.result == "success"
-            and .["docs-rules"].result == "success"
-            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "lint")
-            and lane(.changes.outputs.code == "true" or .changes.outputs.sdk == "true"; "go")
-            and lane(.changes.outputs.desktop == "true"; "desktop")
-            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "codeql")
-            and lane($release == "true"; "memory")
-          '
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ["RESULTS"])
+          event = os.environ["EVENT_NAME"]
+          outputs = results["changes"].get("outputs", {})
+          failures = []
+
+          def expect(name, expected):
+              actual = results[name]["result"]
+              print(f"{name}={actual} (expected {expected})")
+              if actual != expected:
+                  failures.append(f"{name}: expected {expected}, got {actual}")
+
+          expect("changes", "success")
+          expect("docs-rules", "success")
+
+          selected = {
+              "lint": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
+              "go": any(outputs.get(k) == "true" for k in ("code", "sdk")),
+              "desktop": outputs.get("desktop") == "true",
+              "codeql": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
+              # Main push/manual full runs and full PRs include memory.
+              "memory": event != "pull_request" or outputs.get("full") == "true",
+          }
+          for name, needed in selected.items():
+              expect(name, "success" if needed else "skipped")
+
+          if failures:
+              print("Gate failed:")
+              for failure in failures:
+                  print(f" - {failure}")
+              sys.exit(1)
+          print("All selected checks passed; unselected checks were skipped as expected.")
+          PY
 
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
