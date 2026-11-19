@@ -225,20 +225,23 @@ test("catalog recovery refuses an older backup when the primary asset exists but
     mkdirSync(bin);
     const log = join(dir, "gh.log");
     const gh = join(bin, "gh");
-    writeFileSync(gh, [
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      "printf '%s\\\\n' \\"$*\\" >> \\"$GH_LOG\\"",
-      "case \\"$*\\" in",
-      "  \\"release view wails-latest\\") exit 0 ;;",
-      "  \\"release view wails-latest --json isDraft --jq .isDraft\\") echo false ;;",
-      "  \\"release view wails-latest --json assets --jq .assets[].name\\") printf 'versions.json\\\\nversions.json.backup\\\\n' ;;",
-      "  \\"release download wails-latest -p versions.json -D catalog\\"*) exit 1 ;;",
-      "  \\"release download wails-latest -p versions.json.backup -D catalog\\"*) printf '%s\\\\n' '{\\"versions\\":[]}' > catalog/versions.json.backup ;;",
-      "  *) echo \\"unexpected gh invocation: $*\\" >&2; exit 2 ;;",
-      "esac",
-      ""
-    ].join("\\n"));
+    writeFileSync(gh, `#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "$GH_LOG"
+case "$*" in
+  "release view wails-latest") exit 0 ;;
+  "release view wails-latest --json isDraft --jq .isDraft") echo false ;;
+  "release view wails-latest --json assets --jq .assets[].name")
+    echo versions.json
+    echo versions.json.backup
+    ;;
+  "release download wails-latest -p versions.json -D catalog"*) exit 1 ;;
+  "release download wails-latest -p versions.json.backup -D catalog"*)
+    echo '{"versions":[]}' > catalog/versions.json.backup
+    ;;
+  *) echo "unexpected gh invocation: $*" >&2; exit 2 ;;
+esac
+`);
     chmodSync(gh, 0o755);
     const result = spawnSync("bash", ["-e", "-c", script], {
       cwd: dir,
@@ -268,27 +271,25 @@ test("catalog recovery keeps the sole remote backup when publishing the restored
     mkdirSync(bin);
     mkdirSync(join(dir, "catalog"));
     mkdirSync(join(dir, "manifest-input"));
-    writeFileSync(join(dir, "catalog", "versions.json"), '{"versions":[{"version":"v1.2.3"}]}\\n');
-    writeFileSync(join(dir, "catalog", "versions.json.backup"), '{"versions":[{"version":"v1.2.2"}]}\\n');
-    writeFileSync(join(dir, "manifest-input", "latest.json"), '{}\\n');
+    writeFileSync(join(dir, "catalog", "versions.json"), JSON.stringify({ versions: [{ version: "v1.2.3" }] }));
+    writeFileSync(join(dir, "catalog", "versions.json.backup"), JSON.stringify({ versions: [{ version: "v1.2.2" }] }));
+    writeFileSync(join(dir, "manifest-input", "latest.json"), "{}");
     const log = join(dir, "gh.log");
     const gh = join(bin, "gh");
-    writeFileSync(gh, [
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      "printf '%s\\\\n' \\"$*\\" >> \\"$GH_LOG\\"",
-      "case \\"$*\\" in",
-      "  \\"release upload wails-latest catalog/versions.json.backup --clobber\\")",
-      "    echo \\"refusing to replace the only recovery backup\\" >&2",
-      "    exit 1",
-      "    ;;",
-      "  \\"release upload wails-latest manifest-input/latest.json --clobber\\") exit 0 ;;",
-      "  \\"release upload wails-latest catalog/versions.json --clobber\\") exit 0 ;;",
-      "  \\"release edit wails-latest --draft=false --latest=false\\") exit 0 ;;",
-      "  *) echo \\"unexpected gh invocation: $*\\" >&2; exit 2 ;;",
-      "esac",
-      ""
-    ].join("\\n"));
+    writeFileSync(gh, `#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "$GH_LOG"
+case "$*" in
+  "release upload wails-latest catalog/versions.json.backup --clobber")
+    echo "refusing to replace the only recovery backup" >&2
+    exit 1
+    ;;
+  "release upload wails-latest manifest-input/latest.json --clobber") exit 0 ;;
+  "release upload wails-latest catalog/versions.json --clobber") exit 0 ;;
+  "release edit wails-latest --draft=false --latest=false") exit 0 ;;
+  *) echo "unexpected gh invocation: $*" >&2; exit 2 ;;
+esac
+`);
     chmodSync(gh, 0o755);
     const result = spawnSync("bash", ["-e", "-c", script], {
       cwd: dir,
