@@ -44,6 +44,14 @@ PR 用 base/head 的 merge-base 比较，而不是对 GitHub 合成的 PR merge 
 - `CodeRabbit` 保持独立必需状态；不强制 CodeRabbit Approve，意见按现有阻塞机制处理。
 - `metrics` 仅在代码、SDK、工作流改动或 main push 执行；`prune-cache` 只在 main push 执行，均不属于 required gate。
 
+## Release 安全约束
+
+- Release 只复用目标 tag commit 对应的官方 main-push CI 成功结果，不重复执行 Memory。
+- 版本 Release 必须先以 draft 准备二进制、签名、不可变版本 manifest 和版本目录，全部准备完成后才公开。
+- 已公开的版本 Release 资产不可被重跑覆盖。普通发布流程遇到已公开版本必须失败，不得对版本资产使用 `--clobber`。
+- 如果版本 Release 已公开但 `wails-latest` 锚点更新失败，手动 dispatch `build-release-windows.yml`，传入 `tag` 和 `anchor_only=true`。该模式跳过构建与版本资产上传，验证并复用已公开版本的 `latest.json`，只更新可变锚点和版本目录。
+- `wails-latest` 是可变更新锚点，不得成为 GitHub 仓库 Latest Release；创建或公开时都显式使用 `--latest=false`。
+
 ## 回归测试
 
 `node --test scripts/ci-classify.test.mjs scripts/ci-workflow.test.mjs` 覆盖中文、特殊文件名、混合 YAML、源码重命名、嵌在文档目录里的代码、SDK、Release、并发更新 base 后的 merge-base 行为，以及 CI Gate 动态 lane、PR metadata 单 Job、Blast Radius 声明和 Release 发布顺序的契约。`check-lint.yml` 的工作流检查执行这些测试。
