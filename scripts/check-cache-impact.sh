@@ -171,6 +171,12 @@ require_review_field() {
 require_field "Cache-impact"
 require_field "Cache-guard"
 
+cache_impact="$(field_value "Cache-impact" || true)"
+cache_impact_lower="$(printf '%s' "$cache_impact" | tr '[:upper:]' '[:lower:]')"
+if [[ -n "$cache_impact" && ! "$cache_impact_lower" =~ ^(none|low|medium|high)[[:space:]]*[-:][[:space:]]*.+$ ]]; then
+  failures+=("Cache-impact: use none, low, medium, or high and explain the reason")
+fi
+
 if [[ "${#standing_instruction_changed[@]}" -gt 0 ]]; then
   cache_impact="$(field_value "Cache-impact" || true)"
   cache_impact_lower="$(printf '%s' "$cache_impact" | tr '[:upper:]' '[:lower:]')"
