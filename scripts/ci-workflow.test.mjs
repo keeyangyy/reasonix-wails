@@ -147,6 +147,7 @@ test("PR metadata is one required job for all relevant PR events", () => {
   }
   assert.ok(body.includes("changed-files.txt"));
   assert.ok(body.includes("pulls/$" + "{PR_NUMBER}/files"));
+  assert.match(body, /--jq '\.\[\] \| \.filename, \(\.previous_filename \/\/ empty\)'/);
 });
 
 test("Blast Radius validator enforces one recognized level and a meaningful reason", () => {
@@ -176,6 +177,17 @@ test("Release reuses main-push CI and publishes only a complete draft release", 
   assert.match(release, /select\(\.name == "CI" and \.event == "push" and \.head_branch == "main"\)/);
   assert.match(windows, /Verify official main-push CI/);
   assert.match(windows, /select\(\.name == "CI" and \.event == "push" and \.head_branch == "main"\)/);
+
+  // A public version release is immutable on rerun. Recovery updates only the
+  // mutable anchor from the already-published per-version manifest.
+  assert.match(windows, /anchor_only:/);
+  assert.match(windows, /build:\s*\n\s+if: \$\{\{ inputs\.anchor_only != true \}\}/);
+  assert.match(windows, /release:\s*\n\s+needs: \[verify, build\]\s*\n\s+if: \$\{\{ always\(\)[^\n]*inputs\.anchor_only == true/);
+  assert.match(windows, /already public\. Refusing to replace published assets/);
+  assert.match(windows, /rerun this workflow with anchor_only=true/);
+  assert.match(windows, /Restore manifest from published release for anchor-only recovery/);
+  assert.match(windows, /gh release download "\$RELEASE_TAG" -p latest\.json -D manifest-input/);
+  assert.match(windows, /gh release edit wails-latest --draft=false --latest=false/);
 
   const publish = windows.indexOf('gh release edit "$RELEASE_TAG" --draft=false');
   const binaries = windows.indexOf('gh release upload "$RELEASE_TAG" "dist/$' + '{exe_asset}"');
