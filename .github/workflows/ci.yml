@@ -134,9 +134,9 @@ jobs:
     steps:
       - name: Verify every selected check passed
         env:
-          RESULTS: \${{ toJSON(needs) }}
-          EVENT_NAME: \${{ github.event_name }}
-          EVENT_ACTION: \${{ github.event.action }}
+          RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
         run: |
           python3 - <<'PY'
           import json
