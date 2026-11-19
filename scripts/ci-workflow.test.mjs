@@ -94,21 +94,21 @@ test("CI has one Gate for dynamically selected test lanes only", () => {
     return needs;
   }
 
-  const run = needs => spawnSync("bash", ["-e", "-c", script], {
-    env: { ...process.env, RESULTS: JSON.stringify(needs), EVENT_NAME: "pull_request" },
+  const run = (needs, event = "pull_request") => spawnSync("bash", ["-e", "-c", script], {
+    env: { ...process.env, RESULTS: JSON.stringify(needs), EVENT_NAME: event },
   }).status;
 
   const cases = [
-    makeNeeds(),
-    makeNeeds({ flags: { workflow: "true" } }),
-    makeNeeds({ flags: { code: "true", desktop: "true" } }),
-    makeNeeds({ flags: { sdk: "true" } }),
-    makeNeeds({ flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }),
-    makeNeeds({ event: "push", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }),
-    makeNeeds({ event: "workflow_dispatch", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }),
+    [makeNeeds(), "pull_request"],
+    [makeNeeds({ flags: { workflow: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { code: "true", desktop: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { sdk: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request"],
+    [makeNeeds({ event: "push", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "push"],
+    [makeNeeds({ event: "workflow_dispatch", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "workflow_dispatch"],
   ];
-  for (const needs of cases) {
-    assert.equal(run(needs), 0, JSON.stringify(needs));
+  for (const [needs, event] of cases) {
+    assert.equal(run(needs, event), 0, event + ": " + JSON.stringify(needs));
   }
 
   // Every selected check must succeed; every unselected lane must be skipped.
@@ -116,17 +116,17 @@ test("CI has one Gate for dynamically selected test lanes only", () => {
   for (const [name, value] of [["lint", "skipped"], ["codeql", "failure"], ["go", "success"], ["desktop", "success"], ["memory", "success"]]) {
     const wrong = structuredClone(workflowOnly);
     wrong[name].result = value;
-    assert.notEqual(run(wrong), 0, name + "=" + value + " must fail Gate");
+    assert.notEqual(run(wrong, "pull_request"), 0, name + "=" + value + " must fail Gate");
   }
 
   // Main push always includes memory; it cannot silently skip.
   const pushMissingMemory = makeNeeds({ event: "push", flags: { full: "true" }, results: { memory: "skipped" } });
-  assert.notEqual(run(pushMissingMemory), 0, "main push cannot skip memory");
+  assert.notEqual(run(pushMissingMemory, "push"), 0, "main push cannot skip memory");
 
   for (const name of ["changes", "docs-rules"]) {
     const wrong = makeNeeds();
     wrong[name].result = "failure";
-    assert.notEqual(run(wrong), 0, name + " failure must fail Gate");
+    assert.notEqual(run(wrong, "pull_request"), 0, name + " failure must fail Gate");
   }
 });
 
