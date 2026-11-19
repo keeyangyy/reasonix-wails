@@ -32,6 +32,11 @@ on:
         description: "Existing tag to publish (e.g. v0.1.0)"
         required: true
         type: string
+      anchor_only:
+        description: "Recover wails-latest from an already-published version; do not rebuild or overwrite version assets."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -107,6 +112,7 @@ jobs:
             sleep 30
           done
   build:
+    if: ${{ inputs.anchor_only != true }}
     needs: verify
     uses: ./.github/workflows/build-windows.yml
     with:
@@ -114,6 +120,7 @@ jobs:
 
   release:
     needs: [verify, build]
+    if: ${{ always() && needs.verify.result == 'success' && (needs.build.result == 'success' || inputs.anchor_only == true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -136,6 +143,7 @@ jobs:
         run: ls -la dist
 
       - name: Upload Windows assets to draft release
+        if: ${{ inputs.anchor_only != true }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
@@ -146,16 +154,22 @@ jobs:
           exe_asset="Reasonix-windows-amd64.exe"
           installer_asset="Reasonix-windows-amd64-installer.exe"
           cli_asset="reasonix-cli-windows-amd64.exe"
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            IS_DRAFT="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "::error::Release $RELEASE_TAG is already public. Refusing to replace published assets. To repair only the mutable update anchor, rerun this workflow with anchor_only=true."
+              exit 1
+            fi
+            echo "Release $RELEASE_TAG already exists as a draft; replacing draft assets."
+          else
             echo "Release $RELEASE_TAG absent; creating it as a draft."
             gh release create "$RELEASE_TAG" --draft \
               --title "$RELEASE_TAG" \
               --generate-notes
-          else
-            echo "Release $RELEASE_TAG already exists; uploading/overwriting assets."
           fi
           gh release upload "$RELEASE_TAG" "dist/${exe_asset}" "dist/${installer_asset}" "dist/${cli_asset}" --clobber
       - name: Sign and stage the update manifest
+        if: ${{ inputs.anchor_only != true }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
@@ -180,6 +194,37 @@ jobs:
           # anchor below is overwritten by every release and cannot serve as an
           # immutable per-version address.
           gh release upload "$RELEASE_TAG" manifest-input/latest.json --clobber
+      - name: Restore manifest from published release for anchor-only recovery
+        if: ${{ inputs.anchor_only == true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          IS_DRAFT="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+          if [ "$IS_DRAFT" != "false" ]; then
+            echo "::error::anchor_only recovery requires an already-published version release."
+            exit 1
+          fi
+          ASSETS="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+          for asset in \
+            Reasonix-windows-amd64.exe \
+            Reasonix-windows-amd64-installer.exe \
+            reasonix-cli-windows-amd64.exe \
+            Reasonix-windows-amd64.exe.minisig \
+            latest.json; do
+            if ! grep -Fxq "$asset" <<< "$ASSETS"; then
+              echo "::error::Published release $RELEASE_TAG is missing required asset: $asset"
+              exit 1
+            fi
+          done
+          mkdir -p manifest-input
+          gh release download "$RELEASE_TAG" -p latest.json -D manifest-input
+          if ! gh release view wails-latest >/dev/null 2>&1; then
+            gh release create wails-latest --draft --latest=false \
+              --title "Reasonix Wails update anchor" \
+              --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
+          fi
           # The anchor is a fixed tag whose contents every release of this line
           # overwrites, so the updater never follows the repository-wide latest
           # badge -- which the studio and legacy 1.39 lines also claim.
@@ -211,10 +256,18 @@ jobs:
           case "$RELEASE_TAG" in *-beta.*) channel=beta ;; esac
           mkdir -p catalog
           existing=-
-          if gh release download "$anchor" -p versions.json -D catalog --clobber 2>/dev/null; then
-            existing=catalog/versions.json
+          if gh release view "$anchor" >/dev/null 2>&1; then
+            ANCHOR_IS_DRAFT="$(gh release view "$anchor" --json isDraft --jq .isDraft)"
+            if gh release download "$anchor" -p versions.json -D catalog --clobber 2>/dev/null; then
+              existing=catalog/versions.json
+            elif [ "$ANCHOR_IS_DRAFT" = "true" ]; then
+              echo "Draft anchor has no catalog yet; starting a new one."
+            else
+              echo "::error::Published update anchor is missing versions.json; refusing to reset release history."
+              exit 1
+            fi
           else
-            echo "No catalog yet; starting a new one."
+            echo "No update anchor yet; starting a new one."
           fi
           now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           # The next release reads back what this one wrote, so the index keeps
@@ -237,18 +290,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
+          ANCHOR_ONLY: ${{ inputs.anchor_only }}
         run: |
           set -euo pipefail
-          # Publish only after binaries, signature, immutable manifest, and
-          # the version catalog have all been prepared.
-          gh release edit "$RELEASE_TAG" --draft=false
-
-          # The anchor now points only to a published, complete version.
-          gh release upload wails-latest catalog/versions.json manifest-input/latest.json --clobber
-          IS_DRAFT="$(gh release view wails-latest --json isDraft --jq .isDraft)"
-          if [ "$IS_DRAFT" = "true" ]; then
-            gh release edit wails-latest --draft=false
+          # A normal run publishes the prepared version. Anchor-only recovery
+          # never edits the already-published immutable version release.
+          if [ "${ANCHOR_ONLY:-false}" != "true" ]; then
+            gh release edit "$RELEASE_TAG" --draft=false
           fi
+
+          # The mutable anchor is intentionally never the repository Latest.
+          gh release upload wails-latest catalog/versions.json manifest-input/latest.json --clobber
+          gh release edit wails-latest --draft=false --latest=false
       - name: Summarize release
         env:
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
