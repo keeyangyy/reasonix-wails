@@ -3,12 +3,12 @@ name: PR metadata
 # Main PR events validate docs/cache impact inside ci.yml's Gate. This trusted
 # pull_request_target workflow handles body edits separately so changing PR
 # text does not cancel or rerun expensive code CI. Its metadata-gate status is
-# required in the repository Ruleset; it is skipped on non-edited PR events.
+# the required companion check for edited events.
 
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    types: [edited]
 
 permissions:
   contents: read
