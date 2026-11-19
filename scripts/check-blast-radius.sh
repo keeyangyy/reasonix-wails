@@ -24,6 +24,7 @@ if [[ ! "$lower" =~ ^(local|cross-component|broad)[[:space:]]*[-:][[:space:]]*(.
   exit 1
 fi
 
+level="${BASH_REMATCH[1]}"
 reason="${BASH_REMATCH[2]}"
 reason_lower="$(printf '%s' "$reason" | tr '[:upper:]' '[:lower:]')"
 if [[ "$reason_lower" =~ ^(todo|tbd|n/?a|none)([[:space:]:-]|$) ]]; then
@@ -31,4 +32,4 @@ if [[ "$reason_lower" =~ ^(todo|tbd|n/?a|none)([[:space:]:-]|$) ]]; then
   exit 1
 fi
 
-echo "Blast Radius declaration passed: ${BASH_REMATCH[1]} - $reason"
+echo "Blast Radius declaration passed: $level - $reason"
