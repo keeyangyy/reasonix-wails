@@ -29,6 +29,8 @@
 
 ---
 
+> Reasonix has two independent lines derived from upstream: this repository (Wails, 1.x derivative, portable single exe and installer) · [Reasonix Studio](https://github.com/keeyangyy/reasonix-studio) (2.x continuation, Electron, full-featured).
+
 ## Introduction
 
 Reasonix Wails is a Windows desktop coding agent: it reads repositories, edits files, runs commands and tests. The UI and its assets are packaged into a single exe that runs without installation.
