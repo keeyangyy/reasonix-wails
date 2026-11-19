@@ -1,11 +1,10 @@
 name: Release
 
 # One-shot release pipeline: triggers manually with a semver, waits for the
-# official CI of the current main commit to turn green, then creates the
-# annotated tag and the GitHub Release. A tag is therefore never created for
-# a commit whose CI is red — the previous "push, tag, walk away for an hour"
-# failure mode is impossible: the run ends either with a published release or
-# with an explicit red/failed job.
+# official main-push CI (including memory screening) to turn green, then creates
+# the annotated tag and draft GitHub Release. It does not rerun CI or memory:
+# the release artifact workflow only verifies that this exact commit already
+# passed the official main-push CI before building and publishing artifacts.
 
 on:
   workflow_dispatch:
@@ -32,12 +31,6 @@ permissions:
   actions: write
 
 jobs:
-  # The memory screening is a release gate, so it runs here instead of on every
-  # pull request (see app-memory.yml). Its result gates the tag: a failed
-  # screening aborts the release before anything is published.
-  memory:
-    uses: ./.github/workflows/check-memory.yml
-
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 150
@@ -71,8 +64,8 @@ jobs:
           DEADLINE=$((SECONDS + 5400))
           RETRIED=0
           while true; do
-            LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA" \
-              --jq '.workflow_runs[] | select(.name | startswith("CI")) | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
+            LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
+              --jq '.workflow_runs[] | select(.name == "CI" and .event == "push" and .head_branch == "main" and .head_sha == "'"$SHA"'") | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
             if [ -n "$LATEST" ]; then
               STATUS=$(echo "$LATEST" | awk '{print $1}')
               CONCLUSION=$(echo "$LATEST" | awk '{print $2}')
