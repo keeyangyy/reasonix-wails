@@ -178,6 +178,14 @@ jobs:
           print("All selected checks passed; unselected checks were skipped as expected.")
           PY
 
+  # Required companion status for PR metadata. Ordinary PR events validate
+  # docs/cache impact in the main Gate; edited events use the trusted target workflow.
+  metadata-gate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Ordinary PR metadata checks are included in Gate."
+
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
   # minutes) becomes visible instead of anecdotal.
