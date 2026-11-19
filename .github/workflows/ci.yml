@@ -7,6 +7,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # PR body edits revalidate metadata without cancelling an active code CI.
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   workflow_dispatch:
 
 permissions:
@@ -16,9 +18,11 @@ permissions:
   security-events: write
   packages: read
   actions: read
+  pull-requests: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # A description edit must not cancel the expensive run for the same PR head.
+  group: ci-${{ github.ref }}${{ github.event_name == 'pull_request' && github.event.action == 'edited' && '-metadata' || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -28,9 +32,59 @@ jobs:
   docs-rules:
     uses: ./.github/workflows/check-docs-rules.yml
 
+  # PR metadata checks use trusted scripts from the base commit and are part of Gate.
+  docs-impact:
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Collect PR changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \\
+            --jq '.[].filename' > "$RUNNER_TEMP/docs-impact-files.txt"
+
+      - name: Check documentation impact declaration
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
+        run: bash scripts/check-docs-impact.sh
+
+  cache-impact:
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      - name: Collect PR changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \\
+            --jq '.[].filename' > "$RUNNER_TEMP/cache-impact-files.txt"
+
+      - name: Check cache-sensitive PR metadata
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/cache-impact-files.txt
+        run: bash scripts/check-cache-impact.sh
+
   lint:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || github.event.action != 'edited') && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
     uses: ./.github/workflows/check-lint.yml
     with:
       code: ${{ needs.changes.outputs.code }}
@@ -39,7 +93,7 @@ jobs:
 
   go:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.sdk == 'true') }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || github.event.action != 'edited') && (needs.changes.outputs.code == 'true' || needs.changes.outputs.sdk == 'true') }}
     uses: ./.github/workflows/check-go.yml
     with:
       code: ${{ needs.changes.outputs.code }}
@@ -47,7 +101,7 @@ jobs:
 
   desktop:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.desktop == 'true' }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || github.event.action != 'edited') && needs.changes.outputs.desktop == 'true' }}
     uses: ./.github/workflows/check-desktop.yml
     with:
       desktop: ${{ needs.changes.outputs.desktop }}
@@ -57,43 +111,83 @@ jobs:
 
   codeql:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || github.event.action != 'edited') && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
     uses: ./.github/workflows/check-codeql.yml
     with:
       code: ${{ needs.changes.outputs.code }}
       desktop: ${{ needs.changes.outputs.desktop }}
       workflow: ${{ needs.changes.outputs.workflow }}
 
-  # Every release/* PR must run all code checks plus memory screening.
+  # Memory belongs to every exhaustive verification: main push, manual full
+  # runs, scheduled full runs (ci-full.yml), and release/* PRs. Release does
+  # not repeat it; release.yml waits for this main-push CI to pass.
   memory:
     needs: changes
-    if: ${{ needs.changes.result == 'success' && github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
+    if: ${{ needs.changes.result == 'success' && (github.event_name != 'pull_request' || (github.event.action != 'edited' && needs.changes.outputs.full == 'true')) }}
     uses: ./.github/workflows/check-memory.yml
 
   gate:
-    needs: [changes, docs-rules, lint, go, desktop, codeql, memory]
+    needs: [changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify every selected lane passed
+      - name: Verify every selected check passed
         env:
-          RESULTS: ${{ toJSON(needs) }}
-          IS_RELEASE_PR: ${{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}
+          RESULTS: \${{ toJSON(needs) }}
+          EVENT_NAME: \${{ github.event_name }}
+          EVENT_ACTION: \${{ github.event.action }}
         run: |
-          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"'
-          echo "$RESULTS" | jq -e --arg release "$IS_RELEASE_PR" '
-            def lane($needed; $name):
-              if $needed then .[$name].result == "success"
-              else .[$name].result == "skipped" end;
-            .changes.result == "success"
-            and .["docs-rules"].result == "success"
-            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "lint")
-            and lane(.changes.outputs.code == "true" or .changes.outputs.sdk == "true"; "go")
-            and lane(.changes.outputs.desktop == "true"; "desktop")
-            and lane(.changes.outputs.code == "true" or .changes.outputs.desktop == "true" or .changes.outputs.workflow == "true"; "codeql")
-            and lane($release == "true"; "memory")
-          '
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ["RESULTS"])
+          event = os.environ["EVENT_NAME"]
+          action = os.environ.get("EVENT_ACTION", "")
+          outputs = results["changes"].get("outputs", {})
+          failures = []
+
+          def expect(name, expected):
+              actual = results[name]["result"]
+              print(f"{name}={actual} (expected {expected})")
+              if actual != expected:
+                  failures.append(f"{name}: expected {expected}, got {actual}")
+
+          expect("changes", "success")
+          expect("docs-rules", "success")
+
+          # Metadata checks run on every PR event, including body edits.
+          # They are intentionally skipped on push/dispatch, where no PR exists.
+          metadata_result = "success" if event == "pull_request" else "skipped"
+          expect("docs-impact", metadata_result)
+          expect("cache-impact", metadata_result)
+
+          metadata_only = event == "pull_request" and action == "edited"
+          if metadata_only:
+              # Editing a PR description must not rerun expensive code lanes.
+              for name in ("lint", "go", "desktop", "codeql", "memory"):
+                  expect(name, "skipped")
+          else:
+              selected = {
+                  "lint": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
+                  "go": any(outputs.get(k) == "true" for k in ("code", "sdk")),
+                  "desktop": outputs.get("desktop") == "true",
+                  "codeql": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
+                  # Main push/manual full runs and full PRs include memory.
+                  "memory": event != "pull_request" or outputs.get("full") == "true",
+              }
+              for name, needed in selected.items():
+                  expect(name, "success" if needed else "skipped")
+
+          if failures:
+              print("Gate failed:")
+              for failure in failures:
+                  print(f" - {failure}")
+              sys.exit(1)
+          print("All selected checks passed; unselected checks were skipped as expected.")
+          PY
 
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
@@ -101,8 +195,8 @@ jobs:
   metrics:
     # needs gate so the artifact always covers the same job set
     # (otherwise gate may or may not have finished when the API is queried).
-    needs: [changes, docs-rules, lint, go, desktop, codeql, memory, gate]
-    if: ${{ always() && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.sdk == 'true' || needs.changes.outputs.workflow == 'true') }}
+    needs: [changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory, gate]
+    if: ${{ always() && github.event.action != 'edited' && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.sdk == 'true' || needs.changes.outputs.workflow == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
