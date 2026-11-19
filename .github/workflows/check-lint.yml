@@ -100,6 +100,8 @@ jobs:
         run: |
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
           node --test scripts/desktop-release-artifacts.test.mjs scripts/ci-classify.test.mjs scripts/ci-workflow.test.mjs
+          bash scripts/check-docs-impact.test.sh
+          bash scripts/check-cache-impact.test.sh
           bash scripts/update-versions-index.test.sh
           node scripts/check-single-release-public-contract.mjs
 
