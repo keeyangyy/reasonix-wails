@@ -78,14 +78,32 @@ try {
   pass("live no-newline prose remains continuous at a fixed width");
 
   await page.evaluate((text) => window.reasonixLayoutProbe.update(text, false), sentence);
-  await page.waitForFunction(() => !document.querySelector(".msg--assistant .msg__body .md--stream-tail"));
+  // The stream tail unmounts before the lazy history renderer has necessarily
+  // replaced its Suspense fallback. Wait for the actual parsed blocks so this
+  // assertion compares the live tail with the settled Markdown layout, not a
+  // transient loading state.
+  await page.waitForFunction(() => {
+    const body = document.querySelector(".msg--assistant .msg__body");
+    return Boolean(
+      body?.querySelector(".md[data-markdown-blocks]")
+      && !body.querySelector(".md--stream-tail, [data-transcript-geometry-pending]"),
+    );
+  });
+  // Let the final DOM complete a paint before sampling its text geometry.
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
   const settled = await page.locator(".msg--assistant .msg__body").evaluate((body) => {
     const rects = window.reasonixLayoutTextRects(body);
     return { text: body.textContent, lines: rects.length, top: rects[0]?.top };
   });
   assert.equal(settled.text, sentence);
   assert.equal(settled.lines, 1);
-  assert.ok(Math.abs((settled.top ?? 0) - (live.top ?? 0)) < 8, "stream completion does not move the sentence to a different line");
+  const positionDelta = Math.abs((settled.top ?? 0) - (live.top ?? 0));
+  assert.ok(
+    positionDelta < 8,
+    `stream completion preserves the sentence line and position (live ${live.top}px, settled ${settled.top}px, delta ${positionDelta}px)`,
+  );
   pass("stream completion preserves the sentence line and position");
 
   const readTreeRow = (root) =>
