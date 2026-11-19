@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import vm from "node:vm";
 import test from "node:test";
@@ -188,6 +190,12 @@ test("Release reuses main-push CI and publishes only a complete draft release", 
   assert.match(windows, /Restore manifest from published release for anchor-only recovery/);
   assert.match(windows, /gh release download "\$RELEASE_TAG" -p latest\.json -D manifest-input/);
   assert.match(windows, /gh release edit wails-latest --draft=false --latest=false/);
+  assert.match(windows, /ASSETS="\$\(gh release view "\$anchor" --json assets --jq '\.assets\[\]\.name'\)"/);
+  assert.match(windows, /if grep -Fxq "versions\.json" <<< "\$ASSETS"; then[\s\S]*if ! gh release download "\$anchor" -p versions\.json -D catalog; then[\s\S]*refusing to use an older backup/);
+  assert.match(windows, /elif grep -Fxq "versions\.json\.backup" <<< "\$ASSETS"; then/);
+  assert.match(windows, /restored_from_backup=true/);
+  assert.match(windows, /CATALOG_RESTORED_FROM_BACKUP: \$\{\{ steps\.catalog\.outputs\.restored_from_backup \}\}/);
+  assert.match(windows, /if \[ "\$\{CATALOG_RESTORED_FROM_BACKUP:-false\}" != "true" \] && \[ -f catalog\/versions\.json\.backup \]; then/);
 
   const publish = windows.indexOf('gh release edit "$RELEASE_TAG" --draft=false');
   const binaries = windows.indexOf('gh release upload "$RELEASE_TAG" "dist/$' + '{exe_asset}"');
@@ -205,4 +213,100 @@ test("Release reuses main-push CI and publishes only a complete draft release", 
   assert.match(windows, /gh release download "\$anchor" -p versions\.json\.backup -D catalog --clobber/);
   assert.match(windows, /cp catalog\/versions\.json\.backup catalog\/versions\.json/);
   assert.match(windows, /Published update anchor is missing versions\.json and its backup; refusing to reset release history/);
+});
+
+
+test("catalog recovery refuses an older backup when the primary asset exists but download fails", () => {
+  const windows = workflow("build-release-windows");
+  const script = shellStep(job(windows, "release"), "Update this line's version catalog");
+  const dir = mkdtempSync(join(tmpdir(), "reasonix-catalog-primary-"));
+  try {
+    const bin = join(dir, "bin");
+    mkdirSync(bin);
+    const log = join(dir, "gh.log");
+    const gh = join(bin, "gh");
+    writeFileSync(gh, [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "printf '%s\\\\n' \\"$*\\" >> \\"$GH_LOG\\"",
+      "case \\"$*\\" in",
+      "  \\"release view wails-latest\\") exit 0 ;;",
+      "  \\"release view wails-latest --json isDraft --jq .isDraft\\") echo false ;;",
+      "  \\"release view wails-latest --json assets --jq .assets[].name\\") printf 'versions.json\\\\nversions.json.backup\\\\n' ;;",
+      "  \\"release download wails-latest -p versions.json -D catalog\\"*) exit 1 ;;",
+      "  \\"release download wails-latest -p versions.json.backup -D catalog\\"*) printf '%s\\\\n' '{\\"versions\\":[]}' > catalog/versions.json.backup ;;",
+      "  *) echo \\"unexpected gh invocation: $*\\" >&2; exit 2 ;;",
+      "esac",
+      ""
+    ].join("\\n"));
+    chmodSync(gh, 0o755);
+    const result = spawnSync("bash", ["-e", "-c", script], {
+      cwd: dir,
+      env: {
+        ...process.env,
+        PATH: bin + ":" + process.env.PATH,
+        GH_LOG: log,
+        GITHUB_OUTPUT: join(dir, "github-output"),
+        RELEASE_TAG: "v1.2.3",
+      },
+    });
+    assert.notEqual(result.status, 0, "primary catalog download failure must stop preparation");
+    const calls = readFileSync(log, "utf8");
+    assert.match(calls, /release download wails-latest -p versions\\.json -D catalog/);
+    assert.doesNotMatch(calls, /release download wails-latest -p versions\\.json\\.backup/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("catalog recovery keeps the sole remote backup when publishing the restored catalog", () => {
+  const windows = workflow("build-release-windows");
+  const script = shellStep(job(windows, "release"), "Publish completed release and update its anchor");
+  const dir = mkdtempSync(join(tmpdir(), "reasonix-catalog-backup-"));
+  try {
+    const bin = join(dir, "bin");
+    mkdirSync(bin);
+    mkdirSync(join(dir, "catalog"));
+    mkdirSync(join(dir, "manifest-input"));
+    writeFileSync(join(dir, "catalog", "versions.json"), '{"versions":[{"version":"v1.2.3"}]}\\n');
+    writeFileSync(join(dir, "catalog", "versions.json.backup"), '{"versions":[{"version":"v1.2.2"}]}\\n');
+    writeFileSync(join(dir, "manifest-input", "latest.json"), '{}\\n');
+    const log = join(dir, "gh.log");
+    const gh = join(bin, "gh");
+    writeFileSync(gh, [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      "printf '%s\\\\n' \\"$*\\" >> \\"$GH_LOG\\"",
+      "case \\"$*\\" in",
+      "  \\"release upload wails-latest catalog/versions.json.backup --clobber\\")",
+      "    echo \\"refusing to replace the only recovery backup\\" >&2",
+      "    exit 1",
+      "    ;;",
+      "  \\"release upload wails-latest manifest-input/latest.json --clobber\\") exit 0 ;;",
+      "  \\"release upload wails-latest catalog/versions.json --clobber\\") exit 0 ;;",
+      "  \\"release edit wails-latest --draft=false --latest=false\\") exit 0 ;;",
+      "  *) echo \\"unexpected gh invocation: $*\\" >&2; exit 2 ;;",
+      "esac",
+      ""
+    ].join("\\n"));
+    chmodSync(gh, 0o755);
+    const result = spawnSync("bash", ["-e", "-c", script], {
+      cwd: dir,
+      env: {
+        ...process.env,
+        PATH: bin + ":" + process.env.PATH,
+        GH_LOG: log,
+        GH_TOKEN: "test-token",
+        RELEASE_TAG: "v1.2.3",
+        ANCHOR_ONLY: "true",
+        CATALOG_RESTORED_FROM_BACKUP: "true",
+      },
+    });
+    assert.equal(result.status, 0, result.stderr?.toString() || "recovery publish should succeed");
+    const calls = readFileSync(log, "utf8");
+    assert.doesNotMatch(calls, /release upload wails-latest catalog\\/versions\\.json\\.backup/);
+    assert.match(calls, /release upload wails-latest catalog\\/versions\\.json --clobber/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
