@@ -176,8 +176,8 @@ test("PR body edits revalidate metadata without rerunning code CI", () => {
 
   const run = (docs, cache) => spawnSync("bash", ["-e", "-c", script], {
     env: { ...process.env, RESULTS: JSON.stringify({
-      "docs-impact": { result: docs },
-      "cache-impact": { result: cache },
+      "edited-docs-impact": { result: docs },
+      "edited-cache-impact": { result: cache },
     }) },
   }).status;
   assert.equal(run("success", "success"), 0);
