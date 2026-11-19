@@ -15,8 +15,9 @@
 | `check-desktop.yml` | 入口调用 | 前端、Linux/Wails 编译和桌面原生回归 |
 | `check-codeql.yml` | 入口调用 | 按涉及语言运行 CodeQL |
 | `check-memory.yml` | main push、手动/定时 full、full PR | 内存筛查；Release 不重复执行 |
+| `docs-impact` / `cache-impact`（`ci.yml`） | PR opened/synchronize/reopened | PR 元数据声明检查，属于主 Gate 的 needs |
+| `pr-metadata.yml` | 每个 PR 事件 | 仅 `edited` 时重跑元数据检查并报告 `metadata-gate`；其他事件为 skipped |
 | `pr-auto-label.yml` | 每个 PR | 自动标签（独立辅助流程） |
-| `docs-impact` / `cache-impact`（`ci.yml`） | 每个 PR 事件 | PR 元数据声明检查，属于 Gate 的 needs |
 
 ## 分类
 
@@ -36,9 +37,10 @@ PR 用 base/head 的 merge-base 比较，而不是对 GitHub 合成的 PR merge 
 
 - Ruleset required：`gate` 与 `CodeRabbit`；无 bypass；只允许 squash；未解决的 review 线程不得合并。
 - `gate` 要求 `changes` 和 `docs-rules` success；PR 还必须要求 `docs-impact` 与 `cache-impact` success。**选中的 lane 必须 success，未选中的 lane 必须 skipped**，否则失败。main push/manual 没有 PR 元数据检查，两项必须 skipped。
+- Ruleset 还应要求 `metadata-gate`：普通 PR 事件由 `pr-metadata.yml` 报告 skipped（视为成功）；PR 描述编辑时它会实际核验 `docs-impact` 与 `cache-impact`。这避免为了改 PR 描述而取消或重跑正在执行的代码 CI。
 - 可复用 workflow 内按需跳过不相关任务；GitHub 页面可能显示正常的 `skipped` 子检查，不代表遗漏。
 - `CodeRabbit` check success 不等于正式 Approve；当前 `required_approving_review_count=0`，Ruleset 没有强制指定审查者 Approve。
-- PR body 的 `edited` 事件只重跑分类、文档规则和两个元数据检查，不会取消或重跑正在执行的代码 CI；其 Gate 会核验代码 lane 均为预期的 skipped。
+- PR body 的 `edited` 事件只重跑两个元数据检查；`metadata-gate` 是专用必需状态。它不会取消或重跑正在执行的代码 CI。
 - `metrics` 仅在代码、SDK、工作流改动或 main push 执行；`prune-cache` 只在 main push 执行，均不属于 required gate。
 
 ## 回归测试
