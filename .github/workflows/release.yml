@@ -65,7 +65,7 @@ jobs:
           RETRIED=0
           while true; do
             LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
-              --jq '.workflow_runs[] | select(.name == "CI" and .event == "push" and .head_branch == "main" and .head_sha == "'"$SHA"'") | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
+              --jq '.workflow_runs[] | select(.name == "CI" and .event == "push" and .head_branch == "main") | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)
             if [ -n "$LATEST" ]; then
               STATUS=$(echo "$LATEST" | awk '{print $1}')
               CONCLUSION=$(echo "$LATEST" | awk '{print $2}')
