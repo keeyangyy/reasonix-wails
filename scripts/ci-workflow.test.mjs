@@ -255,8 +255,8 @@ esac
     });
     assert.notEqual(result.status, 0, "primary catalog download failure must stop preparation");
     const calls = readFileSync(log, "utf8");
-    assert.match(calls, /release download wails-latest -p versions\\.json -D catalog/);
-    assert.doesNotMatch(calls, /release download wails-latest -p versions\\.json\\.backup/);
+    assert.match(calls, /release download wails-latest -p versions\.json -D catalog/);
+    assert.doesNotMatch(calls, /release download wails-latest -p versions\.json\.backup/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -305,8 +305,8 @@ esac
     });
     assert.equal(result.status, 0, result.stderr?.toString() || "recovery publish should succeed");
     const calls = readFileSync(log, "utf8");
-    assert.doesNotMatch(calls, /release upload wails-latest catalog\\/versions\\.json\\.backup/);
-    assert.match(calls, /release upload wails-latest catalog\\/versions\\.json --clobber/);
+    assert.doesNotMatch(calls, /release upload wails-latest catalog\/versions\.json\.backup/);
+    assert.match(calls, /release upload wails-latest catalog\/versions\.json --clobber/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
