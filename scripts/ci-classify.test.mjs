@@ -54,6 +54,14 @@ test("Chinese, whitespace and quotes in Markdown paths stay documentation", t =>
     ["docs/design/with\nnewline.md", "ok"],
   ] }), expected());
 });
+test("PR metadata validators schedule workflow checks without source builds", t => {
+  const f = fixture(t);
+  assert.deepEqual(f.classify({ files: [
+    ["scripts/check-docs-impact.sh", "#!/usr/bin/env bash"],
+    ["scripts/check-cache-impact.sh", "#!/usr/bin/env bash"],
+    ["scripts/check-blast-radius.sh", "#!/usr/bin/env bash"],
+  ] }), expected({ workflow: "true" }));
+});
 test("workflow YAML plus Chinese docs schedules only workflow checks", t => {
   const f = fixture(t);
   assert.deepEqual(f.classify({ files: [
