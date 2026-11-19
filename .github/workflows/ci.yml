@@ -178,6 +178,15 @@ jobs:
           print("All selected checks passed; unselected checks were skipped as expected.")
           PY
 
+  # Required companion status for PR body edits. Normal PR events validate
+  # metadata inside the main Gate; pull_request_target reports this same
+  # context when the body is edited without rerunning code CI.
+  metadata-gate:
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'edited' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "PR body edits are validated by the trusted metadata workflow."
+
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
   # minutes) becomes visible instead of anecdotal.
