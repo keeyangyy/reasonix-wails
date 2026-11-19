@@ -36,7 +36,10 @@ else
   while IFS= read -r -d '' path; do
     count=$((count + 1))
     case "$path" in
-      .github/workflows/*|.github/actions/*|scripts/ci-classify-changes.sh|scripts/ci-classify.test.mjs|scripts/ci-workflow.test.mjs)
+      .github/workflows/*|.github/actions/*|scripts/ci-classify-changes.sh|scripts/ci-classify.test.mjs|scripts/ci-workflow.test.mjs|\
+      scripts/check-docs-impact.sh|scripts/check-docs-impact.test.sh|\
+      scripts/check-cache-impact.sh|scripts/check-cache-impact.test.sh|\
+      scripts/check-blast-radius.sh)
         workflow=true ;;
       desktop/*)
         # Only prose in desktop/ can skip its expensive native matrix.
