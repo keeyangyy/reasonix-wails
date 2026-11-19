@@ -194,9 +194,15 @@ test("Release reuses main-push CI and publishes only a complete draft release", 
   const signature = windows.indexOf('dist/Reasonix-windows-amd64.exe.minisig');
   const immutableManifest = windows.indexOf('gh release upload "$RELEASE_TAG" manifest-input/latest.json');
   const catalog = windows.indexOf('mv catalog/versions.json.new catalog/versions.json');
-  const anchorAssets = windows.indexOf('gh release upload wails-latest catalog/versions.json manifest-input/latest.json');
+  const anchorBackup = windows.indexOf('gh release upload wails-latest catalog/versions.json.backup --clobber');
+  const anchorManifest = windows.indexOf('gh release upload wails-latest manifest-input/latest.json --clobber');
+  const anchorCatalog = windows.indexOf('gh release upload wails-latest catalog/versions.json --clobber');
   assert.ok(binaries >= 0 && signature > binaries && immutableManifest > signature);
   assert.ok(catalog > immutableManifest);
   assert.ok(publish > catalog, "the version release must remain a draft until the catalog is prepared");
-  assert.ok(anchorAssets > publish, "the update anchor is changed only after the version release is public");
+  assert.ok(anchorBackup > publish, "the previous catalog backup is uploaded only after the version release is public");
+  assert.ok(anchorManifest > anchorBackup && anchorCatalog > anchorManifest, "the anchor backup must be retained before replacing its manifest and catalog");
+  assert.match(windows, /gh release download "\$anchor" -p versions\.json\.backup -D catalog --clobber/);
+  assert.match(windows, /cp catalog\/versions\.json\.backup catalog\/versions\.json/);
+  assert.match(windows, /Published update anchor is missing versions\.json and its backup; refusing to reset release history/);
 });
