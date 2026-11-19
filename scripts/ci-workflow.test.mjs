@@ -164,13 +164,13 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
 test("PR body edits revalidate metadata without rerunning code CI", () => {
   const metadata = workflow("pr-metadata");
   assert.match(metadata, /pull_request_target:[\s\S]*types: \[opened, synchronize, reopened, edited, ready_for_review\]/);
-  for (const name of ["docs-impact", "cache-impact"]) {
+  for (const name of ["edited-docs-impact", "edited-cache-impact"]) {
     const body = job(metadata, name);
     assert.match(body, /github\.event\.action == 'edited'/);
-    assert.ok(body.includes("scripts/check-" + name + ".sh"));
+    assert.ok(body.includes(name === "edited-docs-impact" ? "scripts/check-docs-impact.sh" : "scripts/check-cache-impact.sh"));
   }
   const gateBody = job(metadata, "metadata-gate");
-  assert.match(gateBody, /needs: \[docs-impact, cache-impact\]/);
+  assert.match(gateBody, /needs: \[edited-docs-impact, edited-cache-impact\]/);
   assert.match(gateBody, /always\(\) && github\.event\.action == 'edited'/);
   const script = shellStep(gateBody, "Verify edited PR metadata checks");
 
