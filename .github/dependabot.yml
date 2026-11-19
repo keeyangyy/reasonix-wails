@@ -5,44 +5,64 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore(deps)"
     ignore:
+      - dependency-name: "github.com/sky-valley/pi"
+        update-types: ["version-update:semver-minor"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
       pi-catalog:
         patterns: ["github.com/sky-valley/pi"]
-        update-types: ["minor", "patch"]
-      go:
+        update-types: ["patch"]
+      go-patch:
         patterns: ["*"]
         exclude-patterns: ["github.com/sky-valley/pi"]
-        update-types: ["minor", "patch"]
+        update-types: ["patch"]
+      go-minor:
+        patterns: ["*"]
+        exclude-patterns: ["github.com/sky-valley/pi"]
+        update-types: ["minor"]
 
   - package-ecosystem: "gomod"
     directory: "/desktop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore(deps)"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
-      go:
+      go-patch:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
+        update-types: ["patch"]
+      go-minor:
+        patterns: ["*"]
+        update-types: ["minor"]
 
   - package-ecosystem: "npm"
     directory: "/desktop/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore(deps)"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
-      npm:
+      npm-patch:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
-
+        update-types: ["patch"]
+      npm-minor:
+        patterns: ["*"]
+        update-types: ["minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
