@@ -29,6 +29,8 @@
 
 ---
 
+> Reasonix 有两条基于上游衍生的独立接续线：本仓库（Wails，1.x 衍生，便携单 exe 与安装版） · [Reasonix Studio](https://github.com/keeyangyy/reasonix-studio)（2.x 接续，Electron，功能全面）。
+
 ## 项目介绍
 
 Reasonix Wails 是一个 Windows 桌面编码 Agent：读仓库、改文件、执行命令与测试；界面与资源均打包进单个 exe，无需安装即可运行。
