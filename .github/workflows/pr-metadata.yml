@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docs-impact:
+  edited-docs-impact:
     if: ${{ github.event.action == 'edited' }}
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +45,7 @@ jobs:
           DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
         run: bash scripts/check-docs-impact.sh
 
-  cache-impact:
+  edited-cache-impact:
     if: ${{ github.event.action == 'edited' }}
     runs-on: ubuntu-latest
     steps:
@@ -69,7 +69,7 @@ jobs:
         run: bash scripts/check-cache-impact.sh
 
   metadata-gate:
-    needs: [docs-impact, cache-impact]
+    needs: [edited-docs-impact, edited-cache-impact]
     if: ${{ always() && github.event.action == 'edited' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -85,7 +85,7 @@ jobs:
 
           results = json.loads(os.environ["RESULTS"])
           failed = []
-          for name in ("docs-impact", "cache-impact"):
+          for name in ("edited-docs-impact", "edited-cache-impact"):
               result = results[name]["result"]
               print(f"{name}={result} (expected success)")
               if result != "success":
