@@ -210,7 +210,7 @@ test("Release reuses main-push CI and publishes only a complete draft release", 
   assert.ok(publish > catalog, "the version release must remain a draft until the catalog is prepared");
   assert.ok(anchorBackup > publish, "the previous catalog backup is uploaded only after the version release is public");
   assert.ok(anchorManifest > anchorBackup && anchorCatalog > anchorManifest, "the anchor backup must be retained before replacing its manifest and catalog");
-  assert.match(windows, /gh release download "\$anchor" -p versions\.json\.backup -D catalog --clobber/);
+  assert.match(windows, /gh release download "\$anchor" -p versions\.json\.backup -D catalog/);
   assert.match(windows, /cp catalog\/versions\.json\.backup catalog\/versions\.json/);
   assert.match(windows, /Published update anchor is missing versions\.json and its backup; refusing to reset release history/);
 });
