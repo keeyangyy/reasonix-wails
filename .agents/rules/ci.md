@@ -21,7 +21,7 @@
 ## 分类
 
 - **docs**：普通 Markdown、说明、计划与发行说明，运行 docs-rules + pr-metadata + CodeRabbit + gate。
-- **workflow**：`.github/workflows/**`、`.github/actions/**`、CI 分类器及其回归测试，运行 actionlint、契约测试与 Actions CodeQL；不运行 Go/Desktop。
+- **workflow**：`.github/workflows/**`、`.github/actions/**`、CI 分类器、PR 元数据校验脚本及其回归测试，运行 actionlint、契约测试与 Actions CodeQL；不运行 Go/Desktop。
 - **code**：普通根模块源码，运行 Go lint、测试、race、coverage 与 CodeQL；根模块可能影响桌面，需验证其编译。
 - **desktop**：`desktop/**` 改动，运行前端及完整桌面回归。
 - **sdk**：`sdk/**` 运行 SDK 专项；`internal/extension/**` 同时影响根模块和 SDK。
