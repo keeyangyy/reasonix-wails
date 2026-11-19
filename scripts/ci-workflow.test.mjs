@@ -59,50 +59,140 @@ test("all Linux consumers use the prepared build and reject a failed preparation
 });
 
 const ciWorkflow = workflow("ci");
-test("single PR entry selects only required lanes and rejects every incorrect outcome", () => {
-  assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]/);
-  assert.match(ciWorkflow, /needs: \[changes, docs-rules, lint, go, desktop, codeql, memory\]/);
-  assert.ok(ciWorkflow.includes("IS_RELEASE_PR: " + "$" + "{{ github.event_name == 'pull_request' && needs.changes.outputs.full == 'true' }}"));
-  const script = shellStep(job(ciWorkflow, "gate"), "Verify every selected lane passed");
-  function base(flags = {}, release = false) {
+test("single PR entry gates metadata checks and dynamically selected lanes", () => {
+  assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]\s*\n\s+# PR body edits[\s\S]*?types: \[opened, synchronize, reopened, ready_for_review, edited\]/);
+  assert.match(ciWorkflow, /needs: \[changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory\]/);
+  assert.match(ciWorkflow, /pull-requests: read/);
+  assert.match(ciWorkflow, /github\.event\.action == 'edited' && '-metadata'/);
+  assert.match(ciWorkflow, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(ciWorkflow, /github\.event_name != 'pull_request' \|\| \(github\.event\.action != 'edited' && needs\.changes\.outputs\.full == 'true'\)/);
+  assert.ok(!ciWorkflow.includes("IS_RELEASE_PR"));
+
+  for (const [name, scriptPath, fileName] of [
+    ["docs-impact", "scripts/check-docs-impact.sh", "docs-impact-files.txt"],
+    ["cache-impact", "scripts/check-cache-impact.sh", "cache-impact-files.txt"],
+  ]) {
+    const body = job(ciWorkflow, name);
+    assert.match(body, /github\.event_name == 'pull_request'/);
+    assert.match(body, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+    assert.match(body, new RegExp(fileName.replaceAll(".", "\\.")));
+    assert.ok(body.includes(scriptPath));
+    assert.ok(body.includes("pulls/${PR_NUMBER}/files"));
+  }
+
+  const gateBody = job(ciWorkflow, "gate");
+  assert.ok(gateBody.includes("docs-impact"));
+  assert.ok(gateBody.includes("cache-impact"));
+  const script = shellStep(gateBody, "Verify every selected check passed");
+
+  function makeNeeds({ event = "pull_request", action = "synchronize", flags = {}, results = {} } = {}) {
     const outputs = {
       code: "false", desktop: "false", desktop_direct: "false",
       sdk: "false", workflow: "false", full: "false", ...flags,
     };
-    const active = {
-      lint: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
-      go: ["code", "sdk"].some(k => outputs[k] === "true"),
-      desktop: outputs.desktop === "true",
-      codeql: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
-      memory: release,
+    const metadataOnly = event === "pull_request" && action === "edited";
+    const selected = {
+      lint: !metadataOnly && ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      go: !metadataOnly && ["code", "sdk"].some(k => outputs[k] === "true"),
+      desktop: !metadataOnly && outputs.desktop === "true",
+      codeql: !metadataOnly && ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      memory: !metadataOnly && (event !== "pull_request" || outputs.full === "true"),
     };
-    return {
+    const needs = {
       changes: { result: "success", outputs },
       "docs-rules": { result: "success" },
-      ...Object.fromEntries(Object.entries(active).map(([name, needed]) => [name, { result: needed ? "success" : "skipped" }])),
+      "docs-impact": { result: event === "pull_request" ? "success" : "skipped" },
+      "cache-impact": { result: event === "pull_request" ? "success" : "skipped" },
     };
+    for (const [name, needed] of Object.entries(selected)) {
+      needs[name] = { result: needed ? "success" : "skipped" };
+    }
+    for (const [name, result] of Object.entries(results)) {
+      needs[name] = { ...needs[name], result };
+    }
+    return needs;
   }
-  const run = (needs, release = false) => spawnSync("bash", ["-e", "-c", script], {
-    env: { ...process.env, RESULTS: JSON.stringify(needs), IS_RELEASE_PR: String(release) },
+
+  const run = (needs, event = "pull_request", action = "synchronize") => spawnSync("bash", ["-e", "-c", script], {
+    env: {
+      ...process.env,
+      RESULTS: JSON.stringify(needs),
+      EVENT_NAME: event,
+      EVENT_ACTION: action,
+    },
   }).status;
+
   const cases = [
-    [base(), false],
-    [base({ workflow: "true" }), false],
-    [base({ code: "true", desktop: "true" }), false],
-    [base({ sdk: "true" }), false],
-    [base({ code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" }, true), true],
+    [makeNeeds(), "pull_request", "synchronize"],
+    [makeNeeds({ flags: { workflow: "true" } }), "pull_request", "synchronize"],
+    [makeNeeds({ flags: { code: "true", desktop: "true" } }), "pull_request", "synchronize"],
+    [makeNeeds({ flags: { sdk: "true" } }), "pull_request", "synchronize"],
+    [makeNeeds({ flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request", "synchronize"],
+    [makeNeeds({ event: "push", action: "", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "push", ""],
+    [makeNeeds({ event: "workflow_dispatch", action: "", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "workflow_dispatch", ""],
+    [makeNeeds({ action: "edited", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request", "edited"],
   ];
-  for (const [needs, release] of cases) {
-    assert.equal(run(needs, release), 0, JSON.stringify(needs));
-    for (const name of ["lint", "go", "desktop", "codeql", "memory"]) {
-      const wrong = structuredClone(needs);
-      wrong[name].result = wrong[name].result === "success" ? "skipped" : "success";
-      assert.notEqual(run(wrong, release), 0, "incorrect lane " + name + " was allowed");
-    }
-    for (const name of ["changes", "docs-rules"]) {
-      const wrong = structuredClone(needs);
-      wrong[name].result = "failure";
-      assert.notEqual(run(wrong, release), 0, name + " failure was allowed");
-    }
+  for (const [needs, event, action] of cases) {
+    assert.equal(run(needs, event, action), 0, event + "/" + action + ": " + JSON.stringify(needs));
   }
+
+  // Every selected check must succeed; every unselected lane must be skipped.
+  const workflowOnly = makeNeeds({ flags: { workflow: "true" } });
+  for (const [name, value] of [["lint", "skipped"], ["codeql", "failure"], ["go", "success"], ["desktop", "success"], ["memory", "success"]]) {
+    const wrong = structuredClone(workflowOnly);
+    wrong[name].result = value;
+    assert.notEqual(run(wrong), 0, name + "=" + value + " must fail Gate");
+  }
+
+  // PR metadata is always mandatory, not an informational side workflow.
+  for (const name of ["docs-impact", "cache-impact"]) {
+    const wrong = makeNeeds();
+    wrong[name].result = "failure";
+    assert.notEqual(run(wrong), 0, name + " failure must fail Gate");
+    wrong[name].result = "skipped";
+    assert.notEqual(run(wrong), 0, name + " skipped must fail Gate on a PR");
+  }
+
+  // Main push has no PR metadata, but memory is mandatory even for its full CI.
+  for (const name of ["docs-impact", "cache-impact"]) {
+    const wrong = makeNeeds({ event: "push", action: "", flags: { full: "true" } });
+    wrong[name].result = "success";
+    assert.notEqual(run(wrong, "push", ""), 0, name + " unexpectedly ran on push");
+  }
+  const pushMissingMemory = makeNeeds({ event: "push", action: "", flags: { full: "true" }, results: { memory: "skipped" } });
+  assert.notEqual(run(pushMissingMemory, "push", ""), 0, "main push cannot skip memory");
+
+  // A PR body edit rechecks metadata only; it must not cancel/re-run code lanes.
+  const edited = makeNeeds({ action: "edited", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } });
+  for (const name of ["lint", "go", "desktop", "codeql", "memory"]) {
+    const wrong = structuredClone(edited);
+    wrong[name].result = "success";
+    assert.notEqual(run(wrong, "pull_request", "edited"), 0, name + " should remain skipped for edited event");
+  }
+
+  for (const name of ["changes", "docs-rules"]) {
+    const wrong = makeNeeds();
+    wrong[name].result = "failure";
+    assert.notEqual(run(wrong), 0, name + " failure must fail Gate");
+  }
+});
+
+test("Release reuses main-push CI and publishes only a complete draft release", () => {
+  const release = workflow("release");
+  const windows = workflow("build-release-windows");
+  assert.ok(!release.includes("check-memory.yml"), "Release must not run memory a second time");
+  assert.match(release, /select\(\.name == "CI" and \.event == "push" and \.head_branch == "main"\)/);
+  assert.match(windows, /Verify official main-push CI/);
+  assert.match(windows, /select\(\.name == "CI" and \.event == "push" and \.head_branch == "main"\)/);
+
+  const publish = windows.indexOf('gh release edit "$RELEASE_TAG" --draft=false');
+  const binaries = windows.indexOf('gh release upload "$RELEASE_TAG" "dist/${exe_asset}"');
+  const signature = windows.indexOf('dist/Reasonix-windows-amd64.exe.minisig');
+  const immutableManifest = windows.indexOf('gh release upload "$RELEASE_TAG" manifest-input/latest.json');
+  const catalog = windows.indexOf('mv catalog/versions.json.new catalog/versions.json');
+  const anchorAssets = windows.indexOf('gh release upload wails-latest catalog/versions.json manifest-input/latest.json');
+  assert.ok(binaries >= 0 && signature > binaries && immutableManifest > signature);
+  assert.ok(catalog > immutableManifest);
+  assert.ok(publish > catalog, "the version release must remain a draft until the catalog is prepared");
+  assert.ok(anchorAssets > publish, "the update anchor is changed only after the version release is public");
 });
