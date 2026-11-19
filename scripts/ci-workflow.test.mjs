@@ -64,6 +64,7 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
   assert.doesNotMatch(ciWorkflow, /types:.*edited/);
   assert.match(ciWorkflow, /needs: \[changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory\]/);
   assert.match(ciWorkflow, /pull-requests: read/);
+  assert.match(job(ciWorkflow, "metadata-gate"), /github\.event_name == 'pull_request'/);
   assert.match(ciWorkflow, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
   assert.match(ciWorkflow, /github\.event_name != 'pull_request' \|\| needs\.changes\.outputs\.full == 'true'/);
 
@@ -163,7 +164,7 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
 
 test("PR body edits revalidate metadata without rerunning code CI", () => {
   const metadata = workflow("pr-metadata");
-  assert.match(metadata, /pull_request_target:[\s\S]*types: \[opened, synchronize, reopened, edited, ready_for_review\]/);
+  assert.match(metadata, /pull_request_target:[\s\S]*types: \[edited\]/);
   for (const name of ["edited-docs-impact", "edited-cache-impact"]) {
     const body = job(metadata, name);
     assert.match(body, /github\.event\.action == 'edited'/);
