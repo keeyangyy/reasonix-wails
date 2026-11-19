@@ -234,6 +234,7 @@ jobs:
           fi
 
       - name: Update this line's version catalog
+        id: catalog
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
@@ -246,6 +247,7 @@ jobs:
           catalog_keep=100000
           recent=5
           recent_stable=3
+          restored_from_backup=false
           # The channel decides whether the panel counts this entry toward the
           # stable quota, so it is derived from the tag's shape: vX.Y.Z is a
           # stable release, vX.Y.Z-beta.N is a pre-release.
@@ -255,11 +257,28 @@ jobs:
           existing=-
           if gh release view "$anchor" >/dev/null 2>&1; then
             ANCHOR_IS_DRAFT="$(gh release view "$anchor" --json isDraft --jq .isDraft)"
-            if gh release download "$anchor" -p versions.json -D catalog --clobber 2>/dev/null; then
+            ASSETS="$(gh release view "$anchor" --json assets --jq '.assets[].name')"
+            if grep -Fxq "versions.json" <<< "$ASSETS"; then
+              # An existing primary catalog that fails to download is an
+              # actual error (or transient API failure), not proof of absence.
+              # Never fall back to an older backup in this case: that could
+              # silently discard a newer published release from the history.
+              if ! gh release download "$anchor" -p versions.json -D catalog; then
+                echo "::error::versions.json exists on the update anchor but could not be downloaded; refusing to use an older backup."
+                exit 1
+              fi
               existing=catalog/versions.json
-            elif gh release download "$anchor" -p versions.json.backup -D catalog --clobber 2>/dev/null; then
+            elif grep -Fxq "versions.json.backup" <<< "$ASSETS"; then
+              # The primary catalog is genuinely absent. Restore the last
+              # known-good backup, but keep the remote backup untouched until
+              # the primary catalog has been uploaded successfully.
+              if ! gh release download "$anchor" -p versions.json.backup -D catalog; then
+                echo "::error::versions.json is missing and its backup could not be downloaded."
+                exit 1
+              fi
               cp catalog/versions.json.backup catalog/versions.json
               existing=catalog/versions.json
+              restored_from_backup=true
               echo "::warning::Restored the previous catalog from versions.json.backup."
             elif [ "$ANCHOR_IS_DRAFT" = "true" ]; then
               echo "Draft anchor has no catalog or backup yet; starting a new one."
@@ -270,12 +289,13 @@ jobs:
           else
             echo "No update anchor yet; starting a new one."
           fi
-          # Preserve the current published catalog before preparing its replacement.
-          # The backup is uploaded before versions.json is replaced, so a failed
-          # --clobber upload can be recovered without losing release history.
-          if [ "$existing" != "-" ]; then
+          # For a normal update, preserve the current primary catalog before
+          # replacing it. If recovery used the remote backup, do not rewrite
+          # that sole recovery copy; the publish step will leave it untouched.
+          if [ "$existing" != "-" ] && [ "$restored_from_backup" != "true" ]; then
             cp "$existing" catalog/versions.json.backup
           fi
+          echo "restored_from_backup=$restored_from_backup" >> "$GITHUB_OUTPUT"
           now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           # The next release reads back what this one wrote, so the index keeps
           # every entry and only the filter trims: a small keep here would drop
@@ -298,6 +318,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
           ANCHOR_ONLY: ${{ inputs.anchor_only }}
+          CATALOG_RESTORED_FROM_BACKUP: ${{ steps.catalog.outputs.restored_from_backup }}
         run: |
           set -euo pipefail
           # A normal run publishes the prepared version. Anchor-only recovery
@@ -307,9 +328,10 @@ jobs:
           fi
 
           # The mutable anchor is intentionally never the repository Latest.
-          # Back up the last known catalog before replacing it: GitHub's --clobber
-          # deletes the old asset before uploading the replacement.
-          if [ -f catalog/versions.json.backup ]; then
+          # On a normal update, upload the backup before replacing the catalog.
+          # If this run restored from that backup, keep the remote copy untouched
+          # until the new primary catalog is safely uploaded.
+          if [ "${CATALOG_RESTORED_FROM_BACKUP:-false}" != "true" ] && [ -f catalog/versions.json.backup ]; then
             gh release upload wails-latest catalog/versions.json.backup --clobber
           fi
           gh release upload wails-latest manifest-input/latest.json --clobber
