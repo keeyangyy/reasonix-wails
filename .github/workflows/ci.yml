@@ -30,56 +30,6 @@ jobs:
   docs-rules:
     uses: ./.github/workflows/check-docs-rules.yml
 
-  # PR metadata checks use trusted scripts from the base commit and are part of Gate.
-  docs-impact:
-    needs: changes
-    if: ${{ github.event_name == 'pull_request' && needs.changes.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-
-      - name: Collect PR changed files
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/docs-impact-files.txt"
-
-      - name: Check documentation impact declaration
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
-        run: bash scripts/check-docs-impact.sh
-
-  cache-impact:
-    needs: changes
-    if: ${{ github.event_name == 'pull_request' && needs.changes.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-
-      - name: Collect PR changed files
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/cache-impact-files.txt"
-
-      - name: Check cache-sensitive PR metadata
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/cache-impact-files.txt
-        run: bash scripts/check-cache-impact.sh
-
   lint:
     needs: changes
     if: ${{ needs.changes.result == 'success' && (needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.workflow == 'true') }}
@@ -125,7 +75,7 @@ jobs:
     uses: ./.github/workflows/check-memory.yml
 
   gate:
-    needs: [changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory]
+    needs: [changes, docs-rules, lint, go, desktop, codeql, memory]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -133,7 +83,6 @@ jobs:
       - name: Verify every selected check passed
         env:
           RESULTS: ${{ toJSON(needs) }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
           python3 - <<'PY'
           import json
@@ -141,7 +90,6 @@ jobs:
           import sys
 
           results = json.loads(os.environ["RESULTS"])
-          event = os.environ["EVENT_NAME"]
           outputs = results["changes"].get("outputs", {})
           failures = []
 
@@ -154,10 +102,6 @@ jobs:
           expect("changes", "success")
           expect("docs-rules", "success")
 
-          # PR metadata checks run for every PR; they are skipped on push/dispatch.
-          metadata_result = "success" if event == "pull_request" else "skipped"
-          expect("docs-impact", metadata_result)
-          expect("cache-impact", metadata_result)
 
           selected = {
               "lint": any(outputs.get(k) == "true" for k in ("code", "desktop", "workflow")),
@@ -178,21 +122,13 @@ jobs:
           print("All selected checks passed; unselected checks were skipped as expected.")
           PY
 
-  # Required companion status for PR metadata. Ordinary PR events validate
-  # docs/cache impact in the main Gate; edited events use the trusted target workflow.
-  metadata-gate:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Ordinary PR metadata checks are included in Gate."
-
   # Observability only: it never gates a merge, but it records every job's wall
   # time so a silent regression (for example `test` drifting from 6 to 12
   # minutes) becomes visible instead of anecdotal.
   metrics:
     # needs gate so the artifact always covers the same job set
     # (otherwise gate may or may not have finished when the API is queried).
-    needs: [changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory, gate]
+    needs: [changes, docs-rules, lint, go, desktop, codeql, memory, gate]
     if: ${{ always() && (github.event_name != 'pull_request' || needs.changes.outputs.code == 'true' || needs.changes.outputs.desktop == 'true' || needs.changes.outputs.sdk == 'true' || needs.changes.outputs.workflow == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
