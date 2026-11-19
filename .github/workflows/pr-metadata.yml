@@ -1,14 +1,12 @@
 name: PR metadata
 
-# Main PR events validate docs/cache impact inside ci.yml's Gate. This trusted
-# pull_request_target workflow handles body edits separately so changing PR
-# text does not cancel or rerun expensive code CI. Its metadata-gate status is
-# the required companion check for edited events.
+# Validate PR declarations in a separate workflow so body edits never cancel
+# the expensive CI workflow. Only trusted scripts from the base commit run here.
 
 on:
   pull_request_target:
     branches: [main]
-    types: [edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
@@ -19,79 +17,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  edited-docs-impact:
-    if: ${{ github.event.action == 'edited' }}
-    runs-on: ubuntu-latest
-    steps:
-      # Execute only the trusted base-branch checker; never run contributor code
-      # from a pull_request_target workflow.
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-
-      - name: Collect PR changed files
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/docs-impact-files.txt"
-
-      - name: Check documentation impact declaration
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/docs-impact-files.txt
-        run: bash scripts/check-docs-impact.sh
-
-  edited-cache-impact:
-    if: ${{ github.event.action == 'edited' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-
-      - name: Collect PR changed files
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
-            --jq '.[].filename' > "$RUNNER_TEMP/cache-impact-files.txt"
-
-      - name: Check cache-sensitive PR metadata
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/cache-impact-files.txt
-        run: bash scripts/check-cache-impact.sh
-
-  metadata-gate:
-    needs: [edited-docs-impact, edited-cache-impact]
-    if: ${{ always() && github.event.action == 'edited' }}
+  pr-metadata:
+    name: pr-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify edited PR metadata checks
-        env:
-          RESULTS: ${{ toJSON(needs) }}
-        run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import sys
+      - name: Checkout trusted base-branch scripts
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
 
-          results = json.loads(os.environ["RESULTS"])
-          failed = []
-          for name in ("edited-docs-impact", "edited-cache-impact"):
-              result = results[name]["result"]
-              print(f"{name}={result} (expected success)")
-              if result != "success":
-                  failed.append(name)
-          if failed:
-              print("Metadata gate failed: " + ", ".join(failed))
-              sys.exit(1)
-          print("Edited PR metadata checks passed.")
-          PY
+      - name: Collect PR changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[].filename' > "$RUNNER_TEMP/changed-files.txt"
+
+      - name: Check documentation impact declaration
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          DOCS_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
+        run: bash scripts/check-docs-impact.sh
+
+      - name: Check cache impact declaration
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+          CACHE_IMPACT_CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
+        run: bash scripts/check-cache-impact.sh
+
+      - name: Check Blast Radius declaration
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+        run: bash scripts/check-blast-radius.sh
