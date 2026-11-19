@@ -60,13 +60,12 @@ test("all Linux consumers use the prepared build and reject a failed preparation
 
 const ciWorkflow = workflow("ci");
 test("single PR entry gates metadata checks and dynamically selected lanes", () => {
-  assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]\s*\n\s+# PR body edits[\s\S]*?types: \[opened, synchronize, reopened, ready_for_review, edited\]/);
+  assert.match(ciWorkflow, /pull_request:\s*\n\s+branches: \[main\]\s*\n\s+types: \[opened, synchronize, reopened, ready_for_review\]/);
+  assert.doesNotMatch(ciWorkflow, /types:.*edited/);
   assert.match(ciWorkflow, /needs: \[changes, docs-rules, docs-impact, cache-impact, lint, go, desktop, codeql, memory\]/);
   assert.match(ciWorkflow, /pull-requests: read/);
-  assert.match(ciWorkflow, /github\.event\.action == 'edited' && '-metadata'/);
   assert.match(ciWorkflow, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
-  assert.match(ciWorkflow, /github\.event_name != 'pull_request' \|\| \(github\.event\.action != 'edited' && needs\.changes\.outputs\.full == 'true'\)/);
-  assert.ok(!ciWorkflow.includes("IS_RELEASE_PR"));
+  assert.match(ciWorkflow, /github\.event_name != 'pull_request' \|\| needs\.changes\.outputs\.full == 'true'/);
 
   for (const [name, scriptPath, fileName] of [
     ["docs-impact", "scripts/check-docs-impact.sh", "docs-impact-files.txt"],
@@ -85,18 +84,17 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
   assert.ok(gateBody.includes("cache-impact"));
   const script = shellStep(gateBody, "Verify every selected check passed");
 
-  function makeNeeds({ event = "pull_request", action = "synchronize", flags = {}, results = {} } = {}) {
+  function makeNeeds({ event = "pull_request", flags = {}, results = {} } = {}) {
     const outputs = {
       code: "false", desktop: "false", desktop_direct: "false",
       sdk: "false", workflow: "false", full: "false", ...flags,
     };
-    const metadataOnly = event === "pull_request" && action === "edited";
     const selected = {
-      lint: !metadataOnly && ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
-      go: !metadataOnly && ["code", "sdk"].some(k => outputs[k] === "true"),
-      desktop: !metadataOnly && outputs.desktop === "true",
-      codeql: !metadataOnly && ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
-      memory: !metadataOnly && (event !== "pull_request" || outputs.full === "true"),
+      lint: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      go: ["code", "sdk"].some(k => outputs[k] === "true"),
+      desktop: outputs.desktop === "true",
+      codeql: ["code", "desktop", "workflow"].some(k => outputs[k] === "true"),
+      memory: event !== "pull_request" || outputs.full === "true",
     };
     const needs = {
       changes: { result: "success", outputs },
@@ -113,27 +111,21 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
     return needs;
   }
 
-  const run = (needs, event = "pull_request", action = "synchronize") => spawnSync("bash", ["-e", "-c", script], {
-    env: {
-      ...process.env,
-      RESULTS: JSON.stringify(needs),
-      EVENT_NAME: event,
-      EVENT_ACTION: action,
-    },
+  const run = (needs, event = "pull_request") => spawnSync("bash", ["-e", "-c", script], {
+    env: { ...process.env, RESULTS: JSON.stringify(needs), EVENT_NAME: event },
   }).status;
 
   const cases = [
-    [makeNeeds(), "pull_request", "synchronize"],
-    [makeNeeds({ flags: { workflow: "true" } }), "pull_request", "synchronize"],
-    [makeNeeds({ flags: { code: "true", desktop: "true" } }), "pull_request", "synchronize"],
-    [makeNeeds({ flags: { sdk: "true" } }), "pull_request", "synchronize"],
-    [makeNeeds({ flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request", "synchronize"],
-    [makeNeeds({ event: "push", action: "", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "push", ""],
-    [makeNeeds({ event: "workflow_dispatch", action: "", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "workflow_dispatch", ""],
-    [makeNeeds({ action: "edited", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request", "edited"],
+    [makeNeeds(), "pull_request"],
+    [makeNeeds({ flags: { workflow: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { code: "true", desktop: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { sdk: "true" } }), "pull_request"],
+    [makeNeeds({ flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "pull_request"],
+    [makeNeeds({ event: "push", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "push"],
+    [makeNeeds({ event: "workflow_dispatch", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } }), "workflow_dispatch"],
   ];
-  for (const [needs, event, action] of cases) {
-    assert.equal(run(needs, event, action), 0, event + "/" + action + ": " + JSON.stringify(needs));
+  for (const [needs, event] of cases) {
+    assert.equal(run(needs, event), 0, event + ": " + JSON.stringify(needs));
   }
 
   // Every selected check must succeed; every unselected lane must be skipped.
@@ -144,7 +136,7 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
     assert.notEqual(run(wrong), 0, name + "=" + value + " must fail Gate");
   }
 
-  // PR metadata is always mandatory, not an informational side workflow.
+  // PR metadata is mandatory in the main Gate.
   for (const name of ["docs-impact", "cache-impact"]) {
     const wrong = makeNeeds();
     wrong[name].result = "failure";
@@ -155,25 +147,42 @@ test("single PR entry gates metadata checks and dynamically selected lanes", () 
 
   // Main push has no PR metadata, but memory is mandatory even for its full CI.
   for (const name of ["docs-impact", "cache-impact"]) {
-    const wrong = makeNeeds({ event: "push", action: "", flags: { full: "true" } });
+    const wrong = makeNeeds({ event: "push", flags: { full: "true" } });
     wrong[name].result = "success";
-    assert.notEqual(run(wrong, "push", ""), 0, name + " unexpectedly ran on push");
+    assert.notEqual(run(wrong, "push"), 0, name + " unexpectedly ran on push");
   }
-  const pushMissingMemory = makeNeeds({ event: "push", action: "", flags: { full: "true" }, results: { memory: "skipped" } });
-  assert.notEqual(run(pushMissingMemory, "push", ""), 0, "main push cannot skip memory");
-
-  // A PR body edit rechecks metadata only; it must not cancel/re-run code lanes.
-  const edited = makeNeeds({ action: "edited", flags: { code: "true", desktop: "true", sdk: "true", workflow: "true", full: "true" } });
-  for (const name of ["lint", "go", "desktop", "codeql", "memory"]) {
-    const wrong = structuredClone(edited);
-    wrong[name].result = "success";
-    assert.notEqual(run(wrong, "pull_request", "edited"), 0, name + " should remain skipped for edited event");
-  }
+  const pushMissingMemory = makeNeeds({ event: "push", flags: { full: "true" }, results: { memory: "skipped" } });
+  assert.notEqual(run(pushMissingMemory, "push"), 0, "main push cannot skip memory");
 
   for (const name of ["changes", "docs-rules"]) {
     const wrong = makeNeeds();
     wrong[name].result = "failure";
     assert.notEqual(run(wrong), 0, name + " failure must fail Gate");
+  }
+});
+
+test("PR body edits revalidate metadata without rerunning code CI", () => {
+  const metadata = workflow("pr-metadata");
+  assert.match(metadata, /pull_request_target:[\s\S]*types: \[opened, synchronize, reopened, edited, ready_for_review\]/);
+  for (const name of ["docs-impact", "cache-impact"]) {
+    const body = job(metadata, name);
+    assert.match(body, /github\.event\.action == 'edited'/);
+    assert.ok(body.includes("scripts/check-" + name + ".sh"));
+  }
+  const gateBody = job(metadata, "metadata-gate");
+  assert.match(gateBody, /needs: \[docs-impact, cache-impact\]/);
+  assert.match(gateBody, /always\(\) && github\.event\.action == 'edited'/);
+  const script = shellStep(gateBody, "Verify edited PR metadata checks");
+
+  const run = (docs, cache) => spawnSync("bash", ["-e", "-c", script], {
+    env: { ...process.env, RESULTS: JSON.stringify({
+      "docs-impact": { result: docs },
+      "cache-impact": { result: cache },
+    }) },
+  }).status;
+  assert.equal(run("success", "success"), 0);
+  for (const [docs, cache] of [["failure", "success"], ["success", "failure"], ["skipped", "success"], ["success", "cancelled"]]) {
+    assert.notEqual(run(docs, cache), 0, "metadata-gate must reject " + docs + "/" + cache);
   }
 });
 
