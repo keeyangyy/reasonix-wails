@@ -450,17 +450,13 @@ jobs:
           cache-dependency-path: desktop/go.sum
 
       - name: test (Windows desktop and update helper)
-        # Normal wall time is ~6-7 minutes of tests plus a Windows rebuild of
-        # the cgo packages. -timeout gives the Go test binary its own deadline:
-        # when a test wedges, the runtime dumps the goroutine stacks and exits
-        # instead of holding this step until the job timeout (observed: one run
-        # sat here for 30 minutes and was killed with no diagnostics).
-        # -timeout must stay well under the step budget: the clock starts when a
-        # test binary starts, and a binary kicked off late in the step would
-        # otherwise hit the step timeout before Go can dump goroutine stacks.
-        # 6m leaves ~9 minutes for the bundle's compile time.
-        timeout-minutes: 15
-        run: go test -p 4 -timeout=6m ./...
+        # The desktop package takes about 5 minutes on a normal Windows runner
+        # and has exceeded 6 minutes under runner load. Keep the Go test-binary
+        # deadline above that observed range so a slow package does not turn
+        # whichever test happens to be running at the deadline into a false
+        # failure. The step budget still leaves time for the Windows rebuild.
+        timeout-minutes: 18
+        run: go test -p 4 -timeout=8m ./...
 
       - name: test (vendored systray identity)
         timeout-minutes: 2
