@@ -46,6 +46,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     outputs:
       version: ${{ steps.check.outputs.version }}
     steps:
@@ -75,6 +76,36 @@ jobs:
           echo "version=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "Releasing $RELEASE_TAG"
 
+      - name: Verify official main-push CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          DEADLINE=$((SECONDS + 5400))
+          while true; do
+            RUN="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
+              --jq '.workflow_runs[] | select(.name == "CI" and .event == "push" and .head_branch == "main") | "\(.status) \(.conclusion) \(.id)"' | head -1 || true)"
+            if [ -n "$RUN" ]; then
+              read -r STATUS CONCLUSION RUN_ID <<< "$RUN"
+              echo "Official CI run $RUN_ID for $SHA: $STATUS/$CONCLUSION"
+              if [ "$STATUS" = "completed" ]; then
+                if [ "$CONCLUSION" = "success" ]; then
+                  echo "The exact tag commit passed official main-push CI."
+                  exit 0
+                fi
+                echo "::error::Official main-push CI failed for $SHA; refusing to publish."
+                exit 1
+              fi
+            else
+              echo "No official main-push CI run found for $SHA yet."
+            fi
+            if [ "$SECONDS" -ge "$DEADLINE" ]; then
+              echo "::error::Timed out waiting for official main-push CI for $SHA."
+              exit 1
+            fi
+            sleep 30
+          done
   build:
     needs: verify
     uses: ./.github/workflows/build-windows.yml
@@ -104,22 +135,17 @@ jobs:
       - name: List artifacts
         run: ls -la dist
 
-      - name: Publish GitHub release
+      - name: Upload Windows assets to draft release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
         run: |
           set -euo pipefail
-          # Asset names carry no version: the release tag and latest.json
-          # already identify the version. The updater channel is one bare
-          # self-updating exe; the NSIS installer is a first-install
-          # convenience and is not part of the manifest's platform map.
+          # Keep the version release private until binaries, signature,
+          # manifest, and the version catalog are ready.
           exe_asset="Reasonix-windows-amd64.exe"
           installer_asset="Reasonix-windows-amd64-installer.exe"
           cli_asset="reasonix-cli-windows-amd64.exe"
-          # release.yml creates this release as a draft before the
-          # Windows build starts, so it is never public without its assets.
-          # Create it here too when this workflow is dispatched on its own.
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG absent; creating it as a draft."
             gh release create "$RELEASE_TAG" --draft \
@@ -129,9 +155,6 @@ jobs:
             echo "Release $RELEASE_TAG already exists; uploading/overwriting assets."
           fi
           gh release upload "$RELEASE_TAG" "dist/${exe_asset}" "dist/${installer_asset}" "dist/${cli_asset}" --clobber
-          # Publish only now that both assets are attached.
-          gh release edit "$RELEASE_TAG" --draft=false
-
       - name: Publish the signed update manifest to the release anchor
         env:
           GH_TOKEN: ${{ github.token }}
@@ -161,15 +184,12 @@ jobs:
           # overwrites, so the updater never follows the repository-wide latest
           # badge -- which the studio and legacy 1.39 lines also claim.
           if ! gh release view wails-latest >/dev/null 2>&1; then
-            gh release create wails-latest --latest=false \
+            # A new update anchor is staged as a draft until both assets are ready.
+            gh release create wails-latest --draft --latest=false \
               --title "Reasonix Wails update anchor" \
               --notes "Update-check anchor for the Reasonix Wails line. latest.json here is overwritten by every release of that line; versions.json lists the panel's versions."
           fi
-          # The anchor always describes the newest published release, pre-release
-          # or not: this line runs a single update channel and the client accepts
-          # either version shape. The catalog above stays the source for the
-          # panel's version list.
-          gh release upload wails-latest manifest-input/latest.json --clobber
+          # The mutable anchor is updated only after the version release is public.
 
       - name: Update this line's version catalog
         env:
@@ -210,9 +230,25 @@ jobs:
           # Idempotency check: the version just published must be listed exactly
           # once, whatever the filter kept around it.
           jq -e --arg v "$RELEASE_TAG" '.versions | map(select(.version == $v)) | length == 1' catalog/versions.json >/dev/null
-          gh release upload "$anchor" catalog/versions.json --clobber
+          # Keep the catalog local until the version release is public.
           jq -r '.versions[].version' catalog/versions.json
 
+      - name: Publish completed release and update its anchor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Publish only after binaries, signature, immutable manifest, and
+          # the version catalog have all been prepared.
+          gh release edit "$RELEASE_TAG" --draft=false
+
+          # The anchor now points only to a published, complete version.
+          gh release upload wails-latest catalog/versions.json manifest-input/latest.json --clobber
+          IS_DRAFT="$(gh release view wails-latest --json isDraft --jq .isDraft)"
+          if [ "$IS_DRAFT" = "true" ]; then
+            gh release edit wails-latest --draft=false
+          fi
       - name: Summarize release
         env:
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
