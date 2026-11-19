@@ -19,6 +19,18 @@ if PR_BODY='' "$check" CLAUDE.md >/dev/null 2>&1; then
 	exit 1
 fi
 
+if PR_BODY=$'Cache-impact: urgent - unclear impact\\nCache-guard: go test ./internal/boot' \
+  "$check" internal/boot/boot.go >/dev/null 2>&1; then
+  echo "invalid cache-impact level unexpectedly passed" >&2
+  exit 1
+fi
+
+if PR_BODY=$'Cache-impact: low\\nCache-guard: go test ./internal/boot' \
+  "$check" internal/boot/boot.go >/dev/null 2>&1; then
+  echo "cache-impact without a rationale unexpectedly passed" >&2
+  exit 1
+fi
+
 if PR_BODY=$'Cache-impact: none - text-only policy update\nCache-guard: bash scripts/check-cache-impact.test.sh\nSystem-prompt-review: reviewed as static' \
 	"$check" REASONIX.local.md >/dev/null 2>&1; then
 	echo "standing instruction declared as no cache impact unexpectedly passed" >&2
