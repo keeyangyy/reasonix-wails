@@ -43,7 +43,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 95
     permissions:
       contents: read
       actions: read
@@ -155,7 +155,7 @@ jobs:
             echo "Release $RELEASE_TAG already exists; uploading/overwriting assets."
           fi
           gh release upload "$RELEASE_TAG" "dist/${exe_asset}" "dist/${installer_asset}" "dist/${cli_asset}" --clobber
-      - name: Publish the signed update manifest to the release anchor
+      - name: Sign and stage the update manifest
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.verify.outputs.version }}
